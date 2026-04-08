@@ -1,0 +1,253 @@
+// src/pages/officestaff/FeesCollection.js
+import React, { useState, useEffect } from "react";
+import Sidebar from "../../components/Sidebar";
+import { useAuth } from "../../context/AuthContext";
+import { db } from "../../firebase/config";
+import { collection, query, where, getDocs, doc, setDoc, getDoc } from "firebase/firestore";
+import * as XLSX from "xlsx";
+
+const DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "AIDS", "AIML"];
+const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
+const FEES_TYPES = ["College Fees", "Bus Fees", "Mess Fees", "Exam Fees", "Library Fees", "Other"];
+
+export default function FeesCollection() {
+  const { userProfile } = useAuth();
+  const [selectedDept, setSelectedDept] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
+  const [selectedFeesType, setSelectedFeesType] = useState("");
+  const [students, setStudents] = useState([]);
+  const [feesData, setFeesData] = useState({});
+  const [fetching, setFetching] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  async function fetchStudents() {
+    if (!selectedDept || !selectedYear || !selectedFeesType) return;
+    setFetching(true);
+    setSaved(false);
+    try {
+      const q = query(
+        collection(db, "users"),
+        where("role", "==", "student"),
+        where("dept", "==", selectedDept),
+        where("year", "==", selectedYear)
+      );
+      const snap = await getDocs(q);
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a, b) => a.name.localeCompare(b.name));
+      setStudents(list);
+
+      const feesQ = query(
+        collection(db, "fees"),
+        where("dept", "==", selectedDept),
+        where("year", "==", selectedYear),
+        where("feesType", "==", selectedFeesType)
+      );
+      const feesSnap = await getDocs(feesQ);
+      if (!feesSnap.empty) {
+        setFeesData(feesSnap.docs[0].data().payments || {});
+      } else {
+        setFeesData({});
+      }
+    } catch (err) {}
+    setFetching(false);
+  }
+
+  async function saveFees() {
+    setSaving(true);
+    try {
+      const docId = `${selectedDept}_${selectedYear}_${selectedFeesType}`.replace(/\s+/g, "_");
+      await setDoc(doc(db, "fees", docId), {
+        dept: selectedDept,
+        year: selectedYear,
+        feesType: selectedFeesType,
+        payments: feesData,
+        updatedAt: new Date().toISOString(),
+        updatedBy: userProfile.name
+      });
+      setSaved(true);
+    } catch (err) {}
+    setSaving(false);
+  }
+
+  function exportExcel() {
+    const collected = students.filter(s => feesData[s.id]);
+    const pending = students.filter(s => !feesData[s.id]);
+
+    const wb = XLSX.utils.book_new();
+    const ws1 = XLSX.utils.json_to_sheet(collected.map((s, i) => ({
+      "S.No": i + 1, "Name": s.name, "Register No": s.registerNo,
+      "Dept": s.dept, "Year": s.year, "Fees Type": selectedFeesType, "Status": "Collected"
+    })));
+    const ws2 = XLSX.utils.json_to_sheet(pending.map((s, i) => ({
+      "S.No": i + 1, "Name": s.name, "Register No": s.registerNo,
+      "Dept": s.dept, "Year": s.year, "Fees Type": selectedFeesType, "Status": "Pending"
+    })));
+    XLSX.utils.book_append_sheet(wb, ws1, "Collected");
+    XLSX.utils.book_append_sheet(wb, ws2, "Pending");
+    XLSX.writeFile(wb, `${selectedDept}_${selectedYear}_${selectedFeesType}_Fees.xlsx`);
+  }
+
+  useEffect(() => { fetchStudents(); }, [selectedDept, selectedYear, selectedFeesType]);
+
+  const collectedCount = students.filter(s => feesData[s.id]).length;
+  const pendingCount = students.length - collectedCount;
+
+  return (
+    <div className="dashboard-wrapper">
+      <Sidebar />
+      <main className="main-content">
+        <div className="page-header">
+          <h1>💰 Fees Collection</h1>
+          <p>All Departments — Office Staff</p>
+        </div>
+
+        {/* Filters */}
+        <div className="card" style={{ marginBottom: 24 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16 }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Department</label>
+              <select value={selectedDept} onChange={e => setSelectedDept(e.target.value)}>
+                <option value="">Select Dept</option>
+                {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Year</label>
+              <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}>
+                <option value="">Select Year</option>
+                {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Fees Type</label>
+              <select value={selectedFeesType} onChange={e => setSelectedFeesType(e.target.value)}>
+                <option value="">Select Type</option>
+                {FEES_TYPES.map(f => <option key={f} value={f}>{f}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats */}
+        {students.length > 0 && (
+          <div className="stats-grid" style={{ marginBottom: 24 }}>
+            <div className="stat-card">
+              <div className="stat-icon">👥</div>
+              <div className="stat-value">{students.length}</div>
+              <div className="stat-label">Total Students</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">✅</div>
+              <div className="stat-value" style={{ color: "#48bb78" }}>{collectedCount}</div>
+              <div className="stat-label">Collected</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">⏳</div>
+              <div className="stat-value" style={{ color: "#fc8181" }}>{pendingCount}</div>
+              <div className="stat-label">Pending</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">📊</div>
+              <div className="stat-value" style={{ color: "#f5a623" }}>
+                {students.length ? Math.round((collectedCount / students.length) * 100) : 0}%
+              </div>
+              <div className="stat-label">Collection Rate</div>
+            </div>
+          </div>
+        )}
+
+        {fetching ? (
+          <div style={{ textAlign: "center", padding: 60 }}>
+            <div className="spinner" style={{ margin: "0 auto" }}></div>
+          </div>
+        ) : students.length > 0 ? (
+          <div className="card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+              <h3 style={{ fontFamily: "Syne", fontSize: 18 }}>
+                {selectedDept} — {selectedYear} — {selectedFeesType}
+              </h3>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button onClick={() => { const all = {}; students.forEach(s => { all[s.id] = true; }); setFeesData(all); }} style={{
+                  padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(72,187,120,0.3)",
+                  background: "rgba(72,187,120,0.1)", color: "#48bb78", cursor: "pointer", fontSize: 13, fontWeight: 600
+                }}>✅ Select All</button>
+                <button onClick={() => setFeesData({})} style={{
+                  padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(252,129,129,0.3)",
+                  background: "rgba(252,129,129,0.1)", color: "#fc8181", cursor: "pointer", fontSize: 13, fontWeight: 600
+                }}>❌ Clear All</button>
+                <button onClick={exportExcel} style={{
+                  padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(66,153,225,0.3)",
+                  background: "rgba(66,153,225,0.1)", color: "#4299e1", cursor: "pointer", fontSize: 13, fontWeight: 600
+                }}>📊 Export Excel</button>
+              </div>
+            </div>
+
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+                    {["S.No", "Name", "Register No", "Student Type", "Fees Collected"].map((h, i) => (
+                      <th key={i} style={{ padding: "12px 16px", textAlign: i === 4 ? "center" : "left", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((student, idx) => (
+                    <tr key={student.id} onClick={() => setFeesData(prev => ({ ...prev, [student.id]: !prev[student.id] }))}
+                      style={{
+                        borderBottom: "1px solid rgba(255,255,255,0.05)",
+                        background: feesData[student.id] ? "rgba(72,187,120,0.05)" : "transparent",
+                        cursor: "pointer", transition: "all 0.15s"
+                      }}>
+                      <td style={{ padding: "14px 16px", color: "#a0aec0", fontSize: 14 }}>{idx + 1}</td>
+                      <td style={{ padding: "14px 16px", fontWeight: 600, fontSize: 15 }}>{student.name}</td>
+                      <td style={{ padding: "14px 16px", color: "#a0aec0", fontSize: 14 }}>{student.registerNo}</td>
+                      <td style={{ padding: "14px 16px" }}>
+                        <span style={{
+                          padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+                          background: student.studentType === "hosteller" ? "rgba(66,153,225,0.15)" : "rgba(159,122,234,0.15)",
+                          color: student.studentType === "hosteller" ? "#4299e1" : "#9f7aea"
+                        }}>
+                          {student.studentType === "hosteller" ? "🏠 Hosteller" : "🏡 Day Scholar"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "14px 16px", textAlign: "center" }}>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: 8, margin: "0 auto",
+                          border: feesData[student.id] ? "2px solid #48bb78" : "2px solid rgba(255,255,255,0.2)",
+                          background: feesData[student.id] ? "#48bb78" : "transparent",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 16, transition: "all 0.2s", color: "white", fontWeight: 700
+                        }}>
+                          {feesData[student.id] ? "✓" : ""}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ marginTop: 24, display: "flex", gap: 12, alignItems: "center" }}>
+              <button className="btn-primary" onClick={saveFees} disabled={saving} style={{ width: "auto", padding: "12px 32px" }}>
+                {saving ? "Saving..." : "💾 Save Fees Data"}
+              </button>
+              {saved && <span style={{ color: "#48bb78", fontWeight: 600, fontSize: 14 }}>✅ Saved successfully!</span>}
+            </div>
+          </div>
+        ) : selectedDept && selectedYear && selectedFeesType ? (
+          <div className="card" style={{ textAlign: "center", padding: 60 }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
+            <p style={{ color: "#a0aec0" }}>No students found.</p>
+          </div>
+        ) : (
+          <div className="card" style={{ textAlign: "center", padding: 60 }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>💰</div>
+            <p style={{ color: "#a0aec0" }}>Select Department, Year and Fees Type to start</p>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
