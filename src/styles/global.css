@@ -150,10 +150,10 @@ h1, h2, h3, h4, h5, h6 {
 .form-group select {
   width: 100%;
   padding: 12px 16px;
-  background: rgba(255,255,255,0.07);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(20, 26, 46, 0.92);
+  border: 1px solid rgba(255,255,255,0.14);
   border-radius: 12px;
-  color: white;
+  color: #cfd8e6;
   font-size: 15px;
   font-family: 'DM Sans', sans-serif;
   transition: all 0.2s;
@@ -163,19 +163,24 @@ h1, h2, h3, h4, h5, h6 {
 .form-group input:focus,
 .form-group select:focus {
   border-color: var(--highlight);
-  background: rgba(255,255,255,0.1);
+  background: rgba(28, 36, 62, 0.98);
   box-shadow: 0 0 0 3px rgba(233,69,96,0.15);
+}
+
+.form-group input::placeholder,
+.form-group select:invalid {
+  color: rgba(207, 216, 230, 0.68);
 }
 
 .form-group select option {
   background: #1a1a2e;
-  color: white;
+  color: #dbe3f0;
   padding: 8px;
 }
 
 .form-group select option:checked {
   background: linear-gradient(#1a1a2e, #1a1a2e);
-  color: white;
+  color: #dbe3f0;
 }
 
 /* Select dropdown styling */
@@ -183,11 +188,12 @@ select {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
+  color-scheme: dark;
 }
 
 select option {
   background-color: #1a1a2e;
-  color: white;
+  color: #dbe3f0;
   padding: 8px 12px;
   margin: 4px 0;
 }
@@ -200,7 +206,7 @@ select option:hover {
 select option:checked {
   background: linear-gradient(#e94560, #e94560);
   background-color: #e94560;
-  color: white;
+  color: #dbe3f0;
 }
 
 .form-row {
