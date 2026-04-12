@@ -45,6 +45,9 @@ import FeesOverview from "./pages/officestaff/FeesOverview";
 import FeesAlerts from "./pages/officestaff/FeesAlerts";
 import CampusMap from "./pages/shared/CampusMap";
 import Signup from "./pages/Signup";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import PrincipalDashboard from "./pages/principal/Dashboard";
+import PrincipalLeave from "./pages/principal/Leave";
 
 const ComingSoon = ({ title }) => (
   <div style={{
@@ -142,6 +145,16 @@ export default function App() {
           <Route path="/officestaff/alerts" element={<ProtectedRoute allowedRole="officestaff"><FeesAlerts /></ProtectedRoute>} />
           <Route path="/officestaff/profile" element={<ProtectedRoute allowedRole="officestaff"><Profile /></ProtectedRoute>} />
 
+
+          {/* Admin Routes */}
+          <Route path="/admin" element={<ProtectedRoute allowedRole="admin"><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/profile" element={<ProtectedRoute allowedRole="admin"><ProfilePage /></ProtectedRoute>} />
+
+          {/* Principal Routes */}
+          <Route path="/principal" element={<ProtectedRoute allowedRole="principal"><PrincipalDashboard /></ProtectedRoute>} />
+          <Route path="/principal/leave" element={<ProtectedRoute allowedRole="principal"><PrincipalLeave /></ProtectedRoute>} />
+          <Route path="/principal/alerts" element={<ProtectedRoute allowedRole="principal"><AlertsPage /></ProtectedRoute>} />
+          <Route path="/principal/profile" element={<ProtectedRoute allowedRole="principal"><ProfilePage /></ProtectedRoute>} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" />} />

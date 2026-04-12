@@ -20,14 +20,21 @@ export default function Login({ onSwitch }) {
     try {
       const result = await login(email, password);
       const userDoc = await getDoc(doc(db, "users", result.user.uid));
-      const role = userDoc.data()?.role;
-      if (role === "student") navigate("/student");
+      const userData = userDoc.data();
+      const role = userData?.role;
+      const SUPER_ADMIN_EMAIL = "balamathan0509@gmail.com";
+
+      // Super admin redirect
+      if (userData?.isSuperAdmin === true || result.user.email === SUPER_ADMIN_EMAIL) {
+        navigate("/admin");
+      } else if (role === "student") navigate("/student");
       else if (role === "staff") navigate("/staff");
       else if (role === "hod") navigate("/hod");
       else if (role === "warden") navigate("/warden");
       else if (role === "security") navigate("/security/verify");
       else if (role === "officestaff") navigate("/officestaff");
       else if (role === "management") navigate("/management");
+      else if (role === "principal") navigate("/principal");
       else navigate("/");
     } catch (err) {
       setError("Invalid email or password. Try again.");
