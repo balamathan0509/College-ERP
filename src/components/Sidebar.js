@@ -6,6 +6,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 const studentNav = [
   { icon: "🏠", label: "Dashboard", path: "/student" },
   { icon: "🚪", label: "Gate Pass", path: "/student/gatepass" },
+  { icon: "📋", label: "Leave", path: "/student/leave" },
   { icon: "📋", label: "Attendance", path: "/student/attendance" },
   { icon: "💰", label: "Fees", path: "/student/fees" },
   { icon: "📅", label: "Timetable", path: "/student/timetable" },
@@ -18,6 +19,7 @@ const studentNav = [
 const staffNav = [
   { icon: "🏠", label: "Dashboard", path: "/staff" },
   { icon: "🚪", label: "Gate Pass", path: "/staff/gatepass" },
+  { icon: "📋", label: "Leave", path: "/staff/leave" },
   { icon: "✅", label: "Attendance", path: "/staff/attendance" },
   { icon: "📅", label: "Timetable", path: "/staff/timetable" },
   { icon: "💼", label: "Placements", path: "/staff/placements" },
@@ -28,6 +30,7 @@ const staffNav = [
 
 const hodNav = [
   { icon: "🏠", label: "Dashboard", path: "/hod" },
+  { icon: "📋", label: "Leave", path: "/hod/leave" },
   { icon: "�", label: "Timetable", path: "/hod/timetable" },
   { icon: "💼", label: "Placements", path: "/hod/placements" },
   { icon: "📢", label: "Alerts", path: "/hod/alerts" },

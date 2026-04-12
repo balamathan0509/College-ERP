@@ -10,6 +10,9 @@ import HodDashboard from "./pages/hod/HodDashboard";
 import StudentGatePass from "./pages/student/GatePass";
 import StaffGatePass from "./pages/staff/GatePass";
 import HodGatePass from "./pages/hod/GatePass";
+import StudentLeave from "./pages/student/Leave";
+import StaffLeave from "./pages/staff/Leave";
+import HodLeave from "./pages/hod/Leave";
 import HodResults from "./pages/hod/Results";
 import StaffResults from "./pages/staff/Results";
 import "./styles/global.css";
@@ -71,6 +74,7 @@ export default function App() {
           {/* Student Routes */}
           <Route path="/student" element={<ProtectedRoute allowedRole="student"><StudentDashboard /></ProtectedRoute>} />
           <Route path="/student/gatepass" element={<ProtectedRoute allowedRole="student"><StudentGatePass /></ProtectedRoute>} />
+          <Route path="/student/leave" element={<ProtectedRoute allowedRole="student"><StudentLeave /></ProtectedRoute>} />
           <Route path="/student/attendance" element={<ProtectedRoute allowedRole="student"><StudentAttendance /></ProtectedRoute>} />
           <Route path="/student/fees" element={<ProtectedRoute allowedRole="student"><StudentFees /></ProtectedRoute>} />
           <Route path="/student/mess" element={<ProtectedRoute allowedRole="student"><MessPage /></ProtectedRoute>} />
@@ -84,6 +88,7 @@ export default function App() {
           {/* Staff Routes */}
           <Route path="/staff" element={<ProtectedRoute allowedRole="staff"><StaffDashboard /></ProtectedRoute>} />
           <Route path="/staff/gatepass" element={<ProtectedRoute allowedRole="staff"><StaffGatePass /></ProtectedRoute>} />
+          <Route path="/staff/leave" element={<ProtectedRoute allowedRole="staff"><StaffLeave /></ProtectedRoute>} />
           <Route path="/staff/attendance" element={<ProtectedRoute allowedRole="staff"><StaffAttendance /></ProtectedRoute>} />
           <Route path="/staff/results" element={<ProtectedRoute allowedRole="staff"><StaffResults /></ProtectedRoute>} />
           <Route path="/staff/mess" element={<ProtectedRoute allowedRole="staff"><MessPage /></ProtectedRoute>} />
@@ -96,6 +101,7 @@ export default function App() {
           {/* HOD Routes */}
           <Route path="/hod" element={<ProtectedRoute allowedRole="hod"><HodDashboard /></ProtectedRoute>} />
           <Route path="/hod/gatepass" element={<ProtectedRoute allowedRole="hod"><HodGatePass /></ProtectedRoute>} />
+          <Route path="/hod/leave" element={<ProtectedRoute allowedRole="hod"><HodLeave /></ProtectedRoute>} />
           <Route path="/hod/results" element={<ProtectedRoute allowedRole="hod"><HodResults /></ProtectedRoute>} />
           <Route path="/hod/attendance" element={<ProtectedRoute allowedRole="hod"><HodAttendance /></ProtectedRoute>} />
           <Route path="/hod/fees" element={<ProtectedRoute allowedRole="hod"><HodFees /></ProtectedRoute>} />
