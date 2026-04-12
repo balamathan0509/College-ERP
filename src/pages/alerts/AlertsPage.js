@@ -27,7 +27,10 @@ function isVisibleToUser(alert, userProfile) {
   const dept = userProfile.dept;
   const year = userProfile.year;
 
-  const roleOk = alert.roleTarget === "all" || alert.roleTarget === role;
+  let roleOk = alert.roleTarget === "all" || alert.roleTarget === role;
+  if (alert.roleTarget === "hod_only") roleOk = role === "hod";
+  else if (alert.roleTarget === "staff_hod") roleOk = role === "staff" || role === "hod";
+
   const deptOk = alert.deptTarget === "all" || alert.deptTarget === dept;
 
   if (role !== "student") {
@@ -38,9 +41,13 @@ function isVisibleToUser(alert, userProfile) {
 }
 
 function getAudienceLabel(alert) {
-  const roleLabel = alert.roleTarget === "all"
-    ? "All Roles"
+  let roleLabel = alert.roleTarget === "all"
+    ? "Common to All"
     : alert.roleTarget?.toUpperCase();
+
+  if (alert.roleTarget === "hod_only") roleLabel = "All Dept HODs Only";
+  if (alert.roleTarget === "staff_hod") roleLabel = "All Staff and HODs";
+
   const deptLabel = alert.deptTarget === "all" ? "All Departments" : alert.deptTarget;
   const yearLabel = alert.yearTarget === "all" ? "All Years" : alert.yearTarget;
 
@@ -53,7 +60,7 @@ function getAudienceLabel(alert) {
 export default function AlertsPage() {
   const { currentUser, userProfile } = useAuth();
   const role = userProfile?.role;
-  const canCreate = role === "staff" || role === "hod";
+  const canCreate = role === "staff" || role === "hod" || role === "principal";
 
   const [alerts, setAlerts] = useState([]);
   const [fetching, setFetching] = useState(false);
@@ -65,7 +72,7 @@ export default function AlertsPage() {
     type: "circular",
     title: "",
     message: "",
-    targetRole: "student",
+    targetRole: role === "principal" ? "all" : "student",
     targetYear: "all",
     deptScope: "dept"
   });
@@ -119,10 +126,10 @@ export default function AlertsPage() {
       return setFormError("Please fill all fields.");
     }
 
-    const deptTarget = role === "hod" && form.deptScope === "all"
+    const deptTarget = (role === "hod" && form.deptScope === "all") || role === "principal"
       ? "all"
       : userProfile?.dept;
-    const yearTarget = form.targetRole === "student" ? form.targetYear : "all";
+    const yearTarget = (form.targetRole === "student" || form.targetRole === "all") ? form.targetYear : "all";
 
     setSaving(true);
     try {
@@ -141,7 +148,7 @@ export default function AlertsPage() {
       });
 
       // 📧 Send SMS + Email to all targeted students
-      if (form.targetRole === "student") {
+      if (form.targetRole === "student" || form.targetRole === "all") {
         try {
           // Build query for target students
           let studentQuery;
@@ -216,7 +223,13 @@ export default function AlertsPage() {
     return acc;
   }, {});
 
-  const roleOptions = role === "hod"
+  const roleOptions = role === "principal"
+    ? [
+      { value: "hod_only", label: "All Dept HODs Only" },
+      { value: "staff_hod", label: "All Staff and HODs" },
+      { value: "all", label: "Common to All" }
+    ]
+    : role === "hod"
     ? [
       { value: "student", label: "Students" },
       { value: "staff", label: "Staff" },
@@ -319,7 +332,7 @@ export default function AlertsPage() {
                   </div>
                 )}
 
-                {form.targetRole === "student" && (
+                {(form.targetRole === "student" || form.targetRole === "all") && (
                   <div className="form-group">
                     <label>Year</label>
                     <select name="targetYear" value={form.targetYear} onChange={handleFormChange}>

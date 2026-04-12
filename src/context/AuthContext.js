@@ -64,7 +64,10 @@ export function AuthProvider({ children }) {
     await fetchUserProfile(currentUser.uid);
   }
 
-  const value = { currentUser, userProfile, signup, login, logout, refreshProfile };
+  const SUPER_ADMIN_EMAIL = "balamathan0509@gmail.com";
+  const isSuperAdmin = userProfile?.isSuperAdmin === true || currentUser?.email === SUPER_ADMIN_EMAIL;
+
+  const value = { currentUser, userProfile, signup, login, logout, refreshProfile, isSuperAdmin };
 
   return (
     <AuthContext.Provider value={value}>

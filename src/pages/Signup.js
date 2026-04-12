@@ -3,14 +3,7 @@ import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { sendEmail } from "../utils/notifications";
-import RoleSelect from "./signup/RoleSelect";
 import StudentSignup from "./signup/StudentSignup";
-import StaffSignup from "./signup/StaffSignup";
-import SecuritySignup from "./signup/SecuritySignup";
-import HodSignup from "./signup/HodSignup";
-import WardenSignup from "./signup/WardenSignup";
-import OfficeSignup from "./signup/OfficeSignup";
-import ManagementSignup from "./signup/ManagementSignup";
 import OtpVerification from "./signup/OtpVerification";
 import CreatingAccount from "./signup/CreatingAccount";
 
@@ -19,9 +12,7 @@ function generateOTP() {
 }
 
 export default function Signup({ onSwitch }) {
-  const [step, setStep] = useState("role");
-  const [role, setRole] = useState("");
-  const [studentType, setStudentType] = useState("");
+  const [step, setStep] = useState("form");
   const [form, setForm] = useState({
     name: "", email: "", password: "", confirmPassword: "",
     dept: "", year: "", registerNo: "", phone: ""
@@ -35,15 +26,6 @@ export default function Signup({ onSwitch }) {
 
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
-  }
-
-  function handleRoleSelect(selectedRole) {
-    setRole(selectedRole);
-    setStep("form");
-  }
-
-  function handleStudentTypeSelect(selectedType) {
-    setStudentType(selectedType);
   }
 
   async function handleFormSubmit(e) {
@@ -78,17 +60,17 @@ export default function Signup({ onSwitch }) {
     setStep("creating");
     try {
       const profileData = {
-        name: form.name, role, dept: form.dept || "ALL",
-        phone: form.phone, emailVerified: true,
-        ...(role === "student" && { year: form.year, registerNo: form.registerNo, studentType })
+        name: form.name, 
+        role: "student", 
+        isSuperAdmin: false,
+        dept: form.dept || "ALL",
+        phone: form.phone, 
+        emailVerified: true,
+        year: form.year, 
+        registerNo: form.registerNo
       };
       await signup(form.email, form.password, profileData);
-      const redirectMap = {
-        student: "/student", staff: "/staff", hod: "/hod",
-        security: "/security/profile", warden: "/warden",
-        officestaff: "/officestaff", management: "/management"
-      };
-      navigate(redirectMap[role] || "/");
+      navigate("/student");
     } catch (err) {
       if (err.code === "auth/email-already-in-use") setError("Email already registered.");
       else setError("Signup failed. Try again.");
@@ -114,33 +96,18 @@ export default function Signup({ onSwitch }) {
     setSendingOtp(false);
   }
 
-  // Role Selection Step
-  if (step === "role") {
-    return <RoleSelect onRoleSelect={handleRoleSelect} onStudentTypeSelect={handleStudentTypeSelect} />;
-  }
-
-  // Form Step - Render appropriate form based on role
+  // Form Step
   if (step === "form") {
-    const commonProps = { form, handleChange, onSubmit: handleFormSubmit, error, sendingOtp, onBack: onSwitch };
-
-    switch (role) {
-      case "student":
-        return <StudentSignup {...commonProps} />;
-      case "staff":
-        return <StaffSignup {...commonProps} />;
-      case "security":
-        return <SecuritySignup {...commonProps} />;
-      case "hod":
-        return <HodSignup {...commonProps} />;
-      case "warden":
-        return <WardenSignup {...commonProps} />;
-      case "officestaff":
-        return <OfficeSignup {...commonProps} />;
-      case "management":
-        return <ManagementSignup {...commonProps} />;
-      default:
-        return <RoleSelect onRoleSelect={handleRoleSelect} onStudentTypeSelect={handleStudentTypeSelect} />;
-    }
+    return (
+      <StudentSignup 
+        form={form} 
+        handleChange={handleChange} 
+        onSubmit={handleFormSubmit} 
+        error={error} 
+        sendingOtp={sendingOtp} 
+        onBack={onSwitch} 
+      />
+    );
   }
 
   // OTP Verification Step
