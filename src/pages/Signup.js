@@ -6,6 +6,7 @@ import { sendEmail } from "../utils/notifications";
 import RoleSelect from "./signup/RoleSelect";
 import StudentSignup from "./signup/StudentSignup";
 import StaffSignup from "./signup/StaffSignup";
+import SecuritySignup from "./signup/SecuritySignup";
 import HodSignup from "./signup/HodSignup";
 import WardenSignup from "./signup/WardenSignup";
 import OfficeSignup from "./signup/OfficeSignup";
@@ -126,8 +127,9 @@ export default function Signup({ onSwitch }) {
       case "student":
         return <StudentSignup {...commonProps} />;
       case "staff":
-      case "security":
         return <StaffSignup {...commonProps} />;
+      case "security":
+        return <SecuritySignup {...commonProps} />;
       case "hod":
         return <HodSignup {...commonProps} />;
       case "warden":
