@@ -21,6 +21,7 @@ const staffNav = [
   { icon: "🚪", label: "Gate Pass", path: "/staff/gatepass" },
   { icon: "📋", label: "Leave", path: "/staff/leave" },
   { icon: "✅", label: "Attendance", path: "/staff/attendance" },
+  { icon: "🧧", label: "Results", path: "/staff/results" },
   { icon: "📅", label: "Timetable", path: "/staff/timetable" },
   { icon: "💼", label: "Placements", path: "/staff/placements" },
   { icon: "📢", label: "Alerts", path: "/staff/alerts" },
@@ -31,7 +32,8 @@ const staffNav = [
 const hodNav = [
   { icon: "🏠", label: "Dashboard", path: "/hod" },
   { icon: "📋", label: "Leave", path: "/hod/leave" },
-  { icon: "�", label: "Timetable", path: "/hod/timetable" },
+  { icon: "🧧", label: "Results", path: "/hod/results" },
+  { icon: "📅", label: "Timetable", path: "/hod/timetable" },
   { icon: "💼", label: "Placements", path: "/hod/placements" },
   { icon: "📢", label: "Alerts", path: "/hod/alerts" },
   { icon: "👤", label: "Profile", path: "/hod/profile" }
