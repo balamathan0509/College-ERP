@@ -1,6 +1,7 @@
 // src/pages/student/StudentDashboard.js
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
+import DateTimeHeader from "../../components/DateTimeHeader";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
 import { collection, query, where, getDocs } from "firebase/firestore";
@@ -83,6 +84,7 @@ export default function StudentDashboard() {
     <div className="dashboard-wrapper">
       <Sidebar />
       <main className="main-content">
+        <DateTimeHeader />
         <div className="page-header">
           <h1>Welcome back, {userProfile?.name?.split(" ")[0]} 👋</h1>
           <p>{userProfile?.dept} • {userProfile?.year} • {userProfile?.registerNo}

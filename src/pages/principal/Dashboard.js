@@ -1,6 +1,7 @@
 // src/pages/principal/Dashboard.js
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
+import DateTimeHeader from "../../components/DateTimeHeader";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
 import { collection, query, where, getDocs } from "firebase/firestore";
@@ -36,6 +37,7 @@ export default function PrincipalDashboard() {
     <div className="dashboard-wrapper">
       <Sidebar />
       <main className="main-content">
+        <DateTimeHeader />
         <div className="page-header">
           <h1>🏛️ Principal Dashboard</h1>
           <p>Welcome back, {userProfile?.name}</p>

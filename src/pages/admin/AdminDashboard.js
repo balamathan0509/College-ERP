@@ -1,6 +1,7 @@
 // src/pages/admin/AdminDashboard.js
 import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "../../components/Sidebar";
+import DateTimeHeader from "../../components/DateTimeHeader";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
 import {
@@ -246,6 +247,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
+        <DateTimeHeader />
         <div className="page-header">
           <h1>⚡ Super Admin Panel</h1>
           <p>Full control over all users and roles</p>

@@ -1,6 +1,7 @@
 // src/pages/warden/WardenDashboard.js
 import React from "react";
 import Sidebar from "../../components/Sidebar";
+import DateTimeHeader from "../../components/DateTimeHeader";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -19,6 +20,7 @@ export default function WardenDashboard() {
     <div className="dashboard-wrapper">
       <Sidebar />
       <main className="main-content">
+        <DateTimeHeader />
         <div className="page-header">
           <h1>🏠 Warden Dashboard</h1>
           <p>{userProfile?.dept} Department</p>
