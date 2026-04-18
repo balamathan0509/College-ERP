@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
 import { collection, addDoc, query, where, getDocs } from "firebase/firestore";
 import { sendEmail } from "../../utils/notifications";
+import QRCode from "react-qr-code";
 
 const REASONS = ["Medical Emergency", "Family Function", "Bank / Government Work", "Personal Work", "Other"];
 
@@ -224,10 +225,12 @@ College Portal`
                         {statusInfo[pass.status]?.label}
                       </div>
                       {pass.status === "approved" && pass.token && (
-                        <div style={{ marginTop: 12, padding: "10px 16px", background: "rgba(72,187,120,0.1)", border: "1px solid rgba(72,187,120,0.3)", borderRadius: 10, textAlign: "center" }}>
-                          <div style={{ fontSize: 11, color: "#a0aec0", marginBottom: 4 }}>YOUR TOKEN</div>
-                          <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "Syne", color: "#48bb78", letterSpacing: 4 }}>{pass.token}</div>
-                          <div style={{ fontSize: 11, color: "#a0aec0", marginTop: 4 }}>Show to security</div>
+                        <div style={{ marginTop: 12, padding: "16px", background: "white", border: "1px solid rgba(72,187,120,0.3)", borderRadius: 12, textAlign: "center", display: "inline-block" }}>
+                          <div style={{ fontSize: 13, color: "#48bb78", fontWeight: 700, marginBottom: 8, fontFamily: "Syne" }}>GATE PASS</div>
+                          <div style={{ background: "white", padding: "8px", borderRadius: "8px" }}>
+                            <QRCode value={pass.token} size={100} level="M" />
+                          </div>
+                          <div style={{ fontSize: 11, color: "#718096", marginTop: 8, fontWeight: 600 }}>Scan at Gate</div>
                         </div>
                       )}
                     </div>

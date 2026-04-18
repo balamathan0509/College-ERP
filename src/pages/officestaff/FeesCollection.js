@@ -10,11 +10,21 @@ const DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "AIDS", "AIML"]
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 const FEES_TYPES = ["College Fees", "Bus Fees", "Mess Fees", "Exam Fees", "Library Fees", "Other"];
 
+const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTHS = [];
+const d = new Date();
+for (let i = -6; i <= 6; i++) {
+  const temp = new Date(d.getFullYear(), d.getMonth() + i, 1);
+  MONTHS.push(monthNames[temp.getMonth()] + " " + temp.getFullYear());
+}
+const CURRENT_MONTH = monthNames[d.getMonth()] + " " + d.getFullYear();
+
 export default function FeesCollection() {
   const { userProfile } = useAuth();
   const [selectedDept, setSelectedDept] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedFeesType, setSelectedFeesType] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(CURRENT_MONTH);
   const [students, setStudents] = useState([]);
   const [feesData, setFeesData] = useState({});
   const [fetching, setFetching] = useState(false);
@@ -37,15 +47,10 @@ export default function FeesCollection() {
       list.sort((a, b) => a.name.localeCompare(b.name));
       setStudents(list);
 
-      const feesQ = query(
-        collection(db, "fees"),
-        where("dept", "==", selectedDept),
-        where("year", "==", selectedYear),
-        where("feesType", "==", selectedFeesType)
-      );
-      const feesSnap = await getDocs(feesQ);
-      if (!feesSnap.empty) {
-        setFeesData(feesSnap.docs[0].data().payments || {});
+      const feesDocId = `${selectedDept}_${selectedYear}_${selectedFeesType}_${selectedMonth}`.replace(/\s+/g, "_");
+      const feesDoc = await getDoc(doc(db, "fees", feesDocId));
+      if (feesDoc.exists()) {
+        setFeesData(feesDoc.data().payments || {});
       } else {
         setFeesData({});
       }
@@ -56,11 +61,12 @@ export default function FeesCollection() {
   async function saveFees() {
     setSaving(true);
     try {
-      const docId = `${selectedDept}_${selectedYear}_${selectedFeesType}`.replace(/\s+/g, "_");
+      const docId = `${selectedDept}_${selectedYear}_${selectedFeesType}_${selectedMonth}`.replace(/\s+/g, "_");
       await setDoc(doc(db, "fees", docId), {
         dept: selectedDept,
         year: selectedYear,
         feesType: selectedFeesType,
+        month: selectedMonth,
         payments: feesData,
         updatedAt: new Date().toISOString(),
         updatedBy: userProfile.name
@@ -88,7 +94,7 @@ export default function FeesCollection() {
     XLSX.writeFile(wb, `${selectedDept}_${selectedYear}_${selectedFeesType}_Fees.xlsx`);
   }
 
-  useEffect(() => { fetchStudents(); }, [selectedDept, selectedYear, selectedFeesType]);
+  useEffect(() => { fetchStudents(); }, [selectedDept, selectedYear, selectedFeesType, selectedMonth]);
 
   const collectedCount = students.filter(s => feesData[s.id]).length;
   const pendingCount = students.length - collectedCount;
@@ -124,6 +130,12 @@ export default function FeesCollection() {
               <select value={selectedFeesType} onChange={e => setSelectedFeesType(e.target.value)}>
                 <option value="">Select Type</option>
                 {FEES_TYPES.map(f => <option key={f} value={f}>{f}</option>)}
+              </select>
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Month tracking</label>
+              <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
+                {MONTHS.map(m => <option key={m} value={m}>{m === CURRENT_MONTH ? `${m} (Live)` : m}</option>)}
               </select>
             </div>
           </div>
@@ -165,7 +177,7 @@ export default function FeesCollection() {
           <div className="card">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
               <h3 style={{ fontFamily: "Syne", fontSize: 18 }}>
-                {selectedDept} — {selectedYear} — {selectedFeesType}
+                {selectedDept} — {selectedYear} — {selectedFeesType} — {selectedMonth}
               </h3>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button onClick={() => { const all = {}; students.forEach(s => { all[s.id] = true; }); setFeesData(all); }} style={{

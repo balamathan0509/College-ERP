@@ -5,6 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { sendEmail } from "../../utils/notifications";
+import QRCode from "react-qr-code";
 
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 
@@ -72,12 +73,10 @@ export default function HodGatePass() {
           await sendEmail({
             toEmail: pass.studentEmail,
             toName: pass.studentName,
-            subject: `✅ Gate Pass Approved — Token: ${token}`,
+            subject: `✅ Gate Pass Approved`,
             message: `Hi ${pass.studentName},
 
 Great news! Your gate pass request has been approved by ${userProfile.name} (HOD, ${userProfile.dept}).
-
-🎟️ YOUR TOKEN: ${token}
 
 📋 Reason: ${pass.reason}
 📍 Place: ${pass.place}
@@ -85,9 +84,10 @@ Great news! Your gate pass request has been approved by ${userProfile.name} (HOD
 🕐 In: ${pass.inDate} at ${pass.inTime}
 
 ⚠️ Important:
-- Show this token to the security at the gate
-- Return on time as mentioned above
-- This token is valid only for the mentioned dates
+- Your Gate Pass QR Code is ready. Please login to the College Portal to view your QR Code.
+- Show the QR Code to the security at the gate.
+- Return on time as mentioned above.
+- This gate pass is valid only for the mentioned dates.
 
 Regards,
 ${userProfile.name}
@@ -295,7 +295,7 @@ Renganayagi Varatharaj College of Engineering`
                         padding: "12px 20px", borderRadius: 10, border: "1px solid rgba(72,187,120,0.3)",
                         background: "rgba(72,187,120,0.15)", color: "#48bb78", fontWeight: 700, fontSize: 14, cursor: "pointer"
                       }}>
-                        {actionLoading === pass.id + "approve" ? "..." : "✅ Approve + Send Token"}
+                        {actionLoading === pass.id + "approve" ? "..." : "✅ Approve & Generate QR"}
                       </button>
                       <button onClick={() => handleAction(pass, "reject")} disabled={!!actionLoading} style={{
                         padding: "12px 20px", borderRadius: 10, border: "1px solid rgba(252,129,129,0.3)",
@@ -343,11 +343,10 @@ Renganayagi Varatharaj College of Engineering`
                     <div style={{ color: "#a0aec0", fontSize: 12, marginTop: 6 }}>📅 {new Date(pass.createdAt).toLocaleDateString()} • 🕐 {new Date(pass.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end" }}>
-                    <div style={{ padding: "10px 20px", background: "rgba(72,187,120,0.1)", border: "1px solid rgba(72,187,120,0.3)", borderRadius: 12, textAlign: "center" }}>
-                      <div style={{ fontSize: 11, color: "#a0aec0", marginBottom: 4 }}>TOKEN</div>
-                      <div style={{ fontSize: 24, fontWeight: 800, fontFamily: "Syne", color: "#48bb78", letterSpacing: 4 }}>{pass.token}</div>
+                    <div style={{ padding: "10px", background: "white", borderRadius: 12, textAlign: "center", border: "2px solid #48bb78" }}>
+                      <QRCode value={pass.token} size={60} level="L" />
                     </div>
-                    <div style={{ fontSize: 12, color: "#48bb78" }}>✅ Approved</div>
+                    <div style={{ fontSize: 12, color: "#48bb78", fontWeight: 700, textAlign: "center" }}>✅ Approved</div>
                   </div>
                 </div>
               </div>
