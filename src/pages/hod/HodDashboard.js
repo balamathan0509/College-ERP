@@ -19,7 +19,8 @@ export default function HodDashboard() {
     lowAttendanceCount: 0,
     pendingFeesCount: 0,
     openComplaints: 0,
-    todayAbsent: 0
+    todayAbsent: 0,
+    pendingFinesCount: 0
   });
   const [yearSummary, setYearSummary] = useState(() => YEARS.reduce((acc, year) => {
     acc[year] = { students: 0, absent: 0, feesPending: 0 };
@@ -119,7 +120,33 @@ export default function HodDashboard() {
         if (total > 0 && percent < 75) lowAttendanceCount++;
       });
 
-      setStats({ pendingGatePasses, totalStudents, lowAttendanceCount, pendingFeesCount: Object.values(yearSummary).reduce((sum, y) => sum + y.feesPending, 0), openComplaints, todayAbsent });
+      // Pending department fines
+      const finesSnap = await getDocs(collection(db, "fines"));
+      let pendingFinesCount = 0;
+      finesSnap.docs.forEach(doc => {
+        const data = doc.data();
+        if (data.studentUid) {
+          if (data.studentDept === userProfile.dept && (data.status === "pending_verification" || data.paymentDetails?.status === "pending")) {
+            pendingFinesCount++;
+          }
+        } else if (data.payments && (data.targetDept === "all" || data.targetDept === userProfile.dept)) {
+          Object.values(data.payments).forEach(p => {
+            if (p.status === "pending" && p.studentDept === userProfile.dept) {
+              pendingFinesCount++;
+            }
+          });
+        }
+      });
+
+      setStats({ 
+        pendingGatePasses, 
+        totalStudents, 
+        lowAttendanceCount, 
+        pendingFeesCount: Object.values(yearSummary).reduce((sum, y) => sum + y.feesPending, 0), 
+        openComplaints, 
+        todayAbsent,
+        pendingFinesCount
+      });
       setYearSummary(yearSummary);
     } catch (err) {}
     setLoading(false);
@@ -141,7 +168,8 @@ export default function HodDashboard() {
     { icon: "💰", label: "Fees Pending", action: () => navigate("/hod/fees"), color: "#48bb78" },
     { icon: "❌", label: "Absentees", action: () => navigate("/hod/attendance"), color: "#f5a623", badge: stats.todayAbsent },
     { icon: "🧾", label: "Results", action: () => navigate("/hod/results"), color: "#7f9cf5" },
-    { icon: "📝", label: "Complaints", action: () => navigate("/hod/complaints"), color: "#f6ad55", badge: stats.openComplaints }
+    { icon: "📝", label: "Complaints", action: () => navigate("/hod/complaints"), color: "#f6ad55", badge: stats.openComplaints },
+    { icon: "⚠️", label: "Verify Fines", action: () => navigate("/hod/fines"), color: "#fc8181", badge: stats.pendingFinesCount }
   ];
 
   return (
@@ -153,6 +181,21 @@ export default function HodDashboard() {
           <h1>HOD Dashboard 🏛️</h1>
           <p>{userProfile?.dept} Department Head</p>
         </div>
+
+        {/* Alert for pending fines */}
+        {!loading && stats.pendingFinesCount > 0 && (
+          <div style={{ 
+            padding: "14px 20px", borderRadius: 12, marginBottom: 24, 
+            background: "rgba(252,129,129,0.1)", border: "1px solid rgba(252,129,129,0.3)", 
+            display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 20 }}>⚠️</span>
+              <div style={{ color: "#fc8181", fontWeight: 600 }}>{stats.pendingFinesCount} student fine payments pending verification!</div>
+            </div>
+            <button onClick={() => navigate("/hod/fines")} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#e94560", color: "white", fontWeight: 600, cursor: "pointer" }}>Verify Now →</button>
+          </div>
+        )}
 
 
 

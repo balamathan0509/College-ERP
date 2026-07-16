@@ -6,6 +6,8 @@ import { sendEmail } from "../utils/notifications";
 import StudentSignup from "./signup/StudentSignup";
 import OtpVerification from "./signup/OtpVerification";
 import CreatingAccount from "./signup/CreatingAccount";
+import { db } from "../firebase/config";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -15,7 +17,7 @@ export default function Signup({ onSwitch }) {
   const [step, setStep] = useState("form");
   const [form, setForm] = useState({
     name: "", email: "", password: "", confirmPassword: "",
-    dept: "", year: "", registerNo: "", phone: ""
+    dept: "", year: "", registerNo: "", phone: "", studentType: "dayscholar"
   });
   const [generatedOtp, setGeneratedOtp] = useState("");
   const [otpError, setOtpError] = useState("");
@@ -35,6 +37,19 @@ export default function Signup({ onSwitch }) {
     if (form.password.length < 6) return setError("Password must be at least 6 characters.");
     setSendingOtp(true);
     try {
+      if (form.registerNo) {
+        const q = query(
+          collection(db, "users"),
+          where("registerNo", "==", form.registerNo.trim())
+        );
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          setError("❌ This Register Number is already registered!");
+          setSendingOtp(false);
+          return;
+        }
+      }
+
       const newOtp = generateOTP();
       setGeneratedOtp(newOtp);
       await sendEmail({
@@ -67,7 +82,8 @@ export default function Signup({ onSwitch }) {
         phone: form.phone, 
         emailVerified: true,
         year: form.year, 
-        registerNo: form.registerNo
+        registerNo: form.registerNo,
+        studentType: form.studentType || "dayscholar"
       };
       await signup(form.email, form.password, profileData);
       navigate("/student");

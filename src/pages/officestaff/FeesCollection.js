@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
-import { collection, query, where, getDocs, doc, setDoc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
 import * as XLSX from "xlsx";
 
 const DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "AIDS", "AIML"];
@@ -19,6 +19,15 @@ for (let i = -6; i <= 6; i++) {
 }
 const CURRENT_MONTH = monthNames[d.getMonth()] + " " + d.getFullYear();
 
+const DEFAULT_FEE_AMOUNTS = {
+  "College Fees": 25000,
+  "Bus Fees": 8000,
+  "Mess Fees": 6000,
+  "Exam Fees": 1500,
+  "Library Fees": 500,
+  "Other": 1000
+};
+
 export default function FeesCollection() {
   const { userProfile } = useAuth();
   const [selectedDept, setSelectedDept] = useState("");
@@ -30,6 +39,18 @@ export default function FeesCollection() {
   const [fetching, setFetching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // New amount control
+  const [feeAmount, setFeeAmount] = useState("");
+
+  // Student Fee Profile Edit Modal States
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [editStudentType, setEditStudentType] = useState("dayscholar");
+  const [editBusUser, setEditBusUser] = useState(false);
+  const [editApplicableFees, setEditApplicableFees] = useState({});
+  const [editFeeAmounts, setEditFeeAmounts] = useState({});
+  const [editMonthlyMessFees, setEditMonthlyMessFees] = useState(true);
+  const [savingStudentSettings, setSavingStudentSettings] = useState(false);
 
   async function fetchStudents() {
     if (!selectedDept || !selectedYear || !selectedFeesType) return;
@@ -51,8 +72,10 @@ export default function FeesCollection() {
       const feesDoc = await getDoc(doc(db, "fees", feesDocId));
       if (feesDoc.exists()) {
         setFeesData(feesDoc.data().payments || {});
+        setFeeAmount(feesDoc.data().amount || "");
       } else {
         setFeesData({});
+        setFeeAmount(DEFAULT_FEE_AMOUNTS[selectedFeesType] || "");
       }
     } catch (err) {}
     setFetching(false);
@@ -67,6 +90,7 @@ export default function FeesCollection() {
         year: selectedYear,
         feesType: selectedFeesType,
         month: selectedMonth,
+        amount: Number(feeAmount) || 0,
         payments: feesData,
         updatedAt: new Date().toISOString(),
         updatedBy: userProfile.name
@@ -92,6 +116,38 @@ export default function FeesCollection() {
     XLSX.utils.book_append_sheet(wb, ws1, "Collected");
     XLSX.utils.book_append_sheet(wb, ws2, "Pending");
     XLSX.writeFile(wb, `${selectedDept}_${selectedYear}_${selectedFeesType}_Fees.xlsx`);
+  }
+
+  async function handleSaveStudentSettings(e) {
+    e.preventDefault();
+    if (!editingStudent) return;
+    setSavingStudentSettings(true);
+    try {
+      const studentRef = doc(db, "users", editingStudent.id);
+      await updateDoc(studentRef, {
+        studentType: editStudentType,
+        busUser: editBusUser,
+        applicableFees: editApplicableFees,
+        feeAmounts: editFeeAmounts,
+        monthlyMessFees: editMonthlyMessFees
+      });
+
+      // Update students state array locals
+      setStudents(prev => prev.map(s => s.id === editingStudent.id ? { 
+        ...s, 
+        studentType: editStudentType, 
+        busUser: editBusUser, 
+        applicableFees: editApplicableFees,
+        feeAmounts: editFeeAmounts,
+        monthlyMessFees: editMonthlyMessFees
+      } : s));
+
+      setEditingStudent(null);
+    } catch (err) {
+      console.error("Failed to save student settings:", err);
+      alert("Failed to save student settings. Please try again.");
+    }
+    setSavingStudentSettings(false);
   }
 
   useEffect(() => { fetchStudents(); }, [selectedDept, selectedYear, selectedFeesType, selectedMonth]);
@@ -137,6 +193,20 @@ export default function FeesCollection() {
               <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
                 {MONTHS.map(m => <option key={m} value={m}>{m === CURRENT_MONTH ? `${m} (Live)` : m}</option>)}
               </select>
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Amount (INR)</label>
+              <input
+                type="number"
+                placeholder="Fee Amount"
+                value={feeAmount}
+                onChange={e => setFeeAmount(e.target.value)}
+                disabled={!selectedFeesType}
+                style={{
+                  width: "100%", padding: "10px 12px", borderRadius: 8, background: "#0f0f1b",
+                  border: "1px solid rgba(255,255,255,0.1)", color: "white"
+                }}
+              />
             </div>
           </div>
         </div>
@@ -199,8 +269,8 @@ export default function FeesCollection() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-                    {["S.No", "Name", "Register No", "Student Type", "Fees Collected"].map((h, i) => (
-                      <th key={i} style={{ padding: "12px 16px", textAlign: i === 4 ? "center" : "left", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
+                    {["S.No", "Name", "Register No", "Student Type", "Manage Fees", "Fees Collected"].map((h, i) => (
+                      <th key={i} style={{ padding: "12px 16px", textAlign: i === 5 ? "center" : "left", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -216,13 +286,65 @@ export default function FeesCollection() {
                       <td style={{ padding: "14px 16px", fontWeight: 600, fontSize: 15 }}>{student.name}</td>
                       <td style={{ padding: "14px 16px", color: "#a0aec0", fontSize: 14 }}>{student.registerNo}</td>
                       <td style={{ padding: "14px 16px" }}>
-                        <span style={{
-                          padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 600,
-                          background: student.studentType === "hosteller" ? "rgba(66,153,225,0.15)" : "rgba(159,122,234,0.15)",
-                          color: student.studentType === "hosteller" ? "#4299e1" : "#9f7aea"
-                        }}>
-                          {student.studentType === "hosteller" ? "🏠 Hosteller" : "🏡 Day Scholar"}
-                        </span>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          <span style={{
+                            padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600, width: "fit-content",
+                            background: student.studentType === "hosteller" ? "rgba(66,153,225,0.15)" : "rgba(159,122,234,0.15)",
+                            color: student.studentType === "hosteller" ? "#4299e1" : "#9f7aea"
+                          }}>
+                            {student.studentType === "hosteller" ? "🏠 Hosteller" : "🏡 Day Scholar"}
+                          </span>
+                          {student.busUser && (
+                            <span style={{
+                              padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600, width: "fit-content",
+                              background: "rgba(72,187,120,0.15)", color: "#48bb78"
+                            }}>
+                              🚌 Bus User
+                            </span>
+                          )}
+                          {(student.monthlyMessFees !== false && student.studentType === "hosteller") && (
+                            <span style={{
+                              padding: "3px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600, width: "fit-content",
+                              background: "rgba(245,166,35,0.15)", color: "#f5a623"
+                            }}>
+                              📅 Monthly Mess
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ padding: "14px 16px" }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingStudent(student);
+                            setEditStudentType(student.studentType || "dayscholar");
+                            setEditBusUser(student.busUser || false);
+                            setEditApplicableFees(student.applicableFees || {
+                              "College Fees": true,
+                              "Bus Fees": student.busUser || false,
+                              "Mess Fees": student.studentType === "hosteller",
+                              "Exam Fees": true,
+                              "Library Fees": true,
+                              "Other": true
+                            });
+                            setEditFeeAmounts(student.feeAmounts || {
+                              "College Fees": student.feeAmounts?.["College Fees"] || DEFAULT_FEE_AMOUNTS["College Fees"],
+                              "Bus Fees": student.feeAmounts?.["Bus Fees"] || DEFAULT_FEE_AMOUNTS["Bus Fees"],
+                              "Mess Fees": student.feeAmounts?.["Mess Fees"] || DEFAULT_FEE_AMOUNTS["Mess Fees"],
+                              "Exam Fees": student.feeAmounts?.["Exam Fees"] || DEFAULT_FEE_AMOUNTS["Exam Fees"],
+                              "Library Fees": student.feeAmounts?.["Library Fees"] || DEFAULT_FEE_AMOUNTS["Library Fees"],
+                              "Other": student.feeAmounts?.["Other"] || DEFAULT_FEE_AMOUNTS["Other"]
+                            });
+                            setEditMonthlyMessFees(student.monthlyMessFees !== undefined ? student.monthlyMessFees : (student.studentType === "hosteller"));
+                          }}
+                          style={{
+                            padding: "6px 12px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)",
+                            background: "rgba(255,255,255,0.05)", color: "white", fontSize: 12, cursor: "pointer",
+                            fontWeight: 600, display: "flex", alignItems: "center", gap: 6
+                          }}
+                        >
+                          ⚙️ Settings
+                        </button>
                       </td>
                       <td style={{ padding: "14px 16px", textAlign: "center" }}>
                         <div style={{
@@ -259,6 +381,170 @@ export default function FeesCollection() {
             <p style={{ color: "#a0aec0" }}>Select Department, Year and Fees Type to start</p>
           </div>
         )}
+
+      {/* Student Fees Profile Settings Modal */}
+      {editingStudent && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.85)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 20
+        }}>
+          <div className="card" style={{
+            width: "100%", maxWidth: 480, background: "#161625", padding: 24, borderRadius: 16,
+            border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+            overflowY: "auto", maxHeight: "90vh"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <h3 style={{ fontFamily: "Syne", fontSize: 18, color: "white", margin: 0 }}>
+                ⚙️ Manage Fees: {editingStudent.name}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingStudent(null)}
+                style={{ background: "transparent", border: "none", color: "#a0aec0", fontSize: 20, cursor: "pointer" }}
+              >✕</button>
+            </div>
+
+            <form onSubmit={handleSaveStudentSettings}>
+              {/* Student Type Dropdown */}
+              <div className="form-group" style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 13, color: "#a0aec0" }}>Student Type</label>
+                <select
+                  value={editStudentType}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEditStudentType(val);
+                    // Proactively toggle hostel/mess fees based on type
+                    setEditApplicableFees(prev => ({
+                      ...prev,
+                      "Mess Fees": val === "hosteller",
+                      "Hostel Fees": val === "hosteller"
+                    }));
+                  }}
+                  style={{ width: "100%", padding: 10, borderRadius: 8, background: "#0f0f1b", border: "1px solid rgba(255,255,255,0.1)", color: "white", marginTop: 6 }}
+                >
+                  <option value="dayscholar">🏡 Day Scholar</option>
+                  <option value="hosteller">🏠 Hosteller</option>
+                </select>
+              </div>
+
+              {/* Uses College Bus */}
+              <div className="form-group" style={{ marginBottom: 18 }}>
+                <label style={{ fontSize: 13, color: "#a0aec0" }}>Uses College Bus</label>
+                <select
+                  value={editBusUser ? "yes" : "no"}
+                  onChange={(e) => {
+                    const isBus = e.target.value === "yes";
+                    setEditBusUser(isBus);
+                    // Proactively toggle bus fees
+                    setEditApplicableFees(prev => ({
+                      ...prev,
+                      "Bus Fees": isBus
+                    }));
+                  }}
+                  style={{ width: "100%", padding: 10, borderRadius: 8, background: "#0f0f1b", border: "1px solid rgba(255,255,255,0.1)", color: "white", marginTop: 6 }}
+                >
+                  <option value="no">🏡 Day Scholar - No Bus</option>
+                  <option value="yes">🚌 Bus User - Yes</option>
+                </select>
+              </div>
+
+              {/* Monthly Mess Fees Auto-Deduction Toggle */}
+              <div className="form-group" style={{ marginBottom: 18 }}>
+                <label style={{ fontSize: 13, color: "#a0aec0" }}>Monthly Mess Fees (Auto-deducted every month)</label>
+                <select
+                  value={editMonthlyMessFees ? "yes" : "no"}
+                  onChange={(e) => setEditMonthlyMessFees(e.target.value === "yes")}
+                  style={{ width: "100%", padding: 10, borderRadius: 8, background: "#0f0f1b", border: "1px solid rgba(255,255,255,0.1)", color: "white", marginTop: 6 }}
+                >
+                  <option value="yes">✅ Yes - Auto Mess Fees Every Month</option>
+                  <option value="no">❌ No - No Monthly Mess Fees</option>
+                </select>
+                <div style={{ fontSize: 11, color: "#718096", marginTop: 6 }}>
+                  When enabled, mess fees will be automatically created at the start of each month for this student.
+                </div>
+              </div>
+
+              <div style={{ height: 1, background: "rgba(255,255,255,0.08)", marginBottom: 16 }}></div>
+
+              {/* Fee Applicability & Amount Configuration */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: 13, color: "#a0aec0", fontWeight: 600, display: "block", marginBottom: 12 }}>
+                  Applicable Fees & Custom Amounts:
+                </label>
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {FEES_TYPES.map((type) => {
+                    const isChecked = editApplicableFees[type] !== false;
+                    const amountValue = editFeeAmounts[type] !== undefined ? editFeeAmounts[type] : (DEFAULT_FEE_AMOUNTS[type] || "");
+                    
+                    return (
+                      <div key={type} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "8px 12px", background: "rgba(255,255,255,0.02)", borderRadius: 8, border: "1px solid rgba(255,255,255,0.05)" }}>
+                        <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, cursor: "pointer", color: "white", margin: 0, userSelect: "none" }}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setEditApplicableFees(prev => ({
+                                ...prev,
+                                [type]: checked
+                              }));
+                              // Sync selectors
+                              if (type === "Bus Fees") setEditBusUser(checked);
+                              if (type === "Mess Fees" && checked) setEditStudentType("hosteller");
+                            }}
+                          />
+                          {type}
+                        </label>
+                        {isChecked && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 12, color: "#a0aec0" }}>₹</span>
+                            <input
+                              type="number"
+                              required
+                              placeholder="Amount"
+                              value={amountValue}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setEditFeeAmounts(prev => ({
+                                  ...prev,
+                                  [type]: val === "" ? "" : Number(val)
+                                }));
+                              }}
+                              style={{
+                                width: 90, padding: "4px 8px", borderRadius: 6, background: "#0f0f1b",
+                                border: "1px solid rgba(255,255,255,0.15)", color: "white", fontSize: 12, textAlign: "right"
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", marginTop: 24 }}>
+                <button
+                  type="button"
+                  onClick={() => setEditingStudent(null)}
+                  className="btn-primary"
+                  style={{ background: "#4a5568", border: "none", padding: "8px 16px", width: "auto" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingStudentSettings}
+                  className="btn-primary"
+                  style={{ background: "#48bb78", border: "none", padding: "8px 24px", width: "auto" }}
+                >
+                  {savingStudentSettings ? "Saving..." : "Save Settings"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       </main>
     </div>
   );

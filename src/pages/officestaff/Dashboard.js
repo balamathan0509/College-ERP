@@ -14,7 +14,8 @@ export default function OfficeStaffDashboard() {
     totalStudents: 0,
     totalCollected: 0,
     totalPending: 0,
-    collectionRate: 0
+    collectionRate: 0,
+    pendingFeesCount: 0
   });
   const [loading, setLoading] = useState(true);
 
@@ -39,7 +40,18 @@ export default function OfficeStaffDashboard() {
       const total = totalCollected + totalPending;
       const collectionRate = total ? Math.round((totalCollected / total) * 100) : 0;
 
-      setStats({ totalStudents, totalCollected, totalPending, collectionRate });
+      // Pending fees verification count
+      let pendingFeesCount = 0;
+      feesSnap.docs.forEach(doc => {
+        const payments = doc.data().payments || {};
+        Object.values(payments).forEach(p => {
+          if (p && typeof p === "object" && p.status === "pending") {
+            pendingFeesCount++;
+          }
+        });
+      });
+
+      setStats({ totalStudents, totalCollected, totalPending, collectionRate, pendingFeesCount });
     } catch (err) {}
     setLoading(false);
   }
@@ -50,6 +62,7 @@ export default function OfficeStaffDashboard() {
     { icon: "💰", label: "Fees Collection", path: "/officestaff/fees", color: "#48bb78" },
     { icon: "📊", label: "Fees Overview", path: "/officestaff/overview", color: "#4299e1" },
     { icon: "📢", label: "Fees Alerts", path: "/officestaff/alerts", color: "#f5a623" },
+    { icon: "⏳", label: "Verify Fees", path: "/officestaff/verify-fees", color: "#fc8181", badge: stats.pendingFeesCount },
     { icon: "👤", label: "Profile", path: "/officestaff/profile", color: "#9f7aea" }
   ];
 
@@ -106,6 +119,21 @@ export default function OfficeStaffDashboard() {
           </div>
         )}
 
+        {/* Alert for pending fees */}
+        {!loading && stats.pendingFeesCount > 0 && (
+          <div style={{ 
+            padding: "14px 20px", borderRadius: 12, marginBottom: 24, 
+            background: "rgba(245,166,35,0.1)", border: "1px solid rgba(245,166,35,0.3)", 
+            display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <span style={{ fontSize: 20 }}>⚠️</span>
+              <div style={{ color: "#f5a623", fontWeight: 600 }}>{stats.pendingFeesCount} student fee payments pending verification!</div>
+            </div>
+            <button onClick={() => navigate("/officestaff/verify-fees")} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#f5a623", color: "white", fontWeight: 600, cursor: "pointer" }}>Verify Now →</button>
+          </div>
+        )}
+
         {/* Quick Actions */}
         <div className="card">
           <h3 style={{ marginBottom: 20, fontFamily: "Syne", fontSize: 18 }}>Quick Actions</h3>
@@ -115,11 +143,17 @@ export default function OfficeStaffDashboard() {
                 padding: "24px 16px", borderRadius: 14,
                 border: `1px solid ${action.color}30`,
                 background: `${action.color}10`,
-                cursor: "pointer", textAlign: "center", transition: "all 0.2s"
+                cursor: "pointer", textAlign: "center", transition: "all 0.2s",
+                position: "relative"
               }}
                 onMouseOver={e => e.currentTarget.style.transform = "translateY(-3px)"}
                 onMouseOut={e => e.currentTarget.style.transform = "translateY(0)"}
               >
+                {action.badge > 0 && (
+                  <div style={{ position: "absolute", top: -6, right: -6, width: 22, height: 22, borderRadius: "50%", background: "#fc8181", color: "white", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {action.badge}
+                  </div>
+                )}
                 <div style={{ fontSize: 36, marginBottom: 10 }}>{action.icon}</div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "white" }}>{action.label}</div>
               </div>

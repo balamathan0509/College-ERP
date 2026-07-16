@@ -13,6 +13,7 @@ const studentNav = [
   { icon: "💼", label: "Placements", path: "/student/placements" },
   { icon: "📢", label: "Alerts", path: "/student/alerts" },
   { icon: "📝", label: "Complaints", path: "/student/complaints" },
+  { icon: "⚠️", label: "Fines", path: "/student/fines" },
   { icon: "👤", label: "Profile", path: "/student/profile" }
 ];
 
@@ -26,6 +27,7 @@ const staffNav = [
   { icon: "💼", label: "Placements", path: "/staff/placements" },
   { icon: "📢", label: "Alerts", path: "/staff/alerts" },
   { icon: "📝", label: "Complaints", path: "/staff/complaints" },
+  { icon: "⚠️", label: "Fines", path: "/staff/fines" },
   { icon: "👤", label: "Profile", path: "/staff/profile" }
 ];
 
@@ -36,6 +38,7 @@ const hodNav = [
   { icon: "📅", label: "Timetable", path: "/hod/timetable" },
   { icon: "💼", label: "Placements", path: "/hod/placements" },
   { icon: "📢", label: "Alerts", path: "/hod/alerts" },
+  { icon: "⚠️", label: "Verify Fines", path: "/hod/fines" },
   { icon: "👤", label: "Profile", path: "/hod/profile" }
 ];
 
@@ -53,6 +56,7 @@ const officestaffNav = [
   { icon: "💰", label: "Fees Collection", path: "/officestaff/fees" },
   { icon: "📊", label: "Fees Overview", path: "/officestaff/overview" },
   { icon: "📢", label: "Fees Alerts", path: "/officestaff/alerts" },
+  { icon: "⏳", label: "Verify Fees", path: "/officestaff/verify-fees" },
   { icon: "👤", label: "Profile", path: "/officestaff/profile" }
 ];
 

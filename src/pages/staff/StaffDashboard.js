@@ -77,7 +77,8 @@ export default function StaffDashboard() {
     { icon: "📅", label: "Post Timetable", path: "/staff/timetable", color: "#4299e1" },
     { icon: "💼", label: "Post Job Alert", path: "/staff/placements", color: "#9f7aea" },
     { icon: "📢", label: "Send Alert", path: "/staff/alerts", color: "#f6ad55" },
-    { icon: "📝", label: "View Complaints", path: "/staff/complaints", color: "#fc8181" }
+    { icon: "📝", label: "View Complaints", path: "/staff/complaints", color: "#fc8181" },
+    { icon: "⚠️", label: "Impose Fine", path: "/staff/fines", color: "#fc8181" }
   ];
 
   return (
