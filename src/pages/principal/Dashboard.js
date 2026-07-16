@@ -12,7 +12,8 @@ export default function PrincipalDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({
     pendingLeaves: 0,
-    activeCirculars: 0
+    activeCirculars: 0,
+    pendingGatePasses: 0
   });
 
   useEffect(() => {
@@ -23,10 +24,14 @@ export default function PrincipalDashboard() {
 
         const qAlerts = query(collection(db, "alerts"), where("createdById", "==", userProfile.uid));
         const snapAlerts = await getDocs(qAlerts);
+
+        const qGatePasses = query(collection(db, "gate_pass"), where("status", "==", "pending_principal"));
+        const snapGatePasses = await getDocs(qGatePasses);
         
         setStats({
           pendingLeaves: snapLeaves.size,
-          activeCirculars: snapAlerts.size
+          activeCirculars: snapAlerts.size,
+          pendingGatePasses: snapGatePasses.size
         });
       } catch (err) {}
     }
@@ -44,6 +49,11 @@ export default function PrincipalDashboard() {
         </div>
 
         <div className="stats-grid" style={{ marginTop: 24, marginBottom: 32 }}>
+          <div className="stat-card" onClick={() => navigate("/principal/gatepass")} style={{ cursor: "pointer", border: "1px solid rgba(128,90,213,0.3)", boxShadow: "0 10px 25px rgba(128,90,213,0.15)" }}>
+            <div className="stat-icon">🚪</div>
+            <div className="stat-value" style={{ color: "#805ad5" }}>{stats.pendingGatePasses}</div>
+            <div className="stat-label">Gate Passes Forwarded</div>
+          </div>
           <div className="stat-card" onClick={() => navigate("/principal/leave")} style={{ cursor: "pointer", border: "1px solid rgba(128,90,213,0.3)", boxShadow: "0 10px 25px rgba(128,90,213,0.15)" }}>
             <div className="stat-icon">📋</div>
             <div className="stat-value" style={{ color: "#805ad5" }}>{stats.pendingLeaves}</div>

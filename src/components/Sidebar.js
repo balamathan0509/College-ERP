@@ -76,6 +76,7 @@ const securityNav = [
 
 const principalNav = [
   { icon: "🏠", label: "Dashboard", path: "/principal" },
+  { icon: "🚪", label: "Gate Pass", path: "/principal/gatepass" },
   { icon: "📋", label: "Leave Requests", path: "/principal/leave" },
   { icon: "📢", label: "Circulars", path: "/principal/alerts" },
   { icon: "👤", label: "Profile", path: "/principal/profile" }

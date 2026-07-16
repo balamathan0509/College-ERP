@@ -47,6 +47,7 @@ import Signup from "./pages/Signup";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import PrincipalDashboard from "./pages/principal/Dashboard";
 import PrincipalLeave from "./pages/principal/Leave";
+import PrincipalGatePass from "./pages/principal/GatePass";
 
 const ComingSoon = ({ title }) => (
   <div style={{
@@ -151,6 +152,7 @@ export default function App() {
 
           {/* Principal Routes */}
           <Route path="/principal" element={<ProtectedRoute allowedRole="principal"><PrincipalDashboard /></ProtectedRoute>} />
+          <Route path="/principal/gatepass" element={<ProtectedRoute allowedRole="principal"><PrincipalGatePass /></ProtectedRoute>} />
           <Route path="/principal/leave" element={<ProtectedRoute allowedRole="principal"><PrincipalLeave /></ProtectedRoute>} />
           <Route path="/principal/alerts" element={<ProtectedRoute allowedRole="principal"><AlertsPage /></ProtectedRoute>} />
           <Route path="/principal/profile" element={<ProtectedRoute allowedRole="principal"><Profile /></ProtectedRoute>} />

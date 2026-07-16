@@ -10,6 +10,8 @@ import {
 import { auth } from "../../firebase/config";
 import { createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 
+const BACKEND_URL = "http://localhost:3002";
+
 const ROLES = ["student", "staff", "hod", "warden", "officestaff", "security", "management", "principal", "admin"];
 const DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "AIDS", "AIML", "MBA", "MCA"];
 
@@ -62,9 +64,10 @@ export default function AdminDashboard() {
   const [addLoading, setAddLoading] = useState(false);
 
   // Form state for editing user
-  const [editForm, setEditForm] = useState({ name: "", phone: "", registerNo: "", year: "", role: "", dept: "", isSuperAdmin: false });
+  const [editForm, setEditForm] = useState({ name: "", email: "", phone: "", registerNo: "", year: "", role: "", dept: "", isSuperAdmin: false, newPassword: "", confirmNewPassword: "" });
   const [editLoading, setEditLoading] = useState(false);
   const [resetPwLoading, setResetPwLoading] = useState(false);
+  const [directPwLoading, setDirectPwLoading] = useState(false);
 
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -186,18 +189,31 @@ export default function AdminDashboard() {
         updateData.registerNo = editForm.registerNo || "";
         updateData.year = editForm.year || "";
       }
+
+      // If email changed, update via backend (Firebase Admin SDK)
+      if (editForm.email && editForm.email !== selectedUser.email) {
+        const emailRes = await fetch(`${BACKEND_URL}/admin/update-email`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uid: selectedUser.uid || selectedUser.id, newEmail: editForm.email })
+        });
+        const emailData = await emailRes.json();
+        if (!emailRes.ok) throw new Error(emailData.error || "Failed to update email");
+        updateData.email = editForm.email;
+      }
+
       await updateDoc(doc(db, "users", selectedUser.id), updateData);
       showToast(`✅ User "${editForm.name || selectedUser.name}" updated successfully!`);
       setShowEditModal(false);
       setSelectedUser(null);
       fetchUsers();
     } catch (err) {
-      showToast("Failed to update user.", "error");
+      showToast(`Failed to update user: ${err.message}`, "error");
     }
     setEditLoading(false);
   }
 
-  // Send password reset email
+  // Send password reset email (secondary option)
   async function handleResetPassword() {
     if (!selectedUser?.email) return;
     setResetPwLoading(true);
@@ -210,13 +226,47 @@ export default function AdminDashboard() {
     setResetPwLoading(false);
   }
 
-  // Delete user handler
+  // Direct password change via backend (no email sent)
+  async function handleDirectPasswordChange() {
+    if (!selectedUser) return;
+    if (!editForm.newPassword) return showToast("Enter a new password.", "error");
+    if (editForm.newPassword.length < 6) return showToast("Password must be at least 6 characters.", "error");
+    if (editForm.newPassword !== editForm.confirmNewPassword) return showToast("Passwords do not match.", "error");
+    setDirectPwLoading(true);
+    try {
+      const res = await fetch(`${BACKEND_URL}/admin/update-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid: selectedUser.uid || selectedUser.id, newPassword: editForm.newPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to change password");
+      showToast(`🔑 Password changed directly for ${selectedUser.name}!`);
+      setEditForm(f => ({ ...f, newPassword: "", confirmNewPassword: "" }));
+    } catch (err) {
+      showToast("Failed to change password: " + err.message, "error");
+    }
+    setDirectPwLoading(false);
+  }
+
+  // Delete user handler — removes from both Firestore and Firebase Auth
   async function handleDeleteUser() {
     if (!selectedUser) return;
     setDeleteLoading(true);
     try {
+      // Delete from Firestore
       await deleteDoc(doc(db, "users", selectedUser.id));
-      showToast(`🗑️ User "${selectedUser.name}" deleted from Firestore.`);
+      // Delete from Firebase Auth via backend
+      try {
+        await fetch(`${BACKEND_URL}/admin/delete-user`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ uid: selectedUser.uid || selectedUser.id })
+        });
+      } catch (authErr) {
+        console.error("Failed to delete from Auth (may already be removed):", authErr);
+      }
+      showToast(`🗑️ User "${selectedUser.name}" deleted from Firestore & Auth.`);
       setShowDeleteModal(false);
       setSelectedUser(null);
       fetchUsers();
@@ -230,14 +280,18 @@ export default function AdminDashboard() {
     setSelectedUser(user);
     setEditForm({
       name: user.name || "",
+      email: user.email || "",
       phone: user.phone || "",
       registerNo: user.registerNo || "",
       year: user.year || "",
       role: user.role || "student",
       dept: user.dept || "",
-      isSuperAdmin: user.isSuperAdmin || false
+      isSuperAdmin: user.isSuperAdmin || false,
+      newPassword: "",
+      confirmNewPassword: ""
     });
     setResetPwLoading(false);
+    setDirectPwLoading(false);
     setShowEditModal(true);
   }
 
@@ -567,8 +621,8 @@ export default function AdminDashboard() {
                 </div>
                 <div className="form-row">
                   <div className="form-group">
-                    <label>Email</label>
-                    <input type="email" value={selectedUser.email} disabled style={{ opacity: 0.5, cursor: "not-allowed" }} />
+                    <label>Email {editForm.email !== selectedUser.email && <span style={{ fontSize: 11, color: "#f5a623" }}>(will update Auth)</span>}</label>
+                    <input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} placeholder="user@college.edu" />
                   </div>
                   <div className="form-group">
                     <label>Phone</label>
@@ -611,26 +665,55 @@ export default function AdminDashboard() {
                   </div>
                 )}
 
-                {/* Section: Password Reset */}
+                {/* Section: Direct Password Change */}
                 <div style={{ fontSize: 11, color: "#f5a623", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, marginTop: 8 }}>🔑 Password Management</div>
+                
+                {/* Direct Password Change */}
+                <div style={{
+                  background: "rgba(72,187,120,0.08)",
+                  border: "1px solid rgba(72,187,120,0.2)",
+                  borderRadius: 14, padding: "16px 20px", marginBottom: 16
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "white", marginBottom: 4 }}>🔑 Set New Password Directly</div>
+                  <div style={{ fontSize: 12, color: "#a0aec0", marginBottom: 14 }}>Change password instantly — no email sent to the user</div>
+                  <div className="form-row">
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>New Password</label>
+                      <input type="password" placeholder="Min 6 characters" value={editForm.newPassword} onChange={e => setEditForm({ ...editForm, newPassword: e.target.value })} />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>Confirm Password</label>
+                      <input type="password" placeholder="Re-enter password" value={editForm.confirmNewPassword} onChange={e => setEditForm({ ...editForm, confirmNewPassword: e.target.value })} />
+                    </div>
+                  </div>
+                  <button type="button" onClick={handleDirectPasswordChange} disabled={directPwLoading || !editForm.newPassword} style={{
+                    marginTop: 12, padding: "10px 22px", borderRadius: 10, border: "none",
+                    background: editForm.newPassword ? "linear-gradient(135deg, #48bb78, #38a169)" : "rgba(255,255,255,0.1)",
+                    color: "white", fontFamily: "Syne", fontWeight: 700, cursor: editForm.newPassword ? "pointer" : "default",
+                    fontSize: 13, opacity: directPwLoading ? 0.6 : 1, width: "100%",
+                    boxShadow: editForm.newPassword ? "0 4px 12px rgba(72,187,120,0.3)" : "none",
+                    transition: "all 0.2s"
+                  }}>{directPwLoading ? "Changing..." : "🔑 Change Password Now"}</button>
+                </div>
+
+                {/* Fallback: Send Reset Email */}
                 <div style={{
                   background: "rgba(245,166,35,0.08)",
-                  border: "1px solid rgba(245,166,35,0.2)",
-                  borderRadius: 14, padding: "16px 20px", marginBottom: 24,
+                  border: "1px solid rgba(245,166,35,0.15)",
+                  borderRadius: 14, padding: "14px 20px", marginBottom: 24,
                   display: "flex", justifyContent: "space-between", alignItems: "center",
                   gap: 16, flexWrap: "wrap"
                 }}>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: "white" }}>📧 Send Password Reset</div>
-                    <div style={{ fontSize: 12, color: "#a0aec0", marginTop: 4 }}>Sends a reset link to {selectedUser.email}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: "#a0aec0" }}>📧 Or send password reset email</div>
+                    <div style={{ fontSize: 11, color: "#718096", marginTop: 2 }}>Sends a reset link to {editForm.email || selectedUser.email}</div>
                   </div>
                   <button type="button" onClick={handleResetPassword} disabled={resetPwLoading} style={{
-                    padding: "10px 22px", borderRadius: 10, border: "none",
-                    background: "linear-gradient(135deg, #f5a623, #e8961e)", color: "white",
-                    fontFamily: "Syne", fontWeight: 700, cursor: "pointer", fontSize: 13,
-                    opacity: resetPwLoading ? 0.6 : 1, whiteSpace: "nowrap",
-                    boxShadow: "0 4px 12px rgba(245,166,35,0.3)"
-                  }}>{resetPwLoading ? "Sending..." : "🔗 Send Reset Email"}</button>
+                    padding: "8px 18px", borderRadius: 8, border: "1px solid rgba(245,166,35,0.3)",
+                    background: "rgba(245,166,35,0.1)", color: "#f5a623",
+                    fontFamily: "Syne", fontWeight: 700, cursor: "pointer", fontSize: 12,
+                    opacity: resetPwLoading ? 0.6 : 1, whiteSpace: "nowrap"
+                  }}>{resetPwLoading ? "Sending..." : "Send Reset Email"}</button>
                 </div>
 
                 {/* Super Admin Toggle */}

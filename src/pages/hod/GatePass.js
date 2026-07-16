@@ -60,21 +60,53 @@ export default function HodGatePass() {
     try {
       const token = action === "approve" ? generateToken() : null;
 
-      await updateDoc(doc(db, "gate_pass", pass.id), {
-        status: action === "approve" ? "approved" : "rejected",
-        token,
-        hodActionAt: new Date().toISOString(),
-        hodName: userProfile.name
-      });
-
-      if (action === "approve") {
-        // Email to student with token
+      if (action === "forward") {
+        // Forward to Principal
+        await updateDoc(doc(db, "gate_pass", pass.id), {
+          status: "pending_principal",
+          hodActionAt: new Date().toISOString(),
+          hodName: userProfile.name,
+          forwardedByHod: true
+        });
+        // Email to student about forwarding
         if (pass.studentEmail) {
           await sendEmail({
             toEmail: pass.studentEmail,
             toName: pass.studentName,
-            subject: `✅ Gate Pass Approved`,
+            subject: `🔀 Gate Pass Forwarded to Principal`,
             message: `Hi ${pass.studentName},
+
+Your gate pass request has been forwarded to the Principal for final approval by ${userProfile.name} (HOD, ${userProfile.dept}).
+
+📋 Reason: ${pass.reason}
+📍 Place: ${pass.place}
+🕐 Out: ${pass.outDate} at ${pass.outTime}
+🕐 In: ${pass.inDate} at ${pass.inTime}
+
+Please wait for the Principal's decision.
+
+Regards,
+${userProfile.name}
+HOD, ${userProfile.dept} Department
+Renganayagi Varatharaj College of Engineering`
+          });
+        }
+      } else {
+        await updateDoc(doc(db, "gate_pass", pass.id), {
+          status: action === "approve" ? "approved" : "rejected",
+          token,
+          hodActionAt: new Date().toISOString(),
+          hodName: userProfile.name
+        });
+
+        if (action === "approve") {
+          // Email to student with token
+          if (pass.studentEmail) {
+            await sendEmail({
+              toEmail: pass.studentEmail,
+              toName: pass.studentName,
+              subject: `✅ Gate Pass Approved`,
+              message: `Hi ${pass.studentName},
 
 Great news! Your gate pass request has been approved by ${userProfile.name} (HOD, ${userProfile.dept}).
 
@@ -93,16 +125,16 @@ Regards,
 ${userProfile.name}
 HOD, ${userProfile.dept} Department
 Renganayagi Varatharaj College of Engineering`
-          });
-        }
-      } else {
-        // Rejected — email to student
-        if (pass.studentEmail) {
-          await sendEmail({
-            toEmail: pass.studentEmail,
-            toName: pass.studentName,
-            subject: `❌ Gate Pass Request Rejected`,
-            message: `Hi ${pass.studentName},
+            });
+          }
+        } else {
+          // Rejected — email to student
+          if (pass.studentEmail) {
+            await sendEmail({
+              toEmail: pass.studentEmail,
+              toName: pass.studentName,
+              subject: `❌ Gate Pass Request Rejected`,
+              message: `Hi ${pass.studentName},
 
 We regret to inform you that your gate pass request has been rejected by ${userProfile.name} (HOD, ${userProfile.dept}).
 
@@ -116,7 +148,8 @@ Regards,
 ${userProfile.name}
 HOD, ${userProfile.dept} Department
 Renganayagi Varatharaj College of Engineering`
-          });
+            });
+          }
         }
       }
 
@@ -129,6 +162,12 @@ Renganayagi Varatharaj College of Engineering`
   const pendingByYear = passes.filter(pass => pass.year === selectedYear);
   const approvedByYear = approved.filter(pass => pass.year === selectedYear);
   const totalRequestsByYear = pendingByYear.length + approvedByYear.length;
+
+  // Count pending requests per year for badges
+  const pendingCountByYear = {};
+  YEARS.forEach(year => {
+    pendingCountByYear[year] = passes.filter(p => p.year === year).length;
+  });
 
   const sortedPendingByYear = [...pendingByYear].sort((a, b) => {
     if (sortOrder === "recent") return new Date(b.createdAt) - new Date(a.createdAt);
@@ -196,10 +235,34 @@ Renganayagi Varatharaj College of Engineering`
                       color: "white",
                       fontWeight: 700,
                       cursor: "pointer",
-                      transition: "all 0.2s"
+                      transition: "all 0.2s",
+                      position: "relative",
+                      paddingRight: pendingCountByYear[year] > 0 ? 36 : 16
                     }}
                   >
                     {year}
+                    {pendingCountByYear[year] > 0 && (
+                      <span style={{
+                        position: "absolute",
+                        top: -6,
+                        right: -6,
+                        minWidth: 22,
+                        height: 22,
+                        borderRadius: 11,
+                        background: "linear-gradient(135deg, #e94560, #c0392b)",
+                        color: "white",
+                        fontSize: 11,
+                        fontWeight: 800,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: "0 5px",
+                        boxShadow: "0 2px 8px rgba(233,69,96,0.5)",
+                        animation: "badgePulse 2s infinite"
+                      }}>
+                        {pendingCountByYear[year]}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -296,6 +359,12 @@ Renganayagi Varatharaj College of Engineering`
                         background: "rgba(72,187,120,0.15)", color: "#48bb78", fontWeight: 700, fontSize: 14, cursor: "pointer"
                       }}>
                         {actionLoading === pass.id + "approve" ? "..." : "✅ Approve & Generate QR"}
+                      </button>
+                      <button onClick={() => handleAction(pass, "forward")} disabled={!!actionLoading} style={{
+                        padding: "12px 20px", borderRadius: 10, border: "1px solid rgba(128,90,213,0.3)",
+                        background: "rgba(128,90,213,0.15)", color: "#805ad5", fontWeight: 700, fontSize: 14, cursor: "pointer"
+                      }}>
+                        {actionLoading === pass.id + "forward" ? "..." : "🔀 Forward to Principal"}
                       </button>
                       <button onClick={() => handleAction(pass, "reject")} disabled={!!actionLoading} style={{
                         padding: "12px 20px", borderRadius: 10, border: "1px solid rgba(252,129,129,0.3)",
@@ -399,6 +468,13 @@ Renganayagi Varatharaj College of Engineering`
             </div>
           </div>
         )}
+        {/* Badge pulse animation */}
+        <style>{`
+          @keyframes badgePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+          }
+        `}</style>
       </main>
     </div>
   );
