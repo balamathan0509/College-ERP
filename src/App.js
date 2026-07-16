@@ -24,14 +24,13 @@ import PlacementsPage from "./pages/placements/PlacementsPage";
 import VerifyGatePass from "./pages/security/VerifyGatePass";
 import MessPage from "./pages/mess/MessPage";
 import HostelPage from "./pages/hostel/HostelPage";
-import ProfilePage from "./pages/profile/ProfilePage";
+import Profile from "./pages/Profile";
 import StaffAttendance from "./pages/staff/Attendance";
 import StudentAttendance from "./pages/student/Attendance";
 import HodAttendance from "./pages/hod/Attendance";
 import StaffTimetable from "./pages/staff/Timetable";
 import StudentTimetable from "./pages/student/Timetable";
 import HodTimetable from "./pages/hod/Timetable";
-import Profile from "./pages/Profile";
 import WardenDashboard from "./pages/warden/WardenDashboard";
 import ManagementDashboard from "./pages/management/Dashboard";
 import WardenGatePass from "./pages/warden/GatePass";
@@ -82,7 +81,7 @@ export default function App() {
           <Route path="/student/fees" element={<ProtectedRoute allowedRole="student"><StudentFees /></ProtectedRoute>} />
           <Route path="/student/mess" element={<ProtectedRoute allowedRole="student"><MessPage /></ProtectedRoute>} />
           <Route path="/student/hostel" element={<ProtectedRoute allowedRole="student"><HostelPage /></ProtectedRoute>} />
-          <Route path="/student/profile" element={<ProtectedRoute allowedRole="student"><ProfilePage /></ProtectedRoute>} />
+          <Route path="/student/profile" element={<ProtectedRoute allowedRole="student"><Profile /></ProtectedRoute>} />
           <Route path="/student/timetable" element={<ProtectedRoute allowedRole="student"><StudentTimetable /></ProtectedRoute>} />
           <Route path="/student/placements" element={<ProtectedRoute allowedRole="student"><PlacementsPage /></ProtectedRoute>} />
           <Route path="/student/alerts" element={<ProtectedRoute allowedRole="student"><AlertsPage /></ProtectedRoute>} />
@@ -96,7 +95,7 @@ export default function App() {
           <Route path="/staff/results" element={<ProtectedRoute allowedRole="staff"><StaffResults /></ProtectedRoute>} />
           <Route path="/staff/mess" element={<ProtectedRoute allowedRole="staff"><MessPage /></ProtectedRoute>} />
           <Route path="/staff/hostel" element={<ProtectedRoute allowedRole="staff"><HostelPage /></ProtectedRoute>} />
-          <Route path="/staff/profile" element={<ProtectedRoute allowedRole="staff"><ProfilePage /></ProtectedRoute>} />
+          <Route path="/staff/profile" element={<ProtectedRoute allowedRole="staff"><Profile /></ProtectedRoute>} />
           <Route path="/staff/timetable" element={<ProtectedRoute allowedRole="staff"><StaffTimetable /></ProtectedRoute>} />
           <Route path="/staff/placements" element={<ProtectedRoute allowedRole="staff"><PlacementsPage /></ProtectedRoute>} />
           <Route path="/staff/alerts" element={<ProtectedRoute allowedRole="staff"><AlertsPage /></ProtectedRoute>} />
@@ -110,7 +109,7 @@ export default function App() {
           <Route path="/hod/fees" element={<ProtectedRoute allowedRole="hod"><HodFees /></ProtectedRoute>} />
           <Route path="/hod/mess" element={<ProtectedRoute allowedRole="hod"><MessPage /></ProtectedRoute>} />
           <Route path="/hod/hostel" element={<ProtectedRoute allowedRole="hod"><HostelPage /></ProtectedRoute>} />
-          <Route path="/hod/profile" element={<ProtectedRoute allowedRole="hod"><ProfilePage /></ProtectedRoute>} />
+          <Route path="/hod/profile" element={<ProtectedRoute allowedRole="hod"><Profile /></ProtectedRoute>} />
           <Route path="/hod/timetable" element={<ProtectedRoute allowedRole="hod"><HodTimetable /></ProtectedRoute>} />
           <Route path="/hod/placements" element={<ProtectedRoute allowedRole="hod"><PlacementsPage /></ProtectedRoute>} />
           <Route path="/hod/alerts" element={<ProtectedRoute allowedRole="hod"><AlertsPage /></ProtectedRoute>} />
@@ -120,12 +119,12 @@ export default function App() {
           <Route path="/management" element={<ProtectedRoute allowedRole="management"><ManagementDashboard /></ProtectedRoute>} />
           <Route path="/management/mess" element={<ProtectedRoute allowedRole="management"><MessPage /></ProtectedRoute>} />
           <Route path="/management/hostel" element={<ProtectedRoute allowedRole="management"><HostelPage /></ProtectedRoute>} />
-          <Route path="/management/profile" element={<ProtectedRoute allowedRole="management"><ProfilePage /></ProtectedRoute>} />
+          <Route path="/management/profile" element={<ProtectedRoute allowedRole="management"><Profile /></ProtectedRoute>} />
 
           {/* Security Routes */}
           <Route path="/security" element={<ProtectedRoute allowedRole="security"><Navigate to="/security/verify" /></ProtectedRoute>} />
           <Route path="/security/verify" element={<ProtectedRoute allowedRole="security"><VerifyGatePass /></ProtectedRoute>} />
-          <Route path="/security/profile" element={<ProtectedRoute allowedRole="security"><ProfilePage /></ProtectedRoute>} />
+          <Route path="/security/profile" element={<ProtectedRoute allowedRole="security"><Profile /></ProtectedRoute>} />
 
          {/* Warden Routes */}
          <Route path="/warden" element={<ProtectedRoute allowedRole="warden"><WardenDashboard /></ProtectedRoute>} />
@@ -148,13 +147,13 @@ export default function App() {
 
           {/* Admin Routes */}
           <Route path="/admin" element={<ProtectedRoute allowedRole="admin"><AdminDashboard /></ProtectedRoute>} />
-          <Route path="/admin/profile" element={<ProtectedRoute allowedRole="admin"><ProfilePage /></ProtectedRoute>} />
+          <Route path="/admin/profile" element={<ProtectedRoute allowedRole="admin"><Profile /></ProtectedRoute>} />
 
           {/* Principal Routes */}
           <Route path="/principal" element={<ProtectedRoute allowedRole="principal"><PrincipalDashboard /></ProtectedRoute>} />
           <Route path="/principal/leave" element={<ProtectedRoute allowedRole="principal"><PrincipalLeave /></ProtectedRoute>} />
           <Route path="/principal/alerts" element={<ProtectedRoute allowedRole="principal"><AlertsPage /></ProtectedRoute>} />
-          <Route path="/principal/profile" element={<ProtectedRoute allowedRole="principal"><ProfilePage /></ProtectedRoute>} />
+          <Route path="/principal/profile" element={<ProtectedRoute allowedRole="principal"><Profile /></ProtectedRoute>} />
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" />} />

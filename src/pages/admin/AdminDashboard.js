@@ -8,7 +8,7 @@ import {
   collection, getDocs, doc, updateDoc, deleteDoc, setDoc, query, orderBy
 } from "firebase/firestore";
 import { auth } from "../../firebase/config";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 
 const ROLES = ["student", "staff", "hod", "warden", "officestaff", "security", "management", "principal", "admin"];
 const DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "AIDS", "AIML", "MBA", "MCA"];
@@ -62,8 +62,9 @@ export default function AdminDashboard() {
   const [addLoading, setAddLoading] = useState(false);
 
   // Form state for editing user
-  const [editForm, setEditForm] = useState({ role: "", dept: "", isSuperAdmin: false });
+  const [editForm, setEditForm] = useState({ name: "", phone: "", registerNo: "", year: "", role: "", dept: "", isSuperAdmin: false });
   const [editLoading, setEditLoading] = useState(false);
+  const [resetPwLoading, setResetPwLoading] = useState(false);
 
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -174,12 +175,19 @@ export default function AdminDashboard() {
     if (!selectedUser) return;
     setEditLoading(true);
     try {
-      await updateDoc(doc(db, "users", selectedUser.id), {
+      const updateData = {
+        name: editForm.name || selectedUser.name || "",
+        phone: editForm.phone || "",
         role: editForm.role,
         dept: editForm.dept || "",
         isSuperAdmin: editForm.isSuperAdmin
-      });
-      showToast(`✅ User "${selectedUser.name}" updated successfully!`);
+      };
+      if (editForm.role === "student") {
+        updateData.registerNo = editForm.registerNo || "";
+        updateData.year = editForm.year || "";
+      }
+      await updateDoc(doc(db, "users", selectedUser.id), updateData);
+      showToast(`✅ User "${editForm.name || selectedUser.name}" updated successfully!`);
       setShowEditModal(false);
       setSelectedUser(null);
       fetchUsers();
@@ -187,6 +195,19 @@ export default function AdminDashboard() {
       showToast("Failed to update user.", "error");
     }
     setEditLoading(false);
+  }
+
+  // Send password reset email
+  async function handleResetPassword() {
+    if (!selectedUser?.email) return;
+    setResetPwLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, selectedUser.email);
+      showToast(`📧 Password reset email sent to ${selectedUser.email}!`);
+    } catch (err) {
+      showToast("Failed to send reset email: " + err.message, "error");
+    }
+    setResetPwLoading(false);
   }
 
   // Delete user handler
@@ -207,7 +228,16 @@ export default function AdminDashboard() {
 
   function openEditModal(user) {
     setSelectedUser(user);
-    setEditForm({ role: user.role || "student", dept: user.dept || "", isSuperAdmin: user.isSuperAdmin || false });
+    setEditForm({
+      name: user.name || "",
+      phone: user.phone || "",
+      registerNo: user.registerNo || "",
+      year: user.year || "",
+      role: user.role || "student",
+      dept: user.dept || "",
+      isSuperAdmin: user.isSuperAdmin || false
+    });
+    setResetPwLoading(false);
     setShowEditModal(true);
   }
 
@@ -519,7 +549,7 @@ export default function AdminDashboard() {
         {/* EDIT USER MODAL */}
         {showEditModal && selectedUser && (
           <div style={modalOverlay} onClick={() => setShowEditModal(false)}>
-            <div style={modalBox} onClick={e => e.stopPropagation()}>
+            <div style={{ ...modalBox, maxWidth: 580 }} onClick={e => e.stopPropagation()}>
               <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 28 }}>
                 <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(66,153,225,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>✏️</div>
                 <div>
@@ -529,6 +559,25 @@ export default function AdminDashboard() {
               </div>
 
               <form onSubmit={handleEditUser}>
+                {/* Section: Personal Info */}
+                <div style={{ fontSize: 11, color: "#4299e1", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>👤 Personal Information</div>
+                <div className="form-group">
+                  <label>Full Name</label>
+                  <input type="text" placeholder="Enter full name" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Email</label>
+                    <input type="email" value={selectedUser.email} disabled style={{ opacity: 0.5, cursor: "not-allowed" }} />
+                  </div>
+                  <div className="form-group">
+                    <label>Phone</label>
+                    <input type="text" placeholder="Phone number" value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} />
+                  </div>
+                </div>
+
+                {/* Section: Role & Department */}
+                <div style={{ fontSize: 11, color: "#48bb78", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, marginTop: 8 }}>🏷️ Role & Department</div>
                 <div className="form-row">
                   <div className="form-group">
                     <label>Role</label>
@@ -545,7 +594,47 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+                {/* Student-specific fields */}
+                {editForm.role === "student" && (
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Register No</label>
+                      <input type="text" placeholder="e.g. 2021CS001" value={editForm.registerNo} onChange={e => setEditForm({ ...editForm, registerNo: e.target.value })} />
+                    </div>
+                    <div className="form-group">
+                      <label>Year</label>
+                      <select value={editForm.year} onChange={e => setEditForm({ ...editForm, year: e.target.value })}>
+                        <option value="">Select Year</option>
+                        {["1st Year", "2nd Year", "3rd Year", "4th Year"].map(y => <option key={y} value={y}>{y}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {/* Section: Password Reset */}
+                <div style={{ fontSize: 11, color: "#f5a623", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12, marginTop: 8 }}>🔑 Password Management</div>
+                <div style={{
+                  background: "rgba(245,166,35,0.08)",
+                  border: "1px solid rgba(245,166,35,0.2)",
+                  borderRadius: 14, padding: "16px 20px", marginBottom: 24,
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  gap: 16, flexWrap: "wrap"
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "white" }}>📧 Send Password Reset</div>
+                    <div style={{ fontSize: 12, color: "#a0aec0", marginTop: 4 }}>Sends a reset link to {selectedUser.email}</div>
+                  </div>
+                  <button type="button" onClick={handleResetPassword} disabled={resetPwLoading} style={{
+                    padding: "10px 22px", borderRadius: 10, border: "none",
+                    background: "linear-gradient(135deg, #f5a623, #e8961e)", color: "white",
+                    fontFamily: "Syne", fontWeight: 700, cursor: "pointer", fontSize: 13,
+                    opacity: resetPwLoading ? 0.6 : 1, whiteSpace: "nowrap",
+                    boxShadow: "0 4px 12px rgba(245,166,35,0.3)"
+                  }}>{resetPwLoading ? "Sending..." : "🔗 Send Reset Email"}</button>
+                </div>
+
                 {/* Super Admin Toggle */}
+                <div style={{ fontSize: 11, color: "#e53e3e", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>⚡ Admin Access</div>
                 <div style={{
                   background: editForm.isSuperAdmin ? "rgba(229,62,62,0.1)" : "rgba(255,255,255,0.03)",
                   border: `1px solid ${editForm.isSuperAdmin ? "rgba(229,62,62,0.3)" : "rgba(255,255,255,0.1)"}`,

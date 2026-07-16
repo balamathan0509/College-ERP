@@ -41,10 +41,26 @@ export function AuthProvider({ children }) {
   }
 
   async function fetchUserProfile(uid) {
-    const docRef = doc(db, "users", uid);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      setUserProfile(docSnap.data());
+    try {
+      const docRef = doc(db, "users", uid);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setUserProfile(docSnap.data());
+      }
+    } catch (err) {
+      console.error("Failed to fetch user profile (Firestore rules issue?):", err);
+      // Fallback: build a minimal profile from auth so the app doesn't crash
+      const user = auth.currentUser;
+      if (user) {
+        const SUPER_ADMIN_EMAIL = "balamathan0509@gmail.com";
+        setUserProfile({
+          uid: user.uid,
+          email: user.email,
+          name: user.displayName || user.email,
+          role: user.email === SUPER_ADMIN_EMAIL ? "admin" : "student",
+          isSuperAdmin: user.email === SUPER_ADMIN_EMAIL
+        });
+      }
     }
   }
 
