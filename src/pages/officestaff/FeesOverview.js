@@ -3,19 +3,102 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, addDoc } from "firebase/firestore";
 import * as XLSX from "xlsx";
 
 const DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "AIDS", "AIML"];
 const FEES_TYPES = ["College Fees", "Bus Fees", "Mess Fees", "Exam Fees", "Library Fees", "Other"];
 
+const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTHS = ["Legacy Data"]; // Support for old records
+const d = new Date();
+for (let i = -6; i <= 6; i++) {
+  const temp = new Date(d.getFullYear(), d.getMonth() + i, 1);
+  MONTHS.push(monthNames[temp.getMonth()] + " " + temp.getFullYear());
+}
+const CURRENT_MONTH = monthNames[d.getMonth()] + " " + d.getFullYear();
+const prevDate = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+const PREVIOUS_MONTH = monthNames[prevDate.getMonth()] + " " + prevDate.getFullYear();
+
 export default function FeesOverview() {
-  const { userProfile } = useAuth();
+  const { userProfile, currentUser } = useAuth();
   const [feesRecords, setFeesRecords] = useState([]);
   const [students, setStudents] = useState([]);
   const [fetching, setFetching] = useState(true);
   const [selectedDept, setSelectedDept] = useState("All");
   const [selectedFeesType, setSelectedFeesType] = useState("All");
+  const [selectedMonth, setSelectedMonth] = useState(CURRENT_MONTH);
+
+  useEffect(() => {
+    async function checkAndForwardPreviousMonth() {
+      if (!currentUser) return;
+      try {
+        const alertsQ = query(
+          collection(db, "alerts"),
+          where("type", "==", "general"),
+          where("title", "==", `Monthly Fees Report - ${PREVIOUS_MONTH}`)
+        );
+        const alertsSnap = await getDocs(alertsQ);
+        if (!alertsSnap.empty) return; // Prevent duplication
+
+        const feesSnap = await getDocs(query(collection(db, "fees"), where("month", "==", PREVIOUS_MONTH)));
+        if (feesSnap.empty) return; 
+
+        const prevFees = feesSnap.docs.map(d => d.data());
+        const studSnap = await getDocs(query(collection(db, "users"), where("role", "==", "student")));
+        const studs = studSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        let totalCollected = 0;
+        let totalPending = 0;
+        let deptPending = {};
+        
+        prevFees.forEach(r => {
+          const deptStudents = studs.filter(s => s.dept === r.dept && s.year === r.year);
+          const collected = Object.values(r.payments || {}).filter(Boolean).length;
+          const pending = deptStudents.length - collected;
+          
+          totalCollected += collected;
+          totalPending += pending;
+
+          if (!deptPending[r.dept]) deptPending[r.dept] = 0;
+          deptPending[r.dept] += pending;
+        });
+
+        // Report to Principal
+        await addDoc(collection(db, "alerts"), {
+          title: `Monthly Fees Report - ${PREVIOUS_MONTH}`,
+          message: `Fees collection for ${PREVIOUS_MONTH} has concluded. Total Collected count: ${totalCollected}. Total Pending count: ${totalPending}.`,
+          type: "general",
+          roleTarget: "principal",
+          deptTarget: "all",
+          yearTarget: "all",
+          createdById: currentUser.uid,
+          createdByName: "System Automation",
+          createdByRole: "system",
+          createdAt: new Date().toISOString()
+        });
+
+        // Alerts to HODs
+        for (const [dept, count] of Object.entries(deptPending)) {
+          if (count > 0) {
+            await addDoc(collection(db, "alerts"), {
+              title: `Pending Fees Alert - ${PREVIOUS_MONTH}`,
+              message: `Your department (${dept}) has ${count} pending fee payments from ${PREVIOUS_MONTH}. Please follow up with the students.`,
+              type: "general",
+              roleTarget: "hod_only",
+              deptTarget: dept,
+              yearTarget: "all",
+              createdById: currentUser.uid,
+              createdByName: "System Automation",
+              createdByRole: "system",
+              createdAt: new Date().toISOString()
+            });
+          }
+        }
+      } catch (e) {}
+    }
+    checkAndForwardPreviousMonth();
+  }, [currentUser]);
 
   async function fetchAll() {
     setFetching(true);
@@ -35,7 +118,8 @@ export default function FeesOverview() {
 
   const filtered = feesRecords
     .filter(r => selectedDept === "All" || r.dept === selectedDept)
-    .filter(r => selectedFeesType === "All" || r.feesType === selectedFeesType);
+    .filter(r => selectedFeesType === "All" || r.feesType === selectedFeesType)
+    .filter(r => selectedMonth === "Legacy Data" ? !r.month : r.month === selectedMonth);
 
   function exportExcel() {
     const rows = [];
@@ -59,9 +143,8 @@ export default function FeesOverview() {
     XLSX.writeFile(wb, `Fees_Overview_${new Date().toISOString().split("T")[0]}.xlsx`);
   }
 
-  // Overall stats
-  const totalCollected = feesRecords.reduce((acc, r) => acc + Object.values(r.payments || {}).filter(Boolean).length, 0);
-  const totalPending = feesRecords.reduce((acc, r) => {
+  const totalCollected = filtered.reduce((acc, r) => acc + Object.values(r.payments || {}).filter(Boolean).length, 0);
+  const totalPending = filtered.reduce((acc, r) => {
     const deptStudents = students.filter(s => s.dept === r.dept && s.year === r.year);
     return acc + (deptStudents.length - Object.values(r.payments || {}).filter(Boolean).length);
   }, 0);
@@ -89,13 +172,13 @@ export default function FeesOverview() {
           </div>
           <div className="stat-card">
             <div className="stat-icon">🏫</div>
-            <div className="stat-value">{feesRecords.length}</div>
-            <div className="stat-label">Fee Records</div>
+            <div className="stat-value">{filtered.length}</div>
+            <div className="stat-label">Records</div>
           </div>
           <div className="stat-card">
             <div className="stat-icon">👥</div>
             <div className="stat-value">{students.length}</div>
-            <div className="stat-label">Total Students</div>
+            <div className="stat-label">College Total Students</div>
           </div>
         </div>
 
@@ -114,6 +197,12 @@ export default function FeesOverview() {
               <select value={selectedFeesType} onChange={e => setSelectedFeesType(e.target.value)}>
                 <option value="All">All Types</option>
                 {FEES_TYPES.map(f => <option key={f} value={f}>{f}</option>)}
+              </select>
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Month tracking</label>
+              <select value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
+                {MONTHS.map(m => <option key={m} value={m}>{m === CURRENT_MONTH ? `${m} (Live)` : m}</option>)}
               </select>
             </div>
           </div>

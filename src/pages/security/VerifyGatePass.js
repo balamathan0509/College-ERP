@@ -1,9 +1,10 @@
-// src/pages/security/VerifyGatePass.js
 import React, { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
 import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
+import { Scanner } from "@yudiel/react-qr-scanner";
+import { toast, Toaster } from "react-hot-toast";
 
 function formatDateTime(value) {
   if (!value) return "-";
@@ -58,9 +59,9 @@ export default function VerifyGatePass() {
     loadRecentScans();
   }, []);
 
-  async function handleVerify(event) {
+  async function handleVerify(event, scannedToken = null) {
     if (event) event.preventDefault();
-    const token = verifyToken.trim().toUpperCase();
+    const token = (scannedToken || verifyToken).trim().toUpperCase();
     if (!token) return;
 
     setVerifying(true);
@@ -70,16 +71,21 @@ export default function VerifyGatePass() {
     try {
       const q = query(
         collection(db, "gate_pass"),
-        where("token", "==", token),
-        where("status", "==", "approved")
+        where("token", "==", token)
       );
       const snap = await getDocs(q);
 
       if (snap.empty) {
-        setVerifyResult({ valid: false, token });
+        setVerifyResult({ valid: false, reason: "Invalid Token - Not Found", token });
       } else {
         const pass = { id: snap.docs[0].id, ...snap.docs[0].data() };
-        setVerifyResult({ valid: true, pass });
+        if (pass.status === "verified_by_security") {
+          setVerifyResult({ valid: false, reason: "Already Verified / Used Token", pass, token });
+        } else if (pass.status === "approved") {
+          setVerifyResult({ valid: true, pass });
+        } else {
+          setVerifyResult({ valid: false, reason: `Invalid Status: ${pass.status}`, pass, token });
+        }
       }
     } catch (err) {
       if (err?.message?.includes("offline") || err?.code === "unavailable") {
@@ -135,6 +141,7 @@ export default function VerifyGatePass() {
 
   return (
     <div className="dashboard-wrapper">
+      <Toaster position="top-center" />
       <Sidebar />
       <main className="main-content">
         <div className="page-header">
@@ -163,27 +170,41 @@ export default function VerifyGatePass() {
 
             {error && <div className="error-msg" style={{ marginBottom: 16 }}>{error}</div>}
 
-            <form onSubmit={handleVerify} style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <div className="form-group" style={{ flex: 1, minWidth: 220, marginBottom: 0 }}>
-                <label>Enter Token</label>
-                <input
-                  type="text"
-                  placeholder="e.g. AB1C2D"
-                  value={verifyToken}
-                  onChange={(e) => setVerifyToken(e.target.value.toUpperCase())}
-                  style={{ letterSpacing: 4, fontSize: 20, textAlign: "center", fontFamily: "Syne" }}
-                  maxLength={6}
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <div style={{
+                width: "100%",
+                maxWidth: "400px",
+                borderRadius: "24px",
+                overflow: "hidden",
+                border: "4px solid rgba(72,187,120,0.5)",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+                position: "relative",
+                background: "#000"
+              }}>
+                <Scanner
+                  onScan={(result) => {
+                    if (result && result.length > 0 && result[0].rawValue) {
+                      const tokenString = result[0].rawValue;
+                      if (!verifying) {
+                        toast.success("QR Scanned!");
+                        setVerifyToken(tokenString);
+                        handleVerify(null, tokenString);
+                      }
+                    }
+                  }}
+                  components={{
+                    audio: true,
+                    onOff: true,
+                    torch: true,
+                    zoom: true,
+                    finder: true,
+                  }}
+                  styles={{ container: { width: '100%', paddingTop: '100%' } }}
                 />
               </div>
-              <div style={{ display: "flex", alignItems: "end" }}>
-                <button className="btn-primary" type="submit" disabled={verifying} style={{ minWidth: 160 }}>
-                  {verifying ? "Verifying..." : "Verify Token"}
-                </button>
+              <div style={{ marginTop: 20, fontSize: 14, color: "#a0aec0", fontWeight: 600, letterSpacing: 1 }}>
+                Point camera at student's Gate Pass QR Code
               </div>
-            </form>
-
-            <div style={{ marginTop: 12, fontSize: 12, color: "#a0aec0" }}>
-              Tip: student will show the 6-character token on their approved gate pass.
             </div>
 
             {verifyResult && (
@@ -241,8 +262,14 @@ export default function VerifyGatePass() {
                     )}
                   </div>
                 ) : (
-                  <div style={{ color: "#fc8181", fontFamily: "Syne", fontWeight: 700, fontSize: 16 }}>
-                    Invalid Token - Not Found
+                  <div style={{ color: "#fc8181", fontFamily: "Syne", fontWeight: 700, fontSize: 16, textAlign: "center" }}>
+                    🚫 {verifyResult.reason}
+                    {verifyResult.pass && (
+                      <div style={{ marginTop: 12, fontSize: 13, color: "#e2e8f0", fontWeight: 400 }}>
+                        Student: {verifyResult.pass.studentName} <br/>
+                        Token: {verifyResult.token}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

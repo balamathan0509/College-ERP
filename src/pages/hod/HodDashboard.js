@@ -1,6 +1,7 @@
 // src/pages/hod/HodDashboard.js
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
+import DateTimeHeader from "../../components/DateTimeHeader";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
 import { collection, query, where, getDocs } from "firebase/firestore";
@@ -147,6 +148,7 @@ export default function HodDashboard() {
     <div className="dashboard-wrapper">
       <Sidebar />
       <main className="main-content">
+        <DateTimeHeader />
         <div className="page-header">
           <h1>HOD Dashboard 🏛️</h1>
           <p>{userProfile?.dept} Department Head</p>

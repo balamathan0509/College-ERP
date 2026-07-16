@@ -6,6 +6,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 const studentNav = [
   { icon: "🏠", label: "Dashboard", path: "/student" },
   { icon: "🚪", label: "Gate Pass", path: "/student/gatepass" },
+  { icon: "📋", label: "Leave", path: "/student/leave" },
   { icon: "📋", label: "Attendance", path: "/student/attendance" },
   { icon: "💰", label: "Fees", path: "/student/fees" },
   { icon: "📅", label: "Timetable", path: "/student/timetable" },
@@ -18,7 +19,9 @@ const studentNav = [
 const staffNav = [
   { icon: "🏠", label: "Dashboard", path: "/staff" },
   { icon: "🚪", label: "Gate Pass", path: "/staff/gatepass" },
+  { icon: "📋", label: "Leave", path: "/staff/leave" },
   { icon: "✅", label: "Attendance", path: "/staff/attendance" },
+  { icon: "🧧", label: "Results", path: "/staff/results" },
   { icon: "📅", label: "Timetable", path: "/staff/timetable" },
   { icon: "💼", label: "Placements", path: "/staff/placements" },
   { icon: "📢", label: "Alerts", path: "/staff/alerts" },
@@ -28,7 +31,9 @@ const staffNav = [
 
 const hodNav = [
   { icon: "🏠", label: "Dashboard", path: "/hod" },
-  { icon: "�", label: "Timetable", path: "/hod/timetable" },
+  { icon: "📋", label: "Leave", path: "/hod/leave" },
+  { icon: "🧧", label: "Results", path: "/hod/results" },
+  { icon: "📅", label: "Timetable", path: "/hod/timetable" },
   { icon: "💼", label: "Placements", path: "/hod/placements" },
   { icon: "📢", label: "Alerts", path: "/hod/alerts" },
   { icon: "👤", label: "Profile", path: "/hod/profile" }
@@ -69,21 +74,35 @@ const securityNav = [
   { icon: "P", label: "Profile", path: "/security/profile" }
 ];
 
+const principalNav = [
+  { icon: "🏠", label: "Dashboard", path: "/principal" },
+  { icon: "📋", label: "Leave Requests", path: "/principal/leave" },
+  { icon: "📢", label: "Circulars", path: "/principal/alerts" },
+  { icon: "👤", label: "Profile", path: "/principal/profile" }
+];
+
+const adminNav = [
+  { icon: "⚡", label: "Dashboard", path: "/admin" },
+  { icon: "👤", label: "Profile", path: "/admin/profile" }
+];
+
 export default function Sidebar() {
-  const { userProfile, logout } = useAuth();
+  const { userProfile, logout, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const role = userProfile?.role;
   const navItems =
+    isSuperAdmin ? adminNav :
     role === "student" ? studentNav :
     role === "staff" ? staffNav :
     role === "hod" ? hodNav :
     role === "warden" ? wardenNav :
     role === "officestaff" ? officestaffNav :
     role === "security" ? securityNav :
-    role === "management" ? managementNav : [];
+    role === "management" ? managementNav :
+    role === "principal" ? principalNav : [];
 
   async function handleLogout() {
     await logout();
@@ -102,9 +121,11 @@ export default function Sidebar() {
     warden: "#4299e1",
     officestaff: "#48bb78",
     security: "#e94560",
-    management: "#9f7aea"
+    management: "#9f7aea",
+    principal: "#805ad5",
+    admin: "#e53e3e"
   };
-  const color = roleColors[role] || "#e94560";
+  const color = isSuperAdmin ? "#e53e3e" : (roleColors[role] || "#e94560");
 
   const sidebarContent = (
     <>
@@ -112,7 +133,7 @@ export default function Sidebar() {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <h2>🎓 College Portal</h2>
-            <p style={{ color }}>{role?.toUpperCase()} PANEL</p>
+            <p style={{ color }}>{isSuperAdmin ? "SUPER ADMIN" : role?.toUpperCase()} PANEL</p>
           </div>
           {/* Close button for mobile */}
           <button
@@ -148,12 +169,25 @@ export default function Sidebar() {
         <div className="user-info">
           <div className="user-name">{userProfile?.name || "User"}</div>
           <div className="user-role" style={{ color }}>
-            {userProfile?.dept ? `${userProfile.dept} • ${role}` : role}
+            {isSuperAdmin ? "⚡ Super Admin" : (userProfile?.dept ? `${userProfile.dept} • ${role}` : role)}
           </div>
         </div>
-        <button className="btn-logout" onClick={handleLogout}>
-          🚪 Sign Out
-        </button>
+        <div style={{ display: "flex", gap: "8px" }}>
+          <button 
+            className="btn-theme"
+            style={{ flex: 1, padding: "10px", margin: 0, fontSize: "14px" }} 
+            onClick={() => handleNavClick(isSuperAdmin ? "/admin/profile" : `/${role}/profile`)}
+          >
+            👤 Profile
+          </button>
+          <button 
+            className="btn-logout" 
+            style={{ flex: 1, margin: 0, padding: "10px", fontSize: "14px", marginTop: 0 }} 
+            onClick={handleLogout}
+          >
+            🚪 Logout
+          </button>
+        </div>
       </div>
     </>
   );
