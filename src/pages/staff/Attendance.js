@@ -38,7 +38,6 @@ export default function StaffAttendance() {
       setStudents(list);
 
       // Fetch existing attendance for this date
-      const attDocId = `${userProfile.dept}_${selectedYear}_${selectedDate}`.replace(/\s+/g, "_");
       const attQ = query(
         collection(db, "attendance"),
         where("dept", "==", userProfile.dept),
@@ -47,11 +46,23 @@ export default function StaffAttendance() {
       );
       const attSnap = await getDocs(attQ);
       if (!attSnap.empty) {
-        setAttendance(attSnap.docs[0].data().records || {});
+        const records = attSnap.docs[0].data().records || {};
+        const mappedRecords = {};
+        list.forEach(s => {
+          const val = records[s.id];
+          if (val === true || val === "present" || val === undefined) {
+            mappedRecords[s.id] = "P";
+          } else if (val === false || val === "absent") {
+            mappedRecords[s.id] = "A";
+          } else {
+            mappedRecords[s.id] = val; // e.g. "OD" or "P" or "A"
+          }
+        });
+        setAttendance(mappedRecords);
       } else {
         // Default all present
         const defaultAtt = {};
-        list.forEach(s => { defaultAtt[s.id] = true; });
+        list.forEach(s => { defaultAtt[s.id] = "P"; });
         setAttendance(defaultAtt);
       }
     } catch (err) {}
@@ -59,25 +70,33 @@ export default function StaffAttendance() {
   }
 
   function toggleAttendance(studentId) {
-    setAttendance(prev => ({ ...prev, [studentId]: !prev[studentId] }));
+    setAttendance(prev => {
+      const current = prev[studentId] || "P";
+      let next = "P";
+      if (current === "P") next = "A";
+      else if (current === "A") next = "OD";
+      else next = "P";
+      return { ...prev, [studentId]: next };
+    });
   }
 
   function markAllPresent() {
     const all = {};
-    students.forEach(s => { all[s.id] = true; });
+    students.forEach(s => { all[s.id] = "P"; });
     setAttendance(all);
   }
 
   function markAllAbsent() {
     const all = {};
-    students.forEach(s => { all[s.id] = false; });
+    students.forEach(s => { all[s.id] = "A"; });
     setAttendance(all);
   }
 
   async function saveAttendance() {
     setSaving(true);
     try {
-      const absentStudents = students.filter(s => !attendance[s.id]);
+      const absentStudents = students.filter(s => attendance[s.id] === "A");
+      const odStudents = students.filter(s => attendance[s.id] === "OD");
       const attDocId = `${userProfile.dept}_${selectedYear}_${selectedDate}`.replace(/\s+/g, "_");
 
       await setDoc(doc(db, "attendance", attDocId), {
@@ -86,6 +105,7 @@ export default function StaffAttendance() {
         date: selectedDate,
         records: attendance,
         absentCount: absentStudents.length,
+        odCount: odStudents.length,
         totalCount: students.length,
         markedBy: userProfile.name,
         markedAt: new Date().toISOString()
@@ -149,8 +169,12 @@ export default function StaffAttendance() {
     if (selectedYear) fetchStudents();
   }, [selectedYear, selectedDate]);
 
-  const presentCount = students.filter(s => attendance[s.id]).length;
-  const absentCount = students.length - presentCount;
+  const presentCount = students.filter(s => attendance[s.id] === "P").length;
+  const absentCount = students.filter(s => attendance[s.id] === "A").length;
+  const odCount = students.filter(s => attendance[s.id] === "OD").length;
+  const attendancePercentage = students.length 
+    ? Math.round(((presentCount + odCount) / students.length) * 100) 
+    : 0;
 
   return (
     <div className="dashboard-wrapper">
@@ -185,25 +209,30 @@ export default function StaffAttendance() {
         {/* Stats */}
         {students.length > 0 && (
           <div className="stats-grid" style={{ marginBottom: 24 }}>
-            <div className="stat-card">
+            <div className="stat-card" style={{ border: "1px solid rgba(255,255,255,0.05)" }}>
               <div className="stat-icon">👥</div>
               <div className="stat-value">{students.length}</div>
               <div className="stat-label">Total Students</div>
             </div>
-            <div className="stat-card">
+            <div className="stat-card" style={{ border: "1px solid rgba(72,187,120,0.15)" }}>
               <div className="stat-icon">✅</div>
               <div className="stat-value" style={{ color: "#48bb78" }}>{presentCount}</div>
               <div className="stat-label">Present</div>
             </div>
-            <div className="stat-card">
+            <div className="stat-card" style={{ border: "1px solid rgba(252,129,129,0.15)" }}>
               <div className="stat-icon">❌</div>
               <div className="stat-value" style={{ color: "#fc8181" }}>{absentCount}</div>
               <div className="stat-label">Absent</div>
             </div>
-            <div className="stat-card">
+            <div className="stat-card" style={{ border: "1px solid rgba(245,158,11,0.15)" }}>
+              <div className="stat-icon">💼</div>
+              <div className="stat-value" style={{ color: "#f5a623" }}>{odCount}</div>
+              <div className="stat-label">On Duty (OD)</div>
+            </div>
+            <div className="stat-card" style={{ border: "1px solid rgba(255,255,255,0.05)" }}>
               <div className="stat-icon">📊</div>
-              <div className="stat-value" style={{ color: "#f5a623" }}>
-                {students.length ? Math.round((presentCount / students.length) * 100) : 0}%
+              <div className="stat-value" style={{ color: attendancePercentage >= 75 ? "#48bb78" : "#fc8181" }}>
+                {attendancePercentage}%
               </div>
               <div className="stat-label">Attendance %</div>
             </div>
@@ -240,36 +269,71 @@ export default function StaffAttendance() {
                     <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>S.No</th>
                     <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>Name</th>
                     <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>Register No</th>
-                    <th style={{ padding: "12px 16px", textAlign: "center", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>Present</th>
+                    <th style={{ padding: "12px 16px", textAlign: "center", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>Status / Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {students.map((student, idx) => (
-                    <tr
-                      key={student.id}
-                      onClick={() => toggleAttendance(student.id)}
-                      style={{
-                        borderBottom: "1px solid rgba(255,255,255,0.05)",
-                        background: attendance[student.id] ? "rgba(72,187,120,0.05)" : "rgba(252,129,129,0.05)",
-                        cursor: "pointer", transition: "all 0.15s"
-                      }}
-                    >
-                      <td style={{ padding: "14px 16px", color: "#a0aec0", fontSize: 14 }}>{idx + 1}</td>
-                      <td style={{ padding: "14px 16px", fontWeight: 600, fontSize: 15 }}>{student.name}</td>
-                      <td style={{ padding: "14px 16px", color: "#a0aec0", fontSize: 14 }}>{student.registerNo}</td>
-                      <td style={{ padding: "14px 16px", textAlign: "center" }}>
-                        <div style={{
-                          width: 28, height: 28, borderRadius: 8, margin: "0 auto",
-                          border: attendance[student.id] ? "2px solid #48bb78" : "2px solid #fc8181",
-                          background: attendance[student.id] ? "#48bb78" : "rgba(252,129,129,0.2)",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: 14, transition: "all 0.2s", color: "white", fontWeight: 700
-                        }}>
-                          {attendance[student.id] ? "✓" : "✗"}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {students.map((student, idx) => {
+                    const status = attendance[student.id] || "P";
+                    return (
+                      <tr
+                        key={student.id}
+                        onClick={() => toggleAttendance(student.id)}
+                        style={{
+                          borderBottom: "1px solid rgba(255,255,255,0.05)",
+                          background:
+                            status === "P" ? "rgba(72,187,120,0.04)" :
+                            status === "OD" ? "rgba(245,166,35,0.04)" :
+                            "rgba(252,129,129,0.04)",
+                          cursor: "pointer", transition: "all 0.15s"
+                        }}
+                      >
+                        <td style={{ padding: "14px 16px", color: "#a0aec0", fontSize: 14 }}>{idx + 1}</td>
+                        <td style={{ padding: "14px 16px", fontWeight: 600, fontSize: 15 }}>{student.name}</td>
+                        <td style={{ padding: "14px 16px", color: "#a0aec0", fontSize: 14 }}>{student.registerNo}</td>
+                        <td style={{ padding: "14px 16px", textAlign: "center" }} onClick={e => e.stopPropagation()}>
+                          <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                            <button
+                              onClick={() => setAttendance(prev => ({ ...prev, [student.id]: "P" }))}
+                              style={{
+                                width: 34, height: 30, borderRadius: 8, border: "none",
+                                background: status === "P" ? "#48bb78" : "rgba(255,255,255,0.05)",
+                                color: status === "P" ? "white" : "#a0aec0",
+                                fontWeight: 700, cursor: "pointer", transition: "all 0.2s"
+                              }}
+                              title="Present"
+                            >
+                              P
+                            </button>
+                            <button
+                              onClick={() => setAttendance(prev => ({ ...prev, [student.id]: "A" }))}
+                              style={{
+                                width: 34, height: 30, borderRadius: 8, border: "none",
+                                background: status === "A" ? "#fc8181" : "rgba(255,255,255,0.05)",
+                                color: status === "A" ? "white" : "#a0aec0",
+                                fontWeight: 700, cursor: "pointer", transition: "all 0.2s"
+                              }}
+                              title="Absent"
+                            >
+                              A
+                            </button>
+                            <button
+                              onClick={() => setAttendance(prev => ({ ...prev, [student.id]: "OD" }))}
+                              style={{
+                                width: 38, height: 30, borderRadius: 8, border: "none",
+                                background: status === "OD" ? "#f5a623" : "rgba(255,255,255,0.05)",
+                                color: status === "OD" ? "white" : "#a0aec0",
+                                fontWeight: 700, cursor: "pointer", transition: "all 0.2s"
+                              }}
+                              title="On Duty"
+                            >
+                              OD
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

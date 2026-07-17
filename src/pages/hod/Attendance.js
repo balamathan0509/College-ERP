@@ -66,14 +66,25 @@ export default function HodAttendance() {
     else fetchAlerts();
   }, [tab, selectedYear, selectedDate]);
 
-  const getStudentName = (id) => students.find(s => s.id === id)?.name || "Unknown";
-
   const absentStudents = records
-    ? students.filter(s => records.records?.[s.id] === false)
+    ? students.filter(s => {
+        const val = records.records?.[s.id];
+        return val === false || val === "A";
+      })
+    : [];
+  const odStudents = records
+    ? students.filter(s => records.records?.[s.id] === "OD")
     : [];
   const presentStudents = records
-    ? students.filter(s => records.records?.[s.id] === true)
+    ? students.filter(s => {
+        const val = records.records?.[s.id];
+        return val === true || val === "P" || val === undefined;
+      })
     : [];
+
+  const presentPercentage = records && records.totalCount
+    ? Math.round(((presentStudents.length + odStudents.length) / records.totalCount) * 100)
+    : 0;
 
   return (
     <div className="dashboard-wrapper">
@@ -124,25 +135,30 @@ export default function HodAttendance() {
               <>
                 {/* Stats */}
                 <div className="stats-grid" style={{ marginBottom: 24 }}>
-                  <div className="stat-card">
+                  <div className="stat-card" style={{ border: "1px solid rgba(255,255,255,0.05)" }}>
                     <div className="stat-icon">👥</div>
                     <div className="stat-value">{records.totalCount}</div>
                     <div className="stat-label">Total</div>
                   </div>
-                  <div className="stat-card">
+                  <div className="stat-card" style={{ border: "1px solid rgba(72,187,120,0.15)" }}>
                     <div className="stat-icon">✅</div>
                     <div className="stat-value" style={{ color: "#48bb78" }}>{presentStudents.length}</div>
                     <div className="stat-label">Present</div>
                   </div>
-                  <div className="stat-card">
+                  <div className="stat-card" style={{ border: "1px solid rgba(245,158,11,0.15)" }}>
+                    <div className="stat-icon">💼</div>
+                    <div className="stat-value" style={{ color: "#f5a623" }}>{odStudents.length}</div>
+                    <div className="stat-label">On Duty (OD)</div>
+                  </div>
+                  <div className="stat-card" style={{ border: "1px solid rgba(252,129,129,0.15)" }}>
                     <div className="stat-icon">❌</div>
                     <div className="stat-value" style={{ color: "#fc8181" }}>{absentStudents.length}</div>
                     <div className="stat-label">Absent</div>
                   </div>
-                  <div className="stat-card">
+                  <div className="stat-card" style={{ border: "1px solid rgba(255,255,255,0.05)" }}>
                     <div className="stat-icon">📊</div>
-                    <div className="stat-value" style={{ color: "#f5a623" }}>
-                      {Math.round((presentStudents.length / records.totalCount) * 100)}%
+                    <div className="stat-value" style={{ color: presentPercentage >= 75 ? "#48bb78" : "#fc8181" }}>
+                      {presentPercentage}%
                     </div>
                     <div className="stat-label">Present %</div>
                   </div>
@@ -163,6 +179,24 @@ export default function HodAttendance() {
                           display: "flex", justifyContent: "space-between",
                           padding: "12px 16px", borderRadius: 10, marginBottom: 8,
                           background: "rgba(252,129,129,0.05)", border: "1px solid rgba(252,129,129,0.15)"
+                        }}>
+                          <span style={{ fontWeight: 600 }}>{i + 1}. {s.name}</span>
+                          <span style={{ color: "#a0aec0", fontSize: 13 }}>{s.registerNo}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {odStudents.length > 0 && (
+                    <div style={{ marginBottom: 24 }}>
+                      <div style={{ fontSize: 13, color: "#f5a623", fontWeight: 700, marginBottom: 12, textTransform: "uppercase", letterSpacing: 1 }}>
+                        💼 On Duty (OD) ({odStudents.length})
+                      </div>
+                      {odStudents.map((s, i) => (
+                        <div key={s.id} style={{
+                          display: "flex", justifyContent: "space-between",
+                          padding: "12px 16px", borderRadius: 10, marginBottom: 8,
+                          background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.15)"
                         }}>
                           <span style={{ fontWeight: 600 }}>{i + 1}. {s.name}</span>
                           <span style={{ color: "#a0aec0", fontSize: 13 }}>{s.registerNo}</span>

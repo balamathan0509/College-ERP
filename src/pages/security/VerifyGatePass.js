@@ -174,12 +174,16 @@ export default function VerifyGatePass() {
               <div style={{
                 width: "100%",
                 maxWidth: "400px",
+                aspectRatio: "1",
                 borderRadius: "24px",
                 overflow: "hidden",
-                border: "4px solid rgba(72,187,120,0.5)",
-                boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+                border: verifying ? "4px solid rgba(245,166,35,0.7)" : "4px solid rgba(72,187,120,0.5)",
+                boxShadow: verifying
+                  ? "0 0 30px rgba(245,166,35,0.3), 0 10px 30px rgba(0,0,0,0.3)"
+                  : "0 0 20px rgba(72,187,120,0.15), 0 10px 30px rgba(0,0,0,0.3)",
                 position: "relative",
-                background: "#000"
+                background: "#000",
+                transition: "border-color 0.3s, box-shadow 0.3s"
               }}>
                 <Scanner
                   onScan={(result) => {
@@ -199,13 +203,78 @@ export default function VerifyGatePass() {
                     zoom: true,
                     finder: true,
                   }}
-                  styles={{ container: { width: '100%', paddingTop: '100%' } }}
+                  styles={{
+                    container: { width: '100%', height: '100%' },
+                    video: { width: '100%', height: '100%', objectFit: 'cover' }
+                  }}
                 />
+                {/* Scanning animation overlay */}
+                <div style={{
+                  position: "absolute",
+                  top: 0, left: 0, right: 0, bottom: 0,
+                  pointerEvents: "none",
+                  overflow: "hidden",
+                  borderRadius: 20
+                }}>
+                  {/* Scanning line */}
+                  <div style={{
+                    position: "absolute",
+                    left: "10%", right: "10%",
+                    height: 3,
+                    background: "linear-gradient(90deg, transparent, #48bb78, #48bb78, transparent)",
+                    boxShadow: "0 0 15px rgba(72,187,120,0.8), 0 0 30px rgba(72,187,120,0.4)",
+                    animation: "scanLine 2.5s ease-in-out infinite",
+                    borderRadius: 2
+                  }} />
+                  {/* Corner brackets */}
+                  <div style={{ position: "absolute", top: 20, left: 20, width: 40, height: 40, borderTop: "3px solid #48bb78", borderLeft: "3px solid #48bb78", borderRadius: "4px 0 0 0" }} />
+                  <div style={{ position: "absolute", top: 20, right: 20, width: 40, height: 40, borderTop: "3px solid #48bb78", borderRight: "3px solid #48bb78", borderRadius: "0 4px 0 0" }} />
+                  <div style={{ position: "absolute", bottom: 20, left: 20, width: 40, height: 40, borderBottom: "3px solid #48bb78", borderLeft: "3px solid #48bb78", borderRadius: "0 0 0 4px" }} />
+                  <div style={{ position: "absolute", bottom: 20, right: 20, width: 40, height: 40, borderBottom: "3px solid #48bb78", borderRight: "3px solid #48bb78", borderRadius: "0 0 4px 0" }} />
+                </div>
               </div>
-              <div style={{ marginTop: 20, fontSize: 14, color: "#a0aec0", fontWeight: 600, letterSpacing: 1 }}>
+
+              {/* Scanning status indicator */}
+              <div style={{
+                marginTop: 16, display: "flex", alignItems: "center", gap: 10,
+                padding: "10px 20px", borderRadius: 12,
+                background: verifying ? "rgba(245,166,35,0.1)" : "rgba(72,187,120,0.1)",
+                border: `1px solid ${verifying ? "rgba(245,166,35,0.2)" : "rgba(72,187,120,0.2)"}`,
+                transition: "all 0.3s"
+              }}>
+                <div style={{
+                  width: 10, height: 10, borderRadius: "50%",
+                  background: verifying ? "#f5a623" : "#48bb78",
+                  animation: "statusPulse 1.5s infinite",
+                  boxShadow: `0 0 8px ${verifying ? "rgba(245,166,35,0.6)" : "rgba(72,187,120,0.6)"}`
+                }} />
+                <span style={{
+                  fontSize: 13, fontWeight: 700,
+                  color: verifying ? "#f5a623" : "#48bb78",
+                  fontFamily: "Syne", letterSpacing: 0.5
+                }}>
+                  {verifying ? "⏳ Verifying Token..." : "📷 Camera Active — Scanning for QR Code"}
+                </span>
+              </div>
+
+              <div style={{ marginTop: 8, fontSize: 12, color: "#4a5568", fontWeight: 500 }}>
                 Point camera at student's Gate Pass QR Code
               </div>
             </div>
+
+            {/* Animations */}
+            <style>{`
+              @keyframes scanLine {
+                0% { top: 15%; opacity: 0; }
+                10% { opacity: 1; }
+                90% { opacity: 1; }
+                100% { top: 85%; opacity: 0; }
+              }
+              @keyframes statusPulse {
+                0%, 100% { opacity: 1; transform: scale(1); }
+                50% { opacity: 0.5; transform: scale(0.8); }
+              }
+            `}</style>
 
             {verifyResult && (
               <div

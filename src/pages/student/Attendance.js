@@ -21,9 +21,18 @@ export default function StudentAttendance() {
       const snap = await getDocs(q);
       const list = snap.docs.map(d => {
         const data = d.data();
+        const rawStatus = data.records?.[currentUser.uid];
+        let status = "P";
+        if (rawStatus === false || rawStatus === "A") {
+          status = "A";
+        } else if (rawStatus === "OD") {
+          status = "OD";
+        } else {
+          status = "P"; // true, "P", or undefined
+        }
         return {
           date: data.date,
-          present: data.records?.[currentUser.uid] ?? null,
+          status,
           total: data.totalCount,
           markedBy: data.markedBy
         };
@@ -36,10 +45,12 @@ export default function StudentAttendance() {
 
   useEffect(() => { fetchAttendance(); }, []);
 
-  const presentDays = records.filter(r => r.present === true).length;
-  const absentDays = records.filter(r => r.present === false).length;
-  const totalDays = records.filter(r => r.present !== null).length;
-  const percentage = totalDays ? Math.round((presentDays / totalDays) * 100) : 0;
+  const presentDays = records.filter(r => r.status === "P").length;
+  const absentDays = records.filter(r => r.status === "A").length;
+  const odDays = records.filter(r => r.status === "OD").length;
+  const totalDays = records.length;
+  // OD counts as present for percentage
+  const percentage = totalDays ? Math.round(((presentDays + odDays) / totalDays) * 100) : 0;
 
   const percentColor = percentage >= 75 ? "#48bb78" : percentage >= 60 ? "#f6ad55" : "#fc8181";
 
@@ -54,22 +65,27 @@ export default function StudentAttendance() {
 
         {/* Stats */}
         <div className="stats-grid" style={{ marginBottom: 28 }}>
-          <div className="stat-card">
+          <div className="stat-card" style={{ border: "1px solid rgba(255,255,255,0.05)" }}>
             <div className="stat-icon">📅</div>
             <div className="stat-value">{totalDays}</div>
             <div className="stat-label">Total Days</div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card" style={{ border: "1px solid rgba(72,187,120,0.15)" }}>
             <div className="stat-icon">✅</div>
             <div className="stat-value" style={{ color: "#48bb78" }}>{presentDays}</div>
             <div className="stat-label">Present</div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card" style={{ border: "1px solid rgba(245,158,11,0.15)" }}>
+            <div className="stat-icon">💼</div>
+            <div className="stat-value" style={{ color: "#f5a623" }}>{odDays}</div>
+            <div className="stat-label">On Duty (OD)</div>
+          </div>
+          <div className="stat-card" style={{ border: "1px solid rgba(252,129,129,0.15)" }}>
             <div className="stat-icon">❌</div>
             <div className="stat-value" style={{ color: "#fc8181" }}>{absentDays}</div>
             <div className="stat-label">Absent</div>
           </div>
-          <div className="stat-card">
+          <div className="stat-card" style={{ border: "1px solid rgba(255,255,255,0.05)" }}>
             <div className="stat-icon">📊</div>
             <div className="stat-value" style={{ color: percentColor }}>{percentage}%</div>
             <div className="stat-label">Attendance %</div>
@@ -121,7 +137,10 @@ export default function StudentAttendance() {
                     return (
                       <tr key={idx} style={{
                         borderBottom: "1px solid rgba(255,255,255,0.05)",
-                        background: record.present ? "rgba(72,187,120,0.03)" : "rgba(252,129,129,0.03)"
+                        background:
+                          record.status === "P" ? "rgba(72,187,120,0.03)" :
+                          record.status === "OD" ? "rgba(245,158,11,0.03)" :
+                          "rgba(252,129,129,0.03)"
                       }}>
                         <td style={{ padding: "14px 16px", fontWeight: 600, fontSize: 14 }}>{record.date}</td>
                         <td style={{ padding: "14px 16px", color: "#a0aec0", fontSize: 14 }}>{day}</td>
@@ -129,10 +148,18 @@ export default function StudentAttendance() {
                         <td style={{ padding: "14px 16px", textAlign: "center" }}>
                           <span style={{
                             padding: "4px 14px", borderRadius: 20, fontSize: 13, fontWeight: 700,
-                            background: record.present ? "rgba(72,187,120,0.15)" : "rgba(252,129,129,0.15)",
-                            color: record.present ? "#48bb78" : "#fc8181"
+                            background:
+                              record.status === "P" ? "rgba(72,187,120,0.15)" :
+                              record.status === "OD" ? "rgba(245,158,11,0.15)" :
+                              "rgba(252,129,129,0.15)",
+                            color:
+                              record.status === "P" ? "#48bb78" :
+                              record.status === "OD" ? "#f5a623" :
+                              "#fc8181"
                           }}>
-                            {record.present ? "✅ Present" : "❌ Absent"}
+                            {record.status === "P" ? "✅ Present" :
+                             record.status === "OD" ? "💼 On Duty (OD)" :
+                             "❌ Absent"}
                           </span>
                         </td>
                       </tr>

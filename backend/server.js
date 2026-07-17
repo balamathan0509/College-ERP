@@ -107,6 +107,64 @@ app.post('/create-hod-users', async (req, res) => {
   });
 });
 
+// ===== SUPER ADMIN ENDPOINTS =====
+
+// Directly change a user's password (no reset email)
+app.post('/admin/update-password', async (req, res) => {
+  const { uid, newPassword } = req.body;
+
+  if (!uid || !newPassword) {
+    return res.status(400).json({ error: 'uid and newPassword are required' });
+  }
+  if (newPassword.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
+
+  try {
+    await admin.auth().updateUser(uid, { password: newPassword });
+    res.json({ success: true, message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Error updating password:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update a user's email in Firebase Auth
+app.post('/admin/update-email', async (req, res) => {
+  const { uid, newEmail } = req.body;
+
+  if (!uid || !newEmail) {
+    return res.status(400).json({ error: 'uid and newEmail are required' });
+  }
+
+  try {
+    await admin.auth().updateUser(uid, { email: newEmail });
+    // Also update in Firestore
+    await db.collection('users').doc(uid).update({ email: newEmail });
+    res.json({ success: true, message: 'Email updated successfully' });
+  } catch (error) {
+    console.error('Error updating email:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete a user from Firebase Auth
+app.post('/admin/delete-user', async (req, res) => {
+  const { uid } = req.body;
+
+  if (!uid) {
+    return res.status(400).json({ error: 'uid is required' });
+  }
+
+  try {
+    await admin.auth().deleteUser(uid);
+    res.json({ success: true, message: 'User deleted from Firebase Auth' });
+  } catch (error) {
+    console.error('Error deleting user from Auth:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 3002;
 app.listen(PORT, () => {
   console.log(`Backend server running on port ${PORT}`);
