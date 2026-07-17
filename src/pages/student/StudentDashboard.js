@@ -16,9 +16,12 @@ export default function StudentDashboard() {
     presentDays: 0,
     gatePassCount: 0,
     pendingFees: 0,
-    newAlerts: 0
+    newAlerts: 0,
+    activeFines: 0,
+    totalFineAmount: 0
   });
   const [loading, setLoading] = useState(true);
+  const [upcomingFines, setUpcomingFines] = useState([]);
 
   async function fetchStats() {
     try {
@@ -59,7 +62,36 @@ export default function StudentDashboard() {
       const alertSnap = await getDocs(alertQ);
       const newAlerts = alertSnap.size;
 
-      setStats({ attendancePercent, totalDays, presentDays, gatePassCount, pendingFees, newAlerts });
+      // Fines
+      const finesSnap = await getDocs(collection(db, "fines"));
+      const allFines = finesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const myFines = allFines.filter(f => {
+        if (f.studentUid) {
+          return f.studentUid === currentUser.uid && f.status === "active";
+        }
+        const deptMatch = f.targetDept === "all" || f.targetDept === userProfile.dept;
+        const yearMatch = f.targetYear === "all" || f.targetYear === userProfile.year;
+        return deptMatch && yearMatch && f.status === "active";
+      });
+      const activeFines = myFines.length;
+      const totalFineAmount = myFines.reduce((sum, f) => sum + (f.amount || 0), 0);
+
+      // Check for approaching due dates (expired or expiring in <= 2 days)
+      const approachingFines = myFines.filter(f => {
+        if (!f.dueDate) return false;
+
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const due = new Date(f.dueDate);
+        due.setHours(0,0,0,0);
+
+        const diffTime = due - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays <= 2;
+      });
+      setUpcomingFines(approachingFines);
+
+      setStats({ attendancePercent, totalDays, presentDays, gatePassCount, pendingFees, newAlerts, activeFines, totalFineAmount });
     } catch (err) {}
     setLoading(false);
   }
@@ -73,7 +105,8 @@ export default function StudentDashboard() {
     { icon: "📅", label: "Timetable", path: "/student/timetable", color: "#4299e1" },
     { icon: "💼", label: "Placements", path: "/student/placements", color: "#9f7aea" },
     { icon: "📢", label: "Alerts", path: "/student/alerts", color: "#f6ad55" },
-    { icon: "📝", label: "Complaints", path: "/student/complaints", color: "#fc8181" }
+    { icon: "📝", label: "Complaints", path: "/student/complaints", color: "#fc8181" },
+    { icon: "⚠️", label: "Fines", path: "/student/fines", color: "#e94560" }
   ];
 
   const attColor = stats.attendancePercent === null ? "#a0aec0" :
@@ -95,6 +128,41 @@ export default function StudentDashboard() {
             )}
           </p>
         </div>
+
+        {/* Approaching/Expired Fines Alert banner */}
+        {!loading && upcomingFines.length > 0 && (
+          <div style={{ 
+            padding: "16px 24px", borderRadius: 16, marginBottom: 28, 
+            background: "rgba(233,69,96,0.12)", border: "1px solid rgba(233,69,96,0.3)", 
+            display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16,
+            boxShadow: "0 4px 15px rgba(233,69,96,0.1)"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <span style={{ fontSize: 28 }}>⏰</span>
+              <div>
+                <div style={{ color: "#e94560", fontWeight: 700, fontSize: 15, fontFamily: "Syne" }}>
+                  Fine Due Date Warning!
+                </div>
+                <div style={{ color: "#a0aec0", fontSize: 13, marginTop: 4 }}>
+                  You have {upcomingFines.length} fine(s) that are past due or expiring within 2 days. Pay today to avoid daily 10% late fees!
+                </div>
+              </div>
+            </div>
+            <button 
+              onClick={() => navigate("/student/fines")} 
+              style={{ 
+                padding: "10px 22px", borderRadius: 10, border: "none", 
+                background: "#e94560", color: "white", fontWeight: 700, 
+                cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6,
+                transition: "all 0.2s"
+              }}
+              onMouseOver={e => e.currentTarget.style.transform = "scale(1.03)"}
+              onMouseOut={e => e.currentTarget.style.transform = "scale(1)"}
+            >
+              Pay Now 💳
+            </button>
+          </div>
+        )}
 
         {/* Live Stats */}
         <div className="stats-grid" style={{ marginBottom: 28 }}>
@@ -128,6 +196,17 @@ export default function StudentDashboard() {
             <div className="stat-icon">📢</div>
             <div className="stat-value">{loading ? "..." : stats.newAlerts}</div>
             <div className="stat-label">Alerts</div>
+          </div>
+
+          <div className="stat-card" style={{ cursor: "pointer" }} onClick={() => navigate("/student/fines")}>
+            <div className="stat-icon">⚠️</div>
+            <div className="stat-value" style={{ color: stats.activeFines > 0 ? "#fc8181" : "#48bb78" }}>
+              {loading ? "..." : stats.activeFines}
+            </div>
+            <div className="stat-label">Active Fines</div>
+            {!loading && stats.activeFines > 0 && (
+              <div style={{ fontSize: 11, color: "#fc8181", marginTop: 4 }}>₹{stats.totalFineAmount.toLocaleString("en-IN")}</div>
+            )}
           </div>
         </div>
 

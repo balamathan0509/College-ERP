@@ -42,6 +42,7 @@ import OfficeStaffDashboard from "./pages/officestaff/Dashboard";
 import FeesCollection from "./pages/officestaff/FeesCollection";
 import FeesOverview from "./pages/officestaff/FeesOverview";
 import FeesAlerts from "./pages/officestaff/FeesAlerts";
+import VerifyFees from "./pages/officestaff/VerifyFees";
 import CampusMap from "./pages/shared/CampusMap";
 import Signup from "./pages/Signup";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -87,6 +88,7 @@ export default function App() {
           <Route path="/student/placements" element={<ProtectedRoute allowedRole="student"><PlacementsPage /></ProtectedRoute>} />
           <Route path="/student/alerts" element={<ProtectedRoute allowedRole="student"><AlertsPage /></ProtectedRoute>} />
           <Route path="/student/complaints" element={<ProtectedRoute allowedRole="student"><ComplaintsPage /></ProtectedRoute>} />
+          <Route path="/student/fines" element={<ProtectedRoute allowedRole="student"><StudentFines /></ProtectedRoute>} />
 
           {/* Staff Routes */}
           <Route path="/staff" element={<ProtectedRoute allowedRole="staff"><StaffDashboard /></ProtectedRoute>} />
@@ -101,6 +103,7 @@ export default function App() {
           <Route path="/staff/placements" element={<ProtectedRoute allowedRole="staff"><PlacementsPage /></ProtectedRoute>} />
           <Route path="/staff/alerts" element={<ProtectedRoute allowedRole="staff"><AlertsPage /></ProtectedRoute>} />
           <Route path="/staff/complaints" element={<ProtectedRoute allowedRole="staff"><ComplaintsPage /></ProtectedRoute>} />
+          <Route path="/staff/fines" element={<ProtectedRoute allowedRole="staff"><StaffFines /></ProtectedRoute>} />
           {/* HOD Routes */}
           <Route path="/hod" element={<ProtectedRoute allowedRole="hod"><HodDashboard /></ProtectedRoute>} />
           <Route path="/hod/gatepass" element={<ProtectedRoute allowedRole="hod"><HodGatePass /></ProtectedRoute>} />
@@ -115,6 +118,7 @@ export default function App() {
           <Route path="/hod/placements" element={<ProtectedRoute allowedRole="hod"><PlacementsPage /></ProtectedRoute>} />
           <Route path="/hod/alerts" element={<ProtectedRoute allowedRole="hod"><AlertsPage /></ProtectedRoute>} />
           <Route path="/hod/complaints" element={<ProtectedRoute allowedRole="hod"><ComplaintsPage /></ProtectedRoute>} />
+          <Route path="/hod/fines" element={<ProtectedRoute allowedRole="hod"><OfficeStaffFines /></ProtectedRoute>} />
 
           {/* Management Routes */}
           <Route path="/management" element={<ProtectedRoute allowedRole="management"><ManagementDashboard /></ProtectedRoute>} />
@@ -143,6 +147,7 @@ export default function App() {
           <Route path="/officestaff/fees" element={<ProtectedRoute allowedRole="officestaff"><FeesCollection /></ProtectedRoute>} />
           <Route path="/officestaff/overview" element={<ProtectedRoute allowedRole="officestaff"><FeesOverview /></ProtectedRoute>} />
           <Route path="/officestaff/alerts" element={<ProtectedRoute allowedRole="officestaff"><FeesAlerts /></ProtectedRoute>} />
+          <Route path="/officestaff/verify-fees" element={<ProtectedRoute allowedRole="officestaff"><VerifyFees /></ProtectedRoute>} />
           <Route path="/officestaff/profile" element={<ProtectedRoute allowedRole="officestaff"><Profile /></ProtectedRoute>} />
 
 
