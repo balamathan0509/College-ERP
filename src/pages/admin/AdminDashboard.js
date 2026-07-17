@@ -1,11 +1,10 @@
-// src/pages/admin/AdminDashboard.js
 import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "../../components/Sidebar";
 import DateTimeHeader from "../../components/DateTimeHeader";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
 import {
-  collection, getDocs, doc, updateDoc, deleteDoc, setDoc, query, orderBy
+  collection, getDocs, doc, updateDoc, deleteDoc, setDoc, query, orderBy, where
 } from "firebase/firestore";
 import { auth } from "../../firebase/config";
 import { createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
@@ -86,7 +85,9 @@ export default function AdminDashboard() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   // Filter logic
   useEffect(() => {
@@ -125,6 +126,19 @@ export default function AdminDashboard() {
     }
     setAddLoading(true);
     try {
+      if (addForm.role === "student" && addForm.registerNo) {
+        const q = query(
+          collection(db, "users"),
+          where("registerNo", "==", addForm.registerNo.trim())
+        );
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          showToast("❌ This Register Number is already registered!", "error");
+          setAddLoading(false);
+          return;
+        }
+      }
+
       // Save the current user's auth state
       const currentAuthUser = auth.currentUser;
 
@@ -175,6 +189,19 @@ export default function AdminDashboard() {
     if (!selectedUser) return;
     setEditLoading(true);
     try {
+      if (editForm.role === "student" && editForm.registerNo && editForm.registerNo !== selectedUser.registerNo) {
+        const q = query(
+          collection(db, "users"),
+          where("registerNo", "==", editForm.registerNo.trim())
+        );
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          showToast("❌ This Register Number is already registered!", "error");
+          setEditLoading(false);
+          return;
+        }
+      }
+
       const updateData = {
         name: editForm.name || selectedUser.name || "",
         phone: editForm.phone || "",
@@ -282,6 +309,8 @@ export default function AdminDashboard() {
           <h1>⚡ Super Admin Panel</h1>
           <p>Full control over all users and roles</p>
         </div>
+
+
 
         {/* Stats */}
         <div className="stats-grid">
