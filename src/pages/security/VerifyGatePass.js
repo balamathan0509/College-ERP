@@ -77,14 +77,18 @@ export default function VerifyGatePass() {
 
       if (snap.empty) {
         setVerifyResult({ valid: false, reason: "Invalid Token - Not Found", token });
+        toast.error("Invalid Token");
       } else {
         const pass = { id: snap.docs[0].id, ...snap.docs[0].data() };
         if (pass.status === "verified_by_security") {
           setVerifyResult({ valid: false, reason: "Already Verified / Used Token", pass, token });
+          toast.error("Already Scanned");
         } else if (pass.status === "approved") {
           setVerifyResult({ valid: true, pass });
+          toast.success("QR Scanned!");
         } else {
           setVerifyResult({ valid: false, reason: `Invalid Status: ${pass.status}`, pass, token });
+          toast.error("Invalid Status");
         }
       }
     } catch (err) {
@@ -190,7 +194,6 @@ export default function VerifyGatePass() {
                     if (result && result.length > 0 && result[0].rawValue) {
                       const tokenString = result[0].rawValue;
                       if (!verifying) {
-                        toast.success("QR Scanned!");
                         setVerifyToken(tokenString);
                         handleVerify(null, tokenString);
                       }

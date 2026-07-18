@@ -13,8 +13,9 @@ export default function StudentGatePass() {
   const { currentUser, userProfile } = useAuth();
   const [tab, setTab] = useState("apply");
   const [form, setForm] = useState({
-    reason: "", otherReason: "", outDate: "", outTime: "",
-    inDate: "", inTime: "", place: ""
+    reason: "", otherReason: "", outDate: "", 
+    outHour: "12", outMinute: "00", outAmPm: "AM",
+    inDate: "", inHour: "12", inMinute: "00", inAmPm: "PM", place: ""
   });
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
@@ -29,12 +30,14 @@ export default function StudentGatePass() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError(""); setSuccess("");
-    if (!form.reason || !form.outDate || !form.outTime || !form.inDate || !form.inTime || !form.place) {
+    if (!form.reason || !form.outDate || !form.inDate || !form.place) {
       return setError("Please fill all fields.");
     }
     setLoading(true);
     try {
       const reasonText = form.reason === "Other" ? form.otherReason : form.reason;
+      const finalOutTime = `${form.outHour}:${form.outMinute} ${form.outAmPm}`;
+      const finalInTime = `${form.inHour}:${form.inMinute} ${form.inAmPm}`;
 
       // Save gate pass
       await addDoc(collection(db, "gate_pass"), {
@@ -47,9 +50,9 @@ export default function StudentGatePass() {
         phone: userProfile.phone || "",
         reason: reasonText,
         outDate: form.outDate,
-        outTime: form.outTime,
+        outTime: finalOutTime,
         inDate: form.inDate,
-        inTime: form.inTime,
+        inTime: finalInTime,
         place: form.place,
         status: "pending_staff",
         token: null,
@@ -77,8 +80,8 @@ ${userProfile.name} (${userProfile.registerNo}, ${userProfile.year} - ${userProf
 
 📋 Reason: ${reasonText}
 📍 Place: ${form.place}
-🕐 Out: ${form.outDate} at ${form.outTime}
-🕐 In: ${form.inDate} at ${form.inTime}
+🕐 Out: ${form.outDate} at ${finalOutTime}
+🕐 In: ${form.inDate} at ${finalInTime}
 📞 Phone: ${userProfile.phone || "Not provided"}
 
 Please login to College Portal to Approve or Reject this request.
@@ -90,7 +93,11 @@ College Portal`
       }
 
       setSuccess("Gate pass submitted! Staff has been notified via email.");
-      setForm({ reason: "", otherReason: "", outDate: "", outTime: "", inDate: "", inTime: "", place: "" });
+      setForm({ 
+        reason: "", otherReason: "", outDate: "", 
+        outHour: "12", outMinute: "00", outAmPm: "AM", 
+        inDate: "", inHour: "12", inMinute: "00", inAmPm: "PM", place: "" 
+      });
     } catch (err) {
       setError("Failed to submit. Try again.");
     }
@@ -174,7 +181,19 @@ College Portal`
                 </div>
                 <div className="form-group">
                   <label>Out Time</label>
-                  <input type="time" name="outTime" value={form.outTime} onChange={handleChange} required />
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <select name="outHour" value={form.outHour} onChange={handleChange} required style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)", color: "white" }}>
+                      {["12","01","02","03","04","05","06","07","08","09","10","11"].map(h => <option key={h} value={h} style={{ color: "black" }}>{h}</option>)}
+                    </select>
+                    <span style={{ alignSelf: "center", fontWeight: "bold" }}>:</span>
+                    <select name="outMinute" value={form.outMinute} onChange={handleChange} required style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)", color: "white" }}>
+                      {["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"].map(m => <option key={m} value={m} style={{ color: "black" }}>{m}</option>)}
+                    </select>
+                    <select name="outAmPm" value={form.outAmPm} onChange={handleChange} required style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)", color: "white" }}>
+                      <option value="AM" style={{ color: "black" }}>AM</option>
+                      <option value="PM" style={{ color: "black" }}>PM</option>
+                    </select>
+                  </div>
                 </div>
               </div>
               <div className="form-row">
@@ -184,7 +203,19 @@ College Portal`
                 </div>
                 <div className="form-group">
                   <label>In Time</label>
-                  <input type="time" name="inTime" value={form.inTime} onChange={handleChange} required />
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <select name="inHour" value={form.inHour} onChange={handleChange} required style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)", color: "white" }}>
+                      {["12","01","02","03","04","05","06","07","08","09","10","11"].map(h => <option key={h} value={h} style={{ color: "black" }}>{h}</option>)}
+                    </select>
+                    <span style={{ alignSelf: "center", fontWeight: "bold" }}>:</span>
+                    <select name="inMinute" value={form.inMinute} onChange={handleChange} required style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)", color: "white" }}>
+                      {["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"].map(m => <option key={m} value={m} style={{ color: "black" }}>{m}</option>)}
+                    </select>
+                    <select name="inAmPm" value={form.inAmPm} onChange={handleChange} required style={{ flex: 1, padding: "10px", borderRadius: "10px", border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.03)", color: "white" }}>
+                      <option value="AM" style={{ color: "black" }}>AM</option>
+                      <option value="PM" style={{ color: "black" }}>PM</option>
+                    </select>
+                  </div>
                 </div>
               </div>
               <button className="btn-primary" type="submit" disabled={loading}>

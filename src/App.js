@@ -49,6 +49,9 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import PrincipalDashboard from "./pages/principal/Dashboard";
 import PrincipalLeave from "./pages/principal/Leave";
 import PrincipalGatePass from "./pages/principal/GatePass";
+import StudentFines from "./pages/student/Fines";
+import StaffFines from "./pages/staff/Fines";
+import OfficeStaffFines from "./pages/officestaff/Fines";
 
 const ComingSoon = ({ title }) => (
   <div style={{
