@@ -2,93 +2,117 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
+import {
+  LayoutDashboard,
+  DoorOpen,
+  ClipboardList,
+  CheckSquare,
+  CreditCard,
+  Calendar,
+  Briefcase,
+  Bell,
+  MessageSquareWarning,
+  AlertOctagon,
+  User,
+  ShieldCheck,
+  Building2,
+  Utensils,
+  Users,
+  PieChart,
+  Clock,
+  GraduationCap,
+  MapPin,
+  LogOut,
+  Award,
+  X
+} from "lucide-react";
 
 const studentNav = [
-  { icon: "🏠", label: "Dashboard", path: "/student" },
-  { icon: "🚪", label: "Gate Pass", path: "/student/gatepass" },
-  { icon: "📋", label: "Leave", path: "/student/leave" },
-  { icon: "📋", label: "Attendance", path: "/student/attendance" },
-  { icon: "💰", label: "Fees", path: "/student/fees" },
-  { icon: "📅", label: "Timetable", path: "/student/timetable" },
-  { icon: "💼", label: "Placements", path: "/student/placements" },
-  { icon: "📢", label: "Alerts", path: "/student/alerts" },
-  { icon: "📝", label: "Complaints", path: "/student/complaints" },
-  { icon: "⚠️", label: "Fines", path: "/student/fines" },
-  { icon: "👤", label: "Profile", path: "/student/profile" }
+  { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/student" },
+  { icon: <DoorOpen size={18} />, label: "Gate Pass", path: "/student/gatepass" },
+  { icon: <ClipboardList size={18} />, label: "Leave", path: "/student/leave" },
+  { icon: <CheckSquare size={18} />, label: "Attendance", path: "/student/attendance" },
+  { icon: <CreditCard size={18} />, label: "Fees", path: "/student/fees" },
+  { icon: <Calendar size={18} />, label: "Timetable", path: "/student/timetable" },
+  { icon: <Briefcase size={18} />, label: "Placements", path: "/student/placements" },
+  { icon: <Bell size={18} />, label: "Alerts", path: "/student/alerts" },
+  { icon: <MessageSquareWarning size={18} />, label: "Complaints", path: "/student/complaints" },
+  { icon: <AlertOctagon size={18} />, label: "Fines", path: "/student/fines" },
+  { icon: <User size={18} />, label: "Profile", path: "/student/profile" }
 ];
 
 const staffNav = [
-  { icon: "🏠", label: "Dashboard", path: "/staff" },
-  { icon: "🚪", label: "Gate Pass", path: "/staff/gatepass" },
-  { icon: "📋", label: "Leave", path: "/staff/leave" },
-  { icon: "✅", label: "Attendance", path: "/staff/attendance" },
-  { icon: "🧧", label: "Results", path: "/staff/results" },
-  { icon: "📅", label: "Timetable", path: "/staff/timetable" },
-  { icon: "💼", label: "Placements", path: "/staff/placements" },
-  { icon: "📢", label: "Alerts", path: "/staff/alerts" },
-  { icon: "📝", label: "Complaints", path: "/staff/complaints" },
-  { icon: "⚠️", label: "Fines", path: "/staff/fines" },
-  { icon: "👤", label: "Profile", path: "/staff/profile" }
+  { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/staff" },
+  { icon: <DoorOpen size={18} />, label: "Gate Pass", path: "/staff/gatepass" },
+  { icon: <ClipboardList size={18} />, label: "Leave", path: "/staff/leave" },
+  { icon: <CheckSquare size={18} />, label: "Attendance", path: "/staff/attendance" },
+  { icon: <Award size={18} />, label: "Results", path: "/staff/results" },
+  { icon: <Calendar size={18} />, label: "Timetable", path: "/staff/timetable" },
+  { icon: <Briefcase size={18} />, label: "Placements", path: "/staff/placements" },
+  { icon: <Bell size={18} />, label: "Alerts", path: "/staff/alerts" },
+  { icon: <MessageSquareWarning size={18} />, label: "Complaints", path: "/staff/complaints" },
+  { icon: <AlertOctagon size={18} />, label: "Fines", path: "/staff/fines" },
+  { icon: <User size={18} />, label: "Profile", path: "/staff/profile" }
 ];
 
 const hodNav = [
-  { icon: "🏠", label: "Dashboard", path: "/hod" },
-  { icon: "📋", label: "Leave", path: "/hod/leave" },
-  { icon: "🧧", label: "Results", path: "/hod/results" },
-  { icon: "📅", label: "Timetable", path: "/hod/timetable" },
-  { icon: "💼", label: "Placements", path: "/hod/placements" },
-  { icon: "📢", label: "Alerts", path: "/hod/alerts" },
-  { icon: "⚠️", label: "Verify Fines", path: "/hod/fines" },
-  { icon: "👤", label: "Profile", path: "/hod/profile" }
+  { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/hod" },
+  { icon: <ClipboardList size={18} />, label: "Leave", path: "/hod/leave" },
+  { icon: <Award size={18} />, label: "Results", path: "/hod/results" },
+  { icon: <Calendar size={18} />, label: "Timetable", path: "/hod/timetable" },
+  { icon: <Briefcase size={18} />, label: "Placements", path: "/hod/placements" },
+  { icon: <Bell size={18} />, label: "Alerts", path: "/hod/alerts" },
+  { icon: <AlertOctagon size={18} />, label: "Verify Fines", path: "/hod/fines" },
+  { icon: <User size={18} />, label: "Profile", path: "/hod/profile" }
 ];
 
 const wardenNav = [
-  { icon: "🏠", label: "Dashboard", path: "/warden" },
-  { icon: "🚪", label: "Gate Pass Records", path: "/warden/gatepass" },
-  { icon: "👥", label: "Student Details", path: "/warden/students" },
-  { icon: "📋", label: "Attendance", path: "/warden/attendance" },
-  { icon: "📢", label: "Alerts", path: "/warden/alerts" },
-  { icon: "👤", label: "Profile", path: "/warden/profile" }
+  { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/warden" },
+  { icon: <DoorOpen size={18} />, label: "Gate Pass Records", path: "/warden/gatepass" },
+  { icon: <Users size={18} />, label: "Student Details", path: "/warden/students" },
+  { icon: <CheckSquare size={18} />, label: "Attendance", path: "/warden/attendance" },
+  { icon: <Bell size={18} />, label: "Alerts", path: "/warden/alerts" },
+  { icon: <User size={18} />, label: "Profile", path: "/warden/profile" }
 ];
 
 const officestaffNav = [
-  { icon: "🏠", label: "Dashboard", path: "/officestaff" },
-  { icon: "💰", label: "Fees Collection", path: "/officestaff/fees" },
-  { icon: "📊", label: "Fees Overview", path: "/officestaff/overview" },
-  { icon: "📢", label: "Fees Alerts", path: "/officestaff/alerts" },
-  { icon: "⏳", label: "Verify Fees", path: "/officestaff/verify-fees" },
-  { icon: "👤", label: "Profile", path: "/officestaff/profile" }
+  { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/officestaff" },
+  { icon: <CreditCard size={18} />, label: "Fees Collection", path: "/officestaff/fees" },
+  { icon: <PieChart size={18} />, label: "Fees Overview", path: "/officestaff/overview" },
+  { icon: <Bell size={18} />, label: "Fees Alerts", path: "/officestaff/alerts" },
+  { icon: <Clock size={18} />, label: "Verify Fees", path: "/officestaff/verify-fees" },
+  { icon: <User size={18} />, label: "Profile", path: "/officestaff/profile" }
 ];
 
 const managementNav = [
-  { icon: "🏠", label: "Dashboard", path: "/management" },
-  { icon: "🚪", label: "Gate Passes", path: "/management/gatepass" },
-  { icon: "📋", label: "Attendance", path: "/management/attendance" },
-  { icon: "💰", label: "Fees", path: "/management/fees" },
-  { icon: "🍽️", label: "Mess", path: "/management/mess" },
-  { icon: "🏨", label: "Hostel", path: "/management/hostel" },
-  { icon: "📢", label: "Alerts", path: "/management/alerts" },
-  { icon: "📝", label: "Complaints", path: "/management/complaints" },
-  { icon: "👤", label: "Profile", path: "/management/profile" },
-  { path: "/campus-map", label: "Campus Map", icon: "🗺️" }
+  { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/management" },
+  { icon: <DoorOpen size={18} />, label: "Gate Passes", path: "/management/gatepass" },
+  { icon: <CheckSquare size={18} />, label: "Attendance", path: "/management/attendance" },
+  { icon: <CreditCard size={18} />, label: "Fees", path: "/management/fees" },
+  { icon: <Utensils size={18} />, label: "Mess", path: "/management/mess" },
+  { icon: <Building2 size={18} />, label: "Hostel", path: "/management/hostel" },
+  { icon: <Bell size={18} />, label: "Alerts", path: "/management/alerts" },
+  { icon: <MessageSquareWarning size={18} />, label: "Complaints", path: "/management/complaints" },
+  { icon: <User size={18} />, label: "Profile", path: "/management/profile" },
+  { icon: <MapPin size={18} />, label: "Campus Map", path: "/campus-map" }
 ];
 
 const securityNav = [
-  { icon: "V", label: "Verify Gate Pass", path: "/security/verify" },
-  { icon: "P", label: "Profile", path: "/security/profile" }
+  { icon: <ShieldCheck size={18} />, label: "Verify Gate Pass", path: "/security/verify" },
+  { icon: <User size={18} />, label: "Profile", path: "/security/profile" }
 ];
 
 const principalNav = [
-  { icon: "🏠", label: "Dashboard", path: "/principal" },
-  { icon: "🚪", label: "Gate Pass", path: "/principal/gatepass" },
-  { icon: "📋", label: "Leave Requests", path: "/principal/leave" },
-  { icon: "📢", label: "Circulars", path: "/principal/alerts" },
-  { icon: "👤", label: "Profile", path: "/principal/profile" }
+  { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/principal" },
+  { icon: <DoorOpen size={18} />, label: "Gate Pass", path: "/principal/gatepass" },
+  { icon: <ClipboardList size={18} />, label: "Leave Requests", path: "/principal/leave" },
+  { icon: <Bell size={18} />, label: "Circulars", path: "/principal/alerts" },
+  { icon: <User size={18} />, label: "Profile", path: "/principal/profile" }
 ];
 
 const adminNav = [
-  { icon: "⚡", label: "Dashboard", path: "/admin" },
-  { icon: "👤", label: "Profile", path: "/admin/profile" }
+  { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/admin" },
+  { icon: <User size={18} />, label: "Profile", path: "/admin/profile" }
 ];
 
 export default function Sidebar() {
@@ -120,25 +144,41 @@ export default function Sidebar() {
   }
 
   const roleColors = {
-    student: "#e94560",
-    staff: "#f5a623",
-    hod: "#48bb78",
-    warden: "#4299e1",
-    officestaff: "#48bb78",
-    security: "#e94560",
-    management: "#9f7aea",
-    principal: "#805ad5",
-    admin: "#e53e3e"
+    student: "#3b82f6",
+    staff: "#10b981",
+    hod: "#6366f1",
+    warden: "#0284c7",
+    officestaff: "#06b6d4",
+    security: "#f59e0b",
+    management: "#8b5cf6",
+    principal: "#ec4899",
+    admin: "#ef4444"
   };
-  const color = isSuperAdmin ? "#e53e3e" : (roleColors[role] || "#e94560");
+  const color = isSuperAdmin ? "#ef4444" : (roleColors[role] || "#3b82f6");
 
   const sidebarContent = (
     <>
       <div className="sidebar-logo">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <h2>🎓 College Portal</h2>
-            <p style={{ color }}>{isSuperAdmin ? "SUPER ADMIN" : role?.toUpperCase()} PANEL</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{
+              width: 36,
+              height: 36,
+              borderRadius: 10,
+              background: "rgba(37, 99, 235, 0.15)",
+              border: "1px solid rgba(37, 99, 235, 0.3)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}>
+              <GraduationCap size={22} color="#3b82f6" />
+            </div>
+            <div>
+              <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: "var(--text)" }}>Campus ERP</h2>
+              <p style={{ color, fontSize: 10, fontWeight: 700, letterSpacing: "1px", margin: 0 }}>
+                {isSuperAdmin ? "SUPER ADMIN" : role?.toUpperCase()} PORTAL
+              </p>
+            </div>
           </div>
           {/* Close button for mobile */}
           <button
@@ -148,12 +188,13 @@ export default function Sidebar() {
               display: "none",
               background: "transparent",
               border: "none",
-              color: "white",
-              fontSize: 24,
+              color: "var(--text-muted)",
               cursor: "pointer",
               padding: 4
             }}
-          >✕</button>
+          >
+            <X size={20} />
+          </button>
         </div>
       </div>
 
@@ -174,23 +215,23 @@ export default function Sidebar() {
         <div className="user-info">
           <div className="user-name">{userProfile?.name || "User"}</div>
           <div className="user-role" style={{ color }}>
-            {isSuperAdmin ? "⚡ Super Admin" : (userProfile?.dept ? `${userProfile.dept} • ${role}` : role)}
+            {isSuperAdmin ? "Super Admin" : (userProfile?.dept ? `${userProfile.dept} • ${role}` : role)}
           </div>
         </div>
         <div style={{ display: "flex", gap: "8px" }}>
           <button 
             className="btn-theme"
-            style={{ flex: 1, padding: "10px", margin: 0, fontSize: "14px" }} 
+            style={{ flex: 1, padding: "8px 10px", margin: 0, fontSize: "13px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }} 
             onClick={() => handleNavClick(isSuperAdmin ? "/admin/profile" : `/${role}/profile`)}
           >
-            👤 Profile
+            <User size={14} /> Profile
           </button>
           <button 
             className="btn-logout" 
-            style={{ flex: 1, margin: 0, padding: "10px", fontSize: "14px", marginTop: 0 }} 
+            style={{ flex: 1, margin: 0, padding: "8px 10px", fontSize: "13px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }} 
             onClick={handleLogout}
           >
-            🚪 Logout
+            <LogOut size={14} /> Logout
           </button>
         </div>
       </div>

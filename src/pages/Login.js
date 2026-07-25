@@ -1,10 +1,10 @@
-// src/pages/Login.js
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db, auth } from "../firebase/config";
 import { sendPasswordResetEmail } from "firebase/auth";
+import { GraduationCap, ArrowRight, CheckCircle2 } from "lucide-react";
 
 export default function Login({ onSwitch }) {
   const [email, setEmail] = useState("");
@@ -32,10 +32,8 @@ export default function Login({ onSwitch }) {
         role = userData?.role;
       } catch (firestoreErr) {
         console.error("Firestore read failed (rules issue):", firestoreErr);
-        // Fallback: redirect based on email
       }
 
-      // Super admin redirect
       if (userData?.isSuperAdmin === true || result.user.email === SUPER_ADMIN_EMAIL) {
         navigate("/admin");
       } else if (role === "student") navigate("/student");
@@ -62,7 +60,7 @@ export default function Login({ onSwitch }) {
     }
     try {
       await sendPasswordResetEmail(auth, email);
-      setSuccessMsg("✅ Password reset email sent! Check your inbox (and spam folder).");
+      setSuccessMsg("Password reset email sent! Check your inbox (and spam folder).");
     } catch (err) {
       setError("Could not send reset email. Make sure the email is correct.");
     }
@@ -72,22 +70,27 @@ export default function Login({ onSwitch }) {
     <div className="auth-wrapper">
       <div className="auth-card">
         <div className="auth-logo">
-          <div className="logo-icon">🎓</div>
-          <h1>College Portal</h1>
+          <div className="logo-icon">
+            <GraduationCap size={32} color="#ffffff" />
+          </div>
+          <h1>Campus ERP</h1>
           <p>Sign in to your account</p>
         </div>
 
         {error && <div className="error-msg">{error}</div>}
         {successMsg && <div className="success-msg" style={{
-          background: "rgba(72, 187, 120, 0.15)",
-          border: "1px solid rgba(72, 187, 120, 0.3)",
-          color: "#48bb78",
+          background: "rgba(16, 185, 129, 0.15)",
+          border: "1px solid rgba(16, 185, 129, 0.3)",
+          color: "var(--success)",
           padding: "12px 16px",
           borderRadius: "10px",
           marginBottom: "16px",
           fontSize: "14px",
-          textAlign: "center"
-        }}>{successMsg}</div>}
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          justifyContent: "center"
+        }}><CheckCircle2 size={16} /> {successMsg}</div>}
 
         <form onSubmit={handleLogin}>
           <div className="form-group">
@@ -112,25 +115,23 @@ export default function Login({ onSwitch }) {
           </div>
           <div style={{
             textAlign: "right",
-            marginBottom: "12px",
+            marginBottom: "16px",
             marginTop: "-4px"
           }}>
             <span
               onClick={handleForgotPassword}
               style={{
-                color: "#f56565",
+                color: "var(--highlight)",
                 fontSize: "13px",
                 cursor: "pointer",
-                transition: "opacity 0.2s"
+                fontWeight: 500
               }}
-              onMouseOver={(e) => e.target.style.opacity = "0.8"}
-              onMouseOut={(e) => e.target.style.opacity = "1"}
             >
               Forgot Password?
             </span>
           </div>
           <button className="btn-primary" type="submit" disabled={loading}>
-            {loading ? "Signing in..." : "Sign In →"}
+            {loading ? "Signing in..." : <>Sign In <ArrowRight size={16} /></>}
           </button>
         </form>
 

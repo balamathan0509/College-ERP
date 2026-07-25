@@ -6,6 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+import { DoorOpen, ClipboardList, Bell } from "lucide-react";
 
 export default function PrincipalDashboard() {
   const { userProfile } = useAuth();
@@ -44,25 +45,31 @@ export default function PrincipalDashboard() {
       <main className="main-content">
         <DateTimeHeader />
         <div className="page-header">
-          <h1>🏛️ Principal Dashboard</h1>
-          <p>Welcome back, {userProfile?.name}</p>
+          <h1>Principal Dashboard</h1>
+          <p>Institutional Administration — {userProfile?.name}</p>
         </div>
 
         <div className="stats-grid" style={{ marginTop: 24, marginBottom: 32 }}>
-          <div className="stat-card" onClick={() => navigate("/principal/gatepass")} style={{ cursor: "pointer", border: "1px solid rgba(128,90,213,0.3)", boxShadow: "0 10px 25px rgba(128,90,213,0.15)" }}>
-            <div className="stat-icon">🚪</div>
-            <div className="stat-value" style={{ color: "#805ad5" }}>{stats.pendingGatePasses}</div>
+          <div className="stat-card" onClick={() => navigate("/principal/gatepass")} style={{ cursor: "pointer" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <DoorOpen size={24} color="#8b5cf6" />
+            </div>
+            <div className="stat-value" style={{ color: "#8b5cf6" }}>{stats.pendingGatePasses}</div>
             <div className="stat-label">Gate Passes Forwarded</div>
           </div>
-          <div className="stat-card" onClick={() => navigate("/principal/leave")} style={{ cursor: "pointer", border: "1px solid rgba(128,90,213,0.3)", boxShadow: "0 10px 25px rgba(128,90,213,0.15)" }}>
-            <div className="stat-icon">📋</div>
-            <div className="stat-value" style={{ color: "#805ad5" }}>{stats.pendingLeaves}</div>
+          <div className="stat-card" onClick={() => navigate("/principal/leave")} style={{ cursor: "pointer" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <ClipboardList size={24} color="#8b5cf6" />
+            </div>
+            <div className="stat-value" style={{ color: "#8b5cf6" }}>{stats.pendingLeaves}</div>
             <div className="stat-label">Leaves Pending Approval</div>
           </div>
-          <div className="stat-card" onClick={() => navigate("/principal/alerts")} style={{ cursor: "pointer", border: "1px solid rgba(66,153,225,0.3)", boxShadow: "0 10px 25px rgba(66,153,225,0.15)" }}>
-            <div className="stat-icon">📢</div>
-            <div className="stat-value" style={{ color: "#4299e1" }}>{stats.activeCirculars}</div>
-            <div className="stat-label">Your Active Circulars</div>
+          <div className="stat-card" onClick={() => navigate("/principal/alerts")} style={{ cursor: "pointer" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <Bell size={24} color="#3b82f6" />
+            </div>
+            <div className="stat-value" style={{ color: "#3b82f6" }}>{stats.activeCirculars}</div>
+            <div className="stat-label">Active Circulars</div>
           </div>
         </div>
       </main>

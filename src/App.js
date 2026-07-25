@@ -42,13 +42,16 @@ import OfficeStaffDashboard from "./pages/officestaff/Dashboard";
 import FeesCollection from "./pages/officestaff/FeesCollection";
 import FeesOverview from "./pages/officestaff/FeesOverview";
 import FeesAlerts from "./pages/officestaff/FeesAlerts";
-import VerifyFees from "./pages/officestaff/VerifyFees";
 import CampusMap from "./pages/shared/CampusMap";
 import Signup from "./pages/Signup";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import PrincipalDashboard from "./pages/principal/Dashboard";
 import PrincipalLeave from "./pages/principal/Leave";
 import PrincipalGatePass from "./pages/principal/GatePass";
+import VerifyFees from "./pages/officestaff/VerifyFees";
+import StudentFines from "./pages/student/Fines";
+import StaffFines from "./pages/staff/Fines";
+import OfficeStaffFines from "./pages/officestaff/Fines";
 
 const ComingSoon = ({ title }) => (
   <div style={{
@@ -56,14 +59,13 @@ const ComingSoon = ({ title }) => (
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "#1a1a2e",
-    color: "white",
+    background: "var(--primary)",
+    color: "var(--text)",
     flexDirection: "column",
     gap: 16
   }}>
-    <div style={{ fontSize: 48 }}>🚧</div>
-    <h2 style={{ fontFamily: "Syne" }}>{title}</h2>
-    <p style={{ color: "#a0aec0" }}>Coming soon...</p>
+    <h2 style={{ fontFamily: "Plus Jakarta Sans, sans-serif" }}>{title}</h2>
+    <p style={{ color: "var(--text-muted)" }}>Module under active development...</p>
   </div>
 );
 
@@ -104,6 +106,7 @@ export default function App() {
           <Route path="/staff/alerts" element={<ProtectedRoute allowedRole="staff"><AlertsPage /></ProtectedRoute>} />
           <Route path="/staff/complaints" element={<ProtectedRoute allowedRole="staff"><ComplaintsPage /></ProtectedRoute>} />
           <Route path="/staff/fines" element={<ProtectedRoute allowedRole="staff"><StaffFines /></ProtectedRoute>} />
+
           {/* HOD Routes */}
           <Route path="/hod" element={<ProtectedRoute allowedRole="hod"><HodDashboard /></ProtectedRoute>} />
           <Route path="/hod/gatepass" element={<ProtectedRoute allowedRole="hod"><HodGatePass /></ProtectedRoute>} />
@@ -148,6 +151,7 @@ export default function App() {
           <Route path="/officestaff/overview" element={<ProtectedRoute allowedRole="officestaff"><FeesOverview /></ProtectedRoute>} />
           <Route path="/officestaff/alerts" element={<ProtectedRoute allowedRole="officestaff"><FeesAlerts /></ProtectedRoute>} />
           <Route path="/officestaff/verify-fees" element={<ProtectedRoute allowedRole="officestaff"><VerifyFees /></ProtectedRoute>} />
+          <Route path="/officestaff/fines" element={<ProtectedRoute allowedRole="officestaff"><OfficeStaffFines /></ProtectedRoute>} />
           <Route path="/officestaff/profile" element={<ProtectedRoute allowedRole="officestaff"><Profile /></ProtectedRoute>} />
 
 

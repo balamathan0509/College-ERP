@@ -6,7 +6,16 @@ import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
-
+import {
+  DoorOpen,
+  CreditCard,
+  UserX,
+  Award,
+  MessageSquareWarning,
+  AlertOctagon,
+  AlertTriangle,
+  ArrowRight
+} from "lucide-react";
 
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 
@@ -77,30 +86,11 @@ export default function HodDashboard() {
         todayAbsent = Object.values(records).filter(v => v === false).length;
       }
 
-      // Attendance and absent counts per year
-      const allAttQ = query(
-        collection(db, "attendance"),
-        where("dept", "==", userProfile.dept)
-      );
-      const allAttSnap = await getDocs(allAttQ);
-      allAttSnap.docs.forEach(doc => {
-        const data = doc.data();
-        const year = data.year;
-        if (!yearSummary[year]) return;
-        const records = data.records || {};
-        const absentCount = Object.values(records).filter(v => v === false).length;
-        yearSummary[year].absent += absentCount;
-      });
-
-      // Fees pending per year
-      const feesQ = query(collection(db, "fees"), where("dept", "==", userProfile.dept));
-      const feesSnap = await getDocs(feesQ);
-      feesSnap.docs.forEach(doc => {
-        const data = doc.data();
-        const year = data.year;
-        if (!yearSummary[year]) return;
-        const payments = data.payments || {};
-        yearSummary[year].feesPending += Object.values(payments).filter(v => !v).length;
+      // Fines pending verification
+      const finesSnap = await getDocs(collection(db, "fines"));
+      const pendingFines = finesSnap.docs.filter(d => {
+        const data = d.data();
+        return (data.targetDept === userProfile.dept || data.targetDept === "all") && data.status === "pending_verification";
       });
 
       // Open complaints
@@ -112,40 +102,12 @@ export default function HodDashboard() {
       const compSnap = await getDocs(compQ);
       const openComplaints = compSnap.size;
 
-      let lowAttendanceCount = 0;
-      students.forEach(s => {
-        const total = allAttSnap.docs.filter(r => r.data().records?.[s.id] !== undefined).length;
-        const present = allAttSnap.docs.filter(r => r.data().records?.[s.id] === true).length;
-        const percent = total ? Math.round((present / total) * 100) : 100;
-        if (total > 0 && percent < 75) lowAttendanceCount++;
-      });
-
-      // Pending department fines
-      const finesSnap = await getDocs(collection(db, "fines"));
-      let pendingFinesCount = 0;
-      finesSnap.docs.forEach(doc => {
-        const data = doc.data();
-        if (data.studentUid) {
-          if (data.studentDept === userProfile.dept && (data.status === "pending_verification" || data.paymentDetails?.status === "pending")) {
-            pendingFinesCount++;
-          }
-        } else if (data.payments && (data.targetDept === "all" || data.targetDept === userProfile.dept)) {
-          Object.values(data.payments).forEach(p => {
-            if (p.status === "pending" && p.studentDept === userProfile.dept) {
-              pendingFinesCount++;
-            }
-          });
-        }
-      });
-
-      setStats({ 
-        pendingGatePasses, 
-        totalStudents, 
-        lowAttendanceCount, 
-        pendingFeesCount: Object.values(yearSummary).reduce((sum, y) => sum + y.feesPending, 0), 
-        openComplaints, 
+      setStats({
+        pendingGatePasses,
+        totalStudents,
+        openComplaints,
         todayAbsent,
-        pendingFinesCount
+        pendingFinesCount: pendingFines.length
       });
       setYearSummary(yearSummary);
     } catch (err) {}
@@ -164,12 +126,12 @@ export default function HodDashboard() {
   }, [selectedYear, yearSummary]);
 
   const quickActions = [
-    { icon: "🚪", label: "Gate Pass Approval", action: () => navigate("/hod/gatepass"), color: "#e94560", badge: stats.pendingGatePasses },
-    { icon: "💰", label: "Fees Pending", action: () => navigate("/hod/fees"), color: "#48bb78" },
-    { icon: "❌", label: "Absentees", action: () => navigate("/hod/attendance"), color: "#f5a623", badge: stats.todayAbsent },
-    { icon: "🧾", label: "Results", action: () => navigate("/hod/results"), color: "#7f9cf5" },
-    { icon: "📝", label: "Complaints", action: () => navigate("/hod/complaints"), color: "#f6ad55", badge: stats.openComplaints },
-    { icon: "⚠️", label: "Verify Fines", action: () => navigate("/hod/fines"), color: "#fc8181", badge: stats.pendingFinesCount }
+    { icon: <DoorOpen size={28} color="#3b82f6" />, label: "Gate Pass Approval", action: () => navigate("/hod/gatepass"), badge: stats.pendingGatePasses },
+    { icon: <CreditCard size={28} color="#10b981" />, label: "Fees Overview", action: () => navigate("/hod/fees") },
+    { icon: <UserX size={28} color="#f59e0b" />, label: "Today's Absentees", action: () => navigate("/hod/attendance"), badge: stats.todayAbsent },
+    { icon: <Award size={28} color="#6366f1" />, label: "Department Results", action: () => navigate("/hod/results") },
+    { icon: <MessageSquareWarning size={28} color="#ec4899" />, label: "Student Complaints", action: () => navigate("/hod/complaints"), badge: stats.openComplaints },
+    { icon: <AlertOctagon size={28} color="#ef4444" />, label: "Verify Fines", action: () => navigate("/hod/fines"), badge: stats.pendingFinesCount }
   ];
 
   return (
@@ -178,60 +140,69 @@ export default function HodDashboard() {
       <main className="main-content">
         <DateTimeHeader />
         <div className="page-header">
-          <h1>HOD Dashboard 🏛️</h1>
+          <h1>HOD Dashboard</h1>
           <p>{userProfile?.dept} Department Head</p>
         </div>
 
         {/* Alert for pending fines */}
         {!loading && stats.pendingFinesCount > 0 && (
           <div style={{ 
-            padding: "14px 20px", borderRadius: 12, marginBottom: 24, 
-            background: "rgba(252,129,129,0.1)", border: "1px solid rgba(252,129,129,0.3)", 
+            padding: "14px 20px", borderRadius: "var(--radius-md)", marginBottom: 24, 
+            background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", 
             display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontSize: 20 }}>⚠️</span>
-              <div style={{ color: "#fc8181", fontWeight: 600 }}>{stats.pendingFinesCount} student fine payments pending verification!</div>
+              <AlertTriangle size={20} color="var(--danger)" />
+              <div style={{ color: "var(--danger)", fontWeight: 600 }}>{stats.pendingFinesCount} student fine payments pending verification!</div>
             </div>
-            <button onClick={() => navigate("/hod/fines")} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: "#e94560", color: "white", fontWeight: 600, cursor: "pointer" }}>Verify Now →</button>
+            <button className="btn-primary" onClick={() => navigate("/hod/fines")} style={{ width: "auto", padding: "6px 16px", fontSize: 13, background: "var(--danger)" }}>
+              Verify Now <ArrowRight size={14} />
+            </button>
           </div>
         )}
 
-
-
-
-
-
-
-
         <div className="card" style={{ marginBottom: 24 }}>
-          <h3 style={{ marginBottom: 20, fontFamily: "Syne", fontSize: 18 }}>Quick Actions</h3>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 20 }}>
+          <h3 style={{ marginBottom: 20, fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, fontWeight: 700 }}>Quick Actions</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 20 }}>
             {quickActions.map((action) => (
-              <div key={action.label} onClick={action.action} style={{
-                padding: "28px 20px", borderRadius: 18,
-                border: `1px solid ${action.color}30`,
-                background: `${action.color}10`,
-                cursor: "pointer", textAlign: "center", transition: "all 0.2s",
-                minHeight: 180,
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                position: "relative"
-              }}
-                onMouseOver={e => e.currentTarget.style.transform = "translateY(-3px)"}
-                onMouseOut={e => e.currentTarget.style.transform = "translateY(0)"}
+              <div 
+                key={action.label} 
+                onClick={action.action} 
+                style={{
+                  padding: "24px 20px", 
+                  borderRadius: "var(--radius-md)",
+                  border: "1px solid var(--border)",
+                  background: "rgba(11, 19, 43, 0.4)",
+                  cursor: "pointer", 
+                  textAlign: "center", 
+                  transition: "all 0.2s ease",
+                  minHeight: 140,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  position: "relative"
+                }}
+                onMouseOver={e => {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.borderColor = "rgba(37, 99, 235, 0.4)";
+                  e.currentTarget.style.background = "rgba(37, 99, 235, 0.08)";
+                }}
+                onMouseOut={e => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.borderColor = "var(--border)";
+                  e.currentTarget.style.background = "rgba(11, 19, 43, 0.4)";
+                }}
               >
                 {action.badge > 0 && (
-                  <div style={{ position: "absolute", top: -6, right: -6, width: 20, height: 20, borderRadius: "50%", background: "#fc8181", color: "white", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{action.badge}</div>
+                  <div style={{ position: "absolute", top: 12, right: 12, width: 22, height: 22, borderRadius: "50%", background: "var(--danger)", color: "white", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{action.badge}</div>
                 )}
-                <div style={{ fontSize: 32, marginBottom: 10 }}>{action.icon}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "white" }}>{action.label}</div>
+                <div style={{ marginBottom: 12 }}>{action.icon}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{action.label}</div>
               </div>
             ))}
           </div>
         </div>
-
       </main>
     </div>
   );

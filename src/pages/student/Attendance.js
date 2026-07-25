@@ -4,6 +4,15 @@ import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
 import { collection, query, where, getDocs } from "firebase/firestore";
+import {
+  Calendar,
+  CheckCircle2,
+  Briefcase,
+  XCircle,
+  PieChart,
+  AlertTriangle,
+  Inbox
+} from "lucide-react";
 
 export default function StudentAttendance() {
   const { currentUser, userProfile } = useAuth();
@@ -28,7 +37,7 @@ export default function StudentAttendance() {
         } else if (rawStatus === "OD") {
           status = "OD";
         } else {
-          status = "P"; // true, "P", or undefined
+          status = "P";
         }
         return {
           date: data.date,
@@ -49,60 +58,73 @@ export default function StudentAttendance() {
   const absentDays = records.filter(r => r.status === "A").length;
   const odDays = records.filter(r => r.status === "OD").length;
   const totalDays = records.length;
-  // OD counts as present for percentage
   const percentage = totalDays ? Math.round(((presentDays + odDays) / totalDays) * 100) : 0;
 
-  const percentColor = percentage >= 75 ? "#48bb78" : percentage >= 60 ? "#f6ad55" : "#fc8181";
+  const percentColor = percentage >= 75 ? "var(--success)" : percentage >= 60 ? "var(--warning)" : "var(--danger)";
 
   return (
     <div className="dashboard-wrapper">
       <Sidebar />
       <main className="main-content">
         <div className="page-header">
-          <h1>📋 My Attendance</h1>
-          <p>{userProfile?.dept} • {userProfile?.year}</p>
+          <h1>My Attendance Analytics</h1>
+          <p>{userProfile?.dept} Department • Year {userProfile?.year}</p>
         </div>
 
         {/* Stats */}
         <div className="stats-grid" style={{ marginBottom: 28 }}>
-          <div className="stat-card" style={{ border: "1px solid rgba(255,255,255,0.05)" }}>
-            <div className="stat-icon">📅</div>
+          <div className="stat-card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <Calendar size={24} color="var(--highlight)" />
+            </div>
             <div className="stat-value">{totalDays}</div>
             <div className="stat-label">Total Days</div>
           </div>
-          <div className="stat-card" style={{ border: "1px solid rgba(72,187,120,0.15)" }}>
-            <div className="stat-icon">✅</div>
-            <div className="stat-value" style={{ color: "#48bb78" }}>{presentDays}</div>
-            <div className="stat-label">Present</div>
+          <div className="stat-card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <CheckCircle2 size={24} color="var(--success)" />
+            </div>
+            <div className="stat-value" style={{ color: "var(--success)" }}>{presentDays}</div>
+            <div className="stat-label">Present Days</div>
           </div>
-          <div className="stat-card" style={{ border: "1px solid rgba(245,158,11,0.15)" }}>
-            <div className="stat-icon">💼</div>
-            <div className="stat-value" style={{ color: "#f5a623" }}>{odDays}</div>
+          <div className="stat-card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <Briefcase size={24} color="var(--warning)" />
+            </div>
+            <div className="stat-value" style={{ color: "var(--warning)" }}>{odDays}</div>
             <div className="stat-label">On Duty (OD)</div>
           </div>
-          <div className="stat-card" style={{ border: "1px solid rgba(252,129,129,0.15)" }}>
-            <div className="stat-icon">❌</div>
-            <div className="stat-value" style={{ color: "#fc8181" }}>{absentDays}</div>
-            <div className="stat-label">Absent</div>
+          <div className="stat-card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <XCircle size={24} color="var(--danger)" />
+            </div>
+            <div className="stat-value" style={{ color: "var(--danger)" }}>{absentDays}</div>
+            <div className="stat-label">Absent Days</div>
           </div>
-          <div className="stat-card" style={{ border: "1px solid rgba(255,255,255,0.05)" }}>
-            <div className="stat-icon">📊</div>
+          <div className="stat-card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <PieChart size={24} color={percentColor} />
+            </div>
             <div className="stat-value" style={{ color: percentColor }}>{percentage}%</div>
-            <div className="stat-label">Attendance %</div>
+            <div className="stat-label">Attendance Percentage</div>
           </div>
         </div>
 
         {/* Warning */}
         {percentage < 75 && totalDays > 0 && (
           <div style={{
-            padding: "16px 20px", borderRadius: 12, marginBottom: 24,
-            background: "rgba(252,129,129,0.1)", border: "1px solid rgba(252,129,129,0.3)"
+            padding: "16px 20px", borderRadius: "var(--radius-md)", marginBottom: 24,
+            background: "rgba(239, 68, 68, 0.12)", border: "1px solid rgba(239, 68, 68, 0.3)",
+            display: "flex", alignItems: "center", gap: 14
           }}>
-            <div style={{ color: "#fc8181", fontWeight: 700, fontFamily: "Syne", fontSize: 16, marginBottom: 4 }}>
-              ⚠️ Low Attendance Warning
-            </div>
-            <div style={{ color: "#e2e8f0", fontSize: 14 }}>
-              Your attendance is {percentage}% which is below the required 75%. Please attend classes regularly.
+            <AlertTriangle size={24} color="var(--danger)" />
+            <div>
+              <div style={{ color: "var(--danger)", fontWeight: 700, fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 16, marginBottom: 2 }}>
+                Low Attendance Warning
+              </div>
+              <div style={{ color: "var(--text-muted)", fontSize: 13 }}>
+                Your current attendance is {percentage}%, which is below the mandatory 75% threshold. Please ensure regular attendance.
+              </div>
             </div>
           </div>
         )}
@@ -113,21 +135,25 @@ export default function StudentAttendance() {
             <div className="spinner" style={{ margin: "0 auto" }}></div>
           </div>
         ) : records.length === 0 ? (
-          <div className="card" style={{ textAlign: "center", padding: 60 }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
-            <p style={{ color: "#a0aec0" }}>No attendance records found yet.</p>
+          <div className="card" style={{ textAlign: "center", padding: 50 }}>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+              <Inbox size={48} color="var(--text-muted)" />
+            </div>
+            <p style={{ color: "var(--text-muted)" }}>No attendance records recorded yet.</p>
           </div>
         ) : (
           <div className="card">
-            <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 20 }}>Attendance History</h3>
+            <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, marginBottom: 20, fontWeight: 700 }}>
+              Attendance History & Log
+            </h3>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <table>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-                    <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>Date</th>
-                    <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>Day</th>
-                    <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>Marked By</th>
-                    <th style={{ padding: "12px 16px", textAlign: "center", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>Status</th>
+                  <tr>
+                    <th>Date</th>
+                    <th>Day</th>
+                    <th>Recorded By</th>
+                    <th style={{ textAlign: "center" }}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -135,32 +161,26 @@ export default function StudentAttendance() {
                     const dateObj = new Date(record.date);
                     const day = dateObj.toLocaleDateString("en-US", { weekday: "long" });
                     return (
-                      <tr key={idx} style={{
-                        borderBottom: "1px solid rgba(255,255,255,0.05)",
-                        background:
-                          record.status === "P" ? "rgba(72,187,120,0.03)" :
-                          record.status === "OD" ? "rgba(245,158,11,0.03)" :
-                          "rgba(252,129,129,0.03)"
-                      }}>
-                        <td style={{ padding: "14px 16px", fontWeight: 600, fontSize: 14 }}>{record.date}</td>
-                        <td style={{ padding: "14px 16px", color: "#a0aec0", fontSize: 14 }}>{day}</td>
-                        <td style={{ padding: "14px 16px", color: "#a0aec0", fontSize: 14 }}>{record.markedBy || "Staff"}</td>
-                        <td style={{ padding: "14px 16px", textAlign: "center" }}>
-                          <span style={{
-                            padding: "4px 14px", borderRadius: 20, fontSize: 13, fontWeight: 700,
-                            background:
-                              record.status === "P" ? "rgba(72,187,120,0.15)" :
-                              record.status === "OD" ? "rgba(245,158,11,0.15)" :
-                              "rgba(252,129,129,0.15)",
-                            color:
-                              record.status === "P" ? "#48bb78" :
-                              record.status === "OD" ? "#f5a623" :
-                              "#fc8181"
-                          }}>
-                            {record.status === "P" ? "✅ Present" :
-                             record.status === "OD" ? "💼 On Duty (OD)" :
-                             "❌ Absent"}
-                          </span>
+                      <tr key={idx}>
+                        <td style={{ fontWeight: 600 }}>{record.date}</td>
+                        <td style={{ color: "var(--text-muted)" }}>{day}</td>
+                        <td style={{ color: "var(--text-muted)" }}>{record.markedBy || "Faculty"}</td>
+                        <td style={{ textAlign: "center" }}>
+                          {record.status === "P" && (
+                            <span className="badge badge-success" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                              <CheckCircle2 size={13} /> Present
+                            </span>
+                          )}
+                          {record.status === "OD" && (
+                            <span className="badge badge-warning" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                              <Briefcase size={13} /> On Duty (OD)
+                            </span>
+                          )}
+                          {record.status === "A" && (
+                            <span className="badge badge-danger" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                              <XCircle size={13} /> Absent
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );
