@@ -7,19 +7,28 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import {
+  Calendar,
+  FileSpreadsheet,
+  FileText,
+  Clock,
+  Coffee,
+  Utensils,
+  Inbox
+} from "lucide-react";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 const PERIODS = [
   { label: "9:10 - 9:55", isBreak: false },
   { label: "9:55 - 10:40", isBreak: false },
-  { label: "10:45 - 11:00", isBreak: true, breakLabel: "☕ Short Break" },
+  { label: "10:45 - 11:00", isBreak: true, breakLabel: "Short Break" },
   { label: "11:00 - 11:45", isBreak: false },
   { label: "11:45 - 12:30", isBreak: false },
-  { label: "12:50 - 1:30", isBreak: true, breakLabel: "🍽️ Lunch Break" },
+  { label: "12:50 - 1:30", isBreak: true, breakLabel: "Lunch Break" },
   { label: "1:30 - 2:15", isBreak: false },
   { label: "2:15 - 3:00", isBreak: false },
-  { label: "2:50 - 3:00", isBreak: true, breakLabel: "☕ Short Break" },
+  { label: "2:50 - 3:00", isBreak: true, breakLabel: "Short Break" },
   { label: "3:00 - 3:45", isBreak: false },
   { label: "3:45 - 4:20", isBreak: false }
 ];
@@ -62,14 +71,14 @@ export default function StudentTimetable() {
       const q = query(
         collection(db, "timetable"),
         where("dept", "==", userProfile.dept),
-        where("type", "==", examType),
-        where("year", "==", userProfile.year)
+        where("year", "==", userProfile.year),
+        where("type", "==", "Exam"),
+        where("examType", "==", examType)
       );
       const snap = await getDocs(q);
       if (!snap.empty) {
         const data = snap.docs[0].data();
-        const rows = (data.examRows || []).filter(r => !r.year || r.year === userProfile.year);
-        setExamRows(rows);
+        setExamRows(data.examRows || []);
         setUpdatedBy(data.updatedBy || "");
         setUpdatedAt(data.updatedAt || "");
       } else {
@@ -79,142 +88,182 @@ export default function StudentTimetable() {
     setFetching(false);
   }
 
-  function downloadExamExcel() {
-    const data = examRows.map((r, i) => ({
-      "S.No": i + 1,
-      "Date": r.date,
-      "Session": r.section,
-      "Sub Code": r.subCode,
-      "Subject Name": r.subjectName,
-    }));
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(data);
-    XLSX.utils.book_append_sheet(wb, ws, examType);
-    XLSX.writeFile(wb, `${userProfile.dept}_${userProfile.year}_${examType}.xlsx`);
-  }
-
-  function handleDownloadRegularPDF() {
-    const doc = new jsPDF({ orientation: "landscape" });
-    doc.setFontSize(14);
-    doc.text(`${userProfile.dept} ${userProfile.year} Regular Timetable`, 14, 15);
-
-    const headers = ["Day", ...PERIODS.map(p => p.isBreak ? p.breakLabel : p.label)];
-    const rows = DAYS.map(day => [
-      day,
-      ...PERIODS.map(p => p.isBreak ? "" : (timetable[day]?.[p.label] || "—"))
-    ]);
-
-    autoTable(doc, {
-      startY: 22,
-      head: [headers],
-      body: rows,
-      styles: { fontSize: 9, cellPadding: 2 },
-      headStyles: { fillColor: [229, 69, 96], textColor: 255 },
-      columnStyles: { 0: { cellWidth: 30, halign: "left" } }
-    });
-
-    doc.save(`${userProfile.dept}_${userProfile.year}_Regular_Timetable.pdf`);
-  }
-
-  function handleDownloadExamPDF() {
-    const doc = new jsPDF({ orientation: "portrait" });
-    doc.setFontSize(14);
-    doc.text(`${userProfile.dept} ${userProfile.year} ${examType}`, 14, 15);
-
-    const headers = ["S.No", "Date", "Session", "Sub Code", "Subject Name"];
-    const rows = examRows.map((r, idx) => [
-      idx + 1,
-      r.date ? new Date(r.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—",
-      r.section || "—",
-      r.subCode || "—",
-      r.subjectName || "—"
-    ]);
-
-    autoTable(doc, {
-      startY: 22,
-      head: [headers],
-      body: rows,
-      styles: { fontSize: 9, cellPadding: 2 },
-      headStyles: { fillColor: [72, 187, 120], textColor: 255 }
-    });
-
-    doc.save(`${userProfile.dept}_${userProfile.year}_${examType.replace(/\s+/g, "_")}.pdf`);
-  }
-
   useEffect(() => {
+    if (!userProfile) return;
     if (tab === "regular") fetchRegular();
     else fetchExam();
-  }, [tab, examType]);
+  }, [tab, examType, userProfile]);
 
-  const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
+  function exportRegularExcel() {
+    const rows = DAYS.map(day => {
+      const rowObj = { Day: day };
+      PERIODS.forEach(p => {
+        rowObj[p.label] = p.isBreak ? p.breakLabel : (timetable[day]?.[p.label] || "—");
+      });
+      return rowObj;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Regular Timetable");
+    XLSX.writeFile(workbook, `${userProfile.dept}_${userProfile.year}_Timetable.xlsx`);
+  }
+
+  function exportRegularPDF() {
+    const doc = new jsPDF("l", "pt", "a4");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text(`${userProfile.dept} - ${userProfile.year} Class Timetable`, 40, 40);
+
+    const headers = [["Day", ...PERIODS.map(p => p.isBreak ? p.breakLabel : p.label)]];
+    const body = DAYS.map(day => [
+      day,
+      ...PERIODS.map(p => p.isBreak ? p.breakLabel : (timetable[day]?.[p.label] || "—"))
+    ]);
+
+    autoTable(doc, {
+      startY: 60,
+      head: headers,
+      body,
+      styles: { fontSize: 8, cellPadding: 6, alignment: "center" },
+      headStyles: { fillColor: [37, 99, 235], textColor: 255 }
+    });
+
+    doc.save(`${userProfile.dept}_${userProfile.year}_Timetable.pdf`);
+  }
+
+  function exportExamExcel() {
+    if (examRows.length === 0) return;
+    const rows = examRows.map((r, i) => ({
+      "S.No": i + 1,
+      "Date": r.date || "",
+      "Session": r.session || "",
+      "Subject Code": r.code || "",
+      "Subject Name": r.subject || ""
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Exam Schedule");
+    XLSX.writeFile(workbook, `${userProfile.dept}_${userProfile.year}_Exam_Schedule.xlsx`);
+  }
+
+  function exportExamPDF() {
+    if (examRows.length === 0) return;
+    const doc = new jsPDF("p", "pt", "a4");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.text(`${userProfile.dept} - ${userProfile.year} ${examType} Schedule`, 40, 40);
+
+    const headers = [["S.No", "Date", "Session", "Subject Code", "Subject Name"]];
+    const body = examRows.map((r, i) => [i + 1, r.date, r.session, r.code, r.subject]);
+
+    autoTable(doc, {
+      startY: 60,
+      head: headers,
+      body,
+      styles: { fontSize: 10, cellPadding: 8 },
+      headStyles: { fillColor: [37, 99, 235], textColor: 255 }
+    });
+
+    doc.save(`${userProfile.dept}_${userProfile.year}_Exam_Schedule.pdf`);
+  }
+
+  const todayIndex = new Date().getDay();
+  const dayMap = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const today = dayMap[todayIndex];
 
   return (
     <div className="dashboard-wrapper">
       <Sidebar />
       <main className="main-content">
-
         <div className="page-header">
-          <h1>📅 My Timetable</h1>
-          <p>{userProfile?.dept} • {userProfile?.year}</p>
+          <h1>Class Schedule & Exams</h1>
+          <p>{userProfile?.dept} Department • Year {userProfile?.year}</p>
         </div>
 
-        {/* Tab Switcher */}
-        <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
-          {["regular", "exam"].map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{
-              padding: "10px 24px", borderRadius: 10, border: "none",
-              cursor: "pointer", fontFamily: "Syne", fontWeight: 600, fontSize: 14,
-              background: tab === t ? "#e94560" : "rgba(255,255,255,0.07)",
-              color: "white", transition: "all 0.2s",
-            }}>
-              {t === "regular" ? "📚 Regular" : "📝 Exam Timetable"}
-            </button>
-          ))}
+        {/* Tab Toggle */}
+        <div style={{ display: "flex", gap: 12, marginBottom: 24, borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+          <button
+            onClick={() => setTab("regular")}
+            style={{
+              padding: "8px 18px", borderRadius: 20, border: "none", cursor: "pointer",
+              fontSize: 13, fontWeight: 600, transition: "all 0.2s ease",
+              background: tab === "regular" ? "rgba(37, 99, 235, 0.18)" : "rgba(255,255,255,0.04)",
+              color: tab === "regular" ? "var(--highlight)" : "var(--text-muted)"
+            }}
+          >
+            Class Timetable
+          </button>
+          <button
+            onClick={() => setTab("exam")}
+            style={{
+              padding: "8px 18px", borderRadius: 20, border: "none", cursor: "pointer",
+              fontSize: 13, fontWeight: 600, transition: "all 0.2s ease",
+              background: tab === "exam" ? "rgba(37, 99, 235, 0.18)" : "rgba(255,255,255,0.04)",
+              color: tab === "exam" ? "var(--highlight)" : "var(--text-muted)"
+            }}
+          >
+            Exam Schedule
+          </button>
         </div>
 
-        {updatedAt && (
-          <div style={{ color: "#a0aec0", fontSize: 13, marginBottom: 16 }}>
-            Last updated by <strong style={{ color: "#e2e8f0" }}>{updatedBy}</strong> on {new Date(updatedAt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}
-          </div>
-        )}
-
-        {fetching ? (
-          <div style={{ textAlign: "center", padding: 60 }}>
-            <div className="spinner" style={{ margin: "0 auto" }}></div>
-          </div>
-
-        ) : tab === "regular" ? (
-          // ════════ REGULAR TAB ════════
-          Object.keys(timetable).length === 0 ? (
-            <div className="card" style={{ textAlign: "center", padding: 60 }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
-              <p style={{ color: "#a0aec0" }}>No regular timetable posted yet.</p>
+        {/* REGULAR TIMETABLE TAB */}
+        {tab === "regular" && (
+          fetching ? (
+            <div style={{ textAlign: "center", padding: 60 }}>
+              <div className="spinner" style={{ margin: "0 auto" }}></div>
+            </div>
+          ) : Object.keys(timetable).length === 0 ? (
+            <div className="card" style={{ textAlign: "center", padding: 50 }}>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+                <Inbox size={48} color="var(--text-muted)" />
+              </div>
+              <p style={{ color: "var(--text-muted)" }}>No timetable published yet for {userProfile?.dept} • {userProfile?.year}.</p>
             </div>
           ) : (
             <div className="card">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 12 }}>
-                <h3 style={{ fontFamily: "Syne", fontSize: 18 }}>Regular Timetable — {userProfile?.year}</h3>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button onClick={handleDownloadRegularPDF} style={{
-                    padding: "8px 18px", borderRadius: 8,
-                    border: "1px solid rgba(72,187,120,0.3)",
-                    background: "rgba(72,187,120,0.1)", color: "#48bb78",
-                    cursor: "pointer", fontWeight: 600, fontSize: 13,
-                  }}>📄 Download PDF</button>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 14 }}>
+                <div>
+                  <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, fontWeight: 700 }}>
+                    Weekly Class Schedule
+                  </h3>
+                  {updatedAt && (
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                      Last updated: {new Date(updatedAt).toLocaleDateString("en-IN")} • By {updatedBy}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    className="btn-secondary"
+                    onClick={exportRegularExcel}
+                    style={{ margin: 0, padding: "8px 14px", fontSize: 13, width: "auto", display: "inline-flex", alignItems: "center", gap: 6 }}
+                  >
+                    <FileSpreadsheet size={14} /> Excel
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    onClick={exportRegularPDF}
+                    style={{ margin: 0, padding: "8px 14px", fontSize: 13, width: "auto", display: "inline-flex", alignItems: "center", gap: 6 }}
+                  >
+                    <FileText size={14} /> PDF
+                  </button>
                 </div>
               </div>
 
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1000 }}>
+                <table>
                   <thead>
-                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-                      <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase", minWidth: 110 }}>Day</th>
+                    <tr>
+                      <th style={{ minWidth: 110 }}>Day</th>
                       {PERIODS.map((p, i) => (
                         <th key={i} style={{
-                          padding: "10px 6px", textAlign: "center", fontSize: 11, fontWeight: 600,
-                          minWidth: p.isBreak ? 70 : 100,
-                          color: p.isBreak ? "#f5a623" : "#a0aec0",
-                          background: p.isBreak ? "rgba(245,166,35,0.07)" : "transparent",
+                          textAlign: "center", fontSize: 11,
+                          minWidth: p.isBreak ? 80 : 110,
+                          color: p.isBreak ? "var(--warning)" : "var(--text-muted)",
+                          background: p.isBreak ? "rgba(245,158,11,0.06)" : "transparent"
                         }}>
                           {p.isBreak ? p.breakLabel : p.label}
                         </th>
@@ -223,31 +272,27 @@ export default function StudentTimetable() {
                   </thead>
                   <tbody>
                     {DAYS.map(day => (
-                      <tr key={day} style={{
-                        borderBottom: "1px solid rgba(255,255,255,0.05)",
-                        background: day === today ? "rgba(233,69,96,0.04)" : "transparent",
-                      }}>
-                        <td style={{ padding: "12px 16px" }}>
-                          <div style={{ fontWeight: 700, fontFamily: "Syne", fontSize: 14, color: day === today ? "#e94560" : "#e2e8f0" }}>
-                            {day === today ? "👉 " : ""}{day}
-                            {day === today && (
-                              <span style={{ fontSize: 11, color: "#a0aec0", fontFamily: "DM Sans", fontWeight: 400, display: "block" }}>Today</span>
-                            )}
-                          </div>
+                      <tr key={day} style={{ background: day === today ? "rgba(37, 99, 235, 0.08)" : "transparent" }}>
+                        <td style={{ fontWeight: 700 }}>
+                          <span style={{ color: day === today ? "var(--highlight)" : "var(--text)" }}>{day}</span>
+                          {day === today && <div style={{ fontSize: 10, color: "var(--highlight)", fontWeight: 600 }}>TODAY</div>}
                         </td>
                         {PERIODS.map((period, i) => {
                           const subject = !period.isBreak ? (timetable[day]?.[period.label] || "") : null;
                           return (
-                            <td key={i} style={{ padding: "8px 4px", textAlign: "center", background: period.isBreak ? "rgba(245,166,35,0.05)" : "transparent" }}>
+                            <td key={i} style={{ textAlign: "center", background: period.isBreak ? "rgba(245,158,11,0.04)" : "transparent" }}>
                               {period.isBreak ? (
-                                <div style={{ color: "rgba(245,166,35,0.3)", fontSize: 16 }}>—</div>
+                                <div style={{ color: "var(--warning)", fontSize: 11, display: "flex", justifyContent: "center", alignItems: "center", gap: 4 }}>
+                                  {period.breakLabel.includes("Lunch") ? <Utensils size={12} /> : <Coffee size={12} />}
+                                  {period.breakLabel}
+                                </div>
                               ) : subject ? (
                                 <div style={{
-                                  padding: "8px 6px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                                  background: "rgba(233,69,96,0.12)", border: "1px solid rgba(233,69,96,0.25)", color: "white",
+                                  padding: "6px 8px", borderRadius: "var(--radius-sm)", fontSize: 12, fontWeight: 600,
+                                  background: "rgba(37, 99, 235, 0.12)", border: "1px solid rgba(37, 99, 235, 0.25)", color: "var(--text)"
                                 }}>{subject}</div>
                               ) : (
-                                <div style={{ color: "rgba(255,255,255,0.15)", fontSize: 18 }}>—</div>
+                                <div style={{ color: "var(--border)", fontSize: 14 }}>—</div>
                               )}
                             </td>
                           );
@@ -259,75 +304,69 @@ export default function StudentTimetable() {
               </div>
             </div>
           )
+        )}
 
-        ) : (
-          // ════════ EXAM TAB ════════
-          <>
-            <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
-              {["Internal Exam", "Semester Exam"].map(t => (
-                <button key={t} onClick={() => setExamType(t)} style={{
-                  padding: "10px 20px", borderRadius: 10, border: "none",
-                  cursor: "pointer", fontFamily: "Syne", fontWeight: 600, fontSize: 14,
-                  background: examType === t ? (t === "Internal Exam" ? "#f5a623" : "#e94560") : "rgba(255,255,255,0.07)",
-                  color: "white", transition: "all 0.2s",
-                }}>
-                  {t === "Internal Exam" ? "📝 Internal Exam" : "📋 Semester Exam"}
-                </button>
-              ))}
+        {/* EXAM TIMETABLE TAB */}
+        {tab === "exam" && (
+          <div>
+            <div className="card" style={{ marginBottom: 20 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)", margin: 0 }}>Exam Type:</label>
+                  <select value={examType} onChange={e => setExamType(e.target.value)} style={{ width: "auto" }}>
+                    <option value="Internal Exam">Internal Exam</option>
+                    <option value="Model Exam">Model Exam</option>
+                    <option value="Semester Exam">Semester Exam</option>
+                  </select>
+                </div>
+
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button className="btn-secondary" onClick={exportExamExcel} style={{ margin: 0, padding: "8px 14px", fontSize: 13, width: "auto", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <FileSpreadsheet size={14} /> Excel
+                  </button>
+                  <button className="btn-secondary" onClick={exportExamPDF} style={{ margin: 0, padding: "8px 14px", fontSize: 13, width: "auto", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <FileText size={14} /> PDF
+                  </button>
+                </div>
+              </div>
             </div>
 
-            {examRows.length === 0 ? (
-              <div className="card" style={{ textAlign: "center", padding: 60 }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
-                <p style={{ color: "#a0aec0" }}>No {examType} timetable posted yet.</p>
+            {fetching ? (
+              <div style={{ textAlign: "center", padding: 60 }}>
+                <div className="spinner" style={{ margin: "0 auto" }}></div>
+              </div>
+            ) : examRows.length === 0 ? (
+              <div className="card" style={{ textAlign: "center", padding: 50 }}>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+                  <Inbox size={48} color="var(--text-muted)" />
+                </div>
+                <p style={{ color: "var(--text-muted)" }}>No {examType} schedule published yet.</p>
               </div>
             ) : (
               <div className="card">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
-                  <h3 style={{ fontFamily: "Syne", fontSize: 18 }}>{examType} — {userProfile?.year}</h3>
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <button onClick={downloadExamExcel} style={{
-                      padding: "8px 18px", borderRadius: 8,
-                      border: "1px solid rgba(66,153,225,0.3)",
-                      background: "rgba(66,153,225,0.1)", color: "#4299e1",
-                      cursor: "pointer", fontWeight: 600, fontSize: 13,
-                    }}>📊 Download Excel</button>
-                    <button onClick={handleDownloadExamPDF} style={{
-                      padding: "8px 18px", borderRadius: 8,
-                      border: "1px solid rgba(72,187,120,0.3)",
-                      background: "rgba(72,187,120,0.1)", color: "#48bb78",
-                      cursor: "pointer", fontWeight: 600, fontSize: 13,
-                    }}>📄 Download PDF</button>
-                  </div>
-                </div>
-
                 <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <table>
                     <thead>
-                      <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-                        {["S.No", "Date", "Session", "Sub Code", "Subject Name"].map((h, i) => (
-                          <th key={i} style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>{h}</th>
-                        ))}
+                      <tr>
+                        <th>S.No</th>
+                        <th>Date</th>
+                        <th>Session</th>
+                        <th>Subject Code</th>
+                        <th>Subject Title</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {examRows.map((row, idx) => (
-                        <tr key={idx} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                          <td style={{ padding: "14px 16px", color: "#a0aec0", fontSize: 14 }}>{idx + 1}</td>
-                          <td style={{ padding: "14px 16px", fontWeight: 600, fontSize: 15 }}>
-                            {row.date ? new Date(row.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
-                          </td>
-                          <td style={{ padding: "14px 16px" }}>
-                            <span style={{
-                              padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600,
-                              background: row.section?.includes("FN") ? "rgba(66,153,225,0.15)" : "rgba(245,166,35,0.15)",
-                              color: row.section?.includes("FN") ? "#4299e1" : "#f5a623",
-                            }}>
-                              {row.section?.includes("FN") ? "🌅 FN 10:00AM–11:30AM" : "🌆 AN 2:30PM–4:00PM"}
+                      {examRows.map((r, i) => (
+                        <tr key={i}>
+                          <td style={{ color: "var(--text-muted)" }}>{i + 1}</td>
+                          <td style={{ fontWeight: 600 }}>{r.date}</td>
+                          <td>
+                            <span className="badge" style={{ background: "rgba(37, 99, 235, 0.12)", color: "var(--highlight)", border: "1px solid rgba(37, 99, 235, 0.3)" }}>
+                              {r.session}
                             </span>
                           </td>
-                          <td style={{ padding: "14px 16px", color: "#a0aec0", fontSize: 14, fontWeight: 600 }}>{row.subCode}</td>
-                          <td style={{ padding: "14px 16px", fontWeight: 600, fontSize: 15 }}>{row.subjectName}</td>
+                          <td style={{ fontFamily: "monospace", fontWeight: 600 }}>{r.code}</td>
+                          <td style={{ fontWeight: 600 }}>{r.subject}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -335,9 +374,8 @@ export default function StudentTimetable() {
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
-
       </main>
     </div>
   );

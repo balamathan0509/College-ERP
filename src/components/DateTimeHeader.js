@@ -1,5 +1,6 @@
 // src/components/DateTimeHeader.js
 import React, { useState, useEffect } from "react";
+import { Calendar, Clock } from "lucide-react";
 
 export default function DateTimeHeader() {
   const [now, setNow] = useState(new Date());
@@ -28,20 +29,20 @@ export default function DateTimeHeader() {
       display: "flex",
       justifyContent: "space-between",
       alignItems: "center",
-      padding: "14px 20px",
+      padding: "12px 20px",
       marginBottom: 24,
-      borderRadius: 14,
-      background: "rgba(255,255,255,0.04)",
-      border: "1px solid rgba(255,255,255,0.08)",
-      backdropFilter: "blur(10px)"
+      borderRadius: "var(--radius-md)",
+      background: "rgba(11, 19, 43, 0.5)",
+      border: "1px solid var(--border)",
+      backdropFilter: "blur(12px)"
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 20 }}>📅</span>
+        <Calendar size={18} color="var(--highlight)" />
         <span style={{
           fontSize: 14,
           fontWeight: 600,
-          color: "#e2e8f0",
-          fontFamily: "'DM Sans', sans-serif"
+          color: "var(--text)",
+          fontFamily: "Inter, sans-serif"
         }}>
           {dateStr}
         </span>
@@ -51,17 +52,17 @@ export default function DateTimeHeader() {
         alignItems: "center",
         gap: 8,
         padding: "6px 14px",
-        borderRadius: 10,
-        background: "rgba(233,69,96,0.1)",
-        border: "1px solid rgba(233,69,96,0.2)"
+        borderRadius: "var(--radius-sm)",
+        background: "rgba(37, 99, 235, 0.12)",
+        border: "1px solid rgba(37, 99, 235, 0.3)"
       }}>
-        <span style={{ fontSize: 14 }}>🕐</span>
+        <Clock size={16} color="var(--highlight)" />
         <span style={{
-          fontSize: 15,
+          fontSize: 14,
           fontWeight: 700,
-          color: "#e94560",
-          fontFamily: "'Syne', sans-serif",
-          letterSpacing: "0.5px",
+          color: "var(--highlight)",
+          fontFamily: "Plus Jakarta Sans, sans-serif",
+          letterSpacing: "0.02em",
           fontVariantNumeric: "tabular-nums"
         }}>
           {timeStr}

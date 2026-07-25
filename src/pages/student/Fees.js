@@ -5,6 +5,18 @@ import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
 import { collection, getDocs, query, where, doc, updateDoc, setDoc, getDoc } from "firebase/firestore";
 import { QRCodeSVG } from "qrcode.react";
+import {
+  CreditCard,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  Calendar,
+  DollarSign,
+  QrCode,
+  X,
+  Upload,
+  ArrowRight
+} from "lucide-react";
 
 const FEES_TYPES = ["College Fees", "Bus Fees", "Mess Fees", "Exam Fees", "Library Fees", "Other"];
 
@@ -20,7 +32,6 @@ const DEFAULT_FEE_AMOUNTS = {
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const CURRENT_MONTH = monthNames[new Date().getMonth()] + " " + new Date().getFullYear();
 
-// Fee types that are charged monthly (auto-created each month)
 const MONTHLY_FEE_TYPES = ["Mess Fees"];
 
 export default function StudentFees() {
@@ -29,7 +40,7 @@ export default function StudentFees() {
   const [fetching, setFetching] = useState(true);
 
   // Payment Form States
-  const [payingFee, setPayingFee] = useState(null); // fee item object
+  const [payingFee, setPayingFee] = useState(null);
   const [payAmount, setPayAmount] = useState("");
   const [utrNumber, setUtrNumber] = useState("");
   const [screenshotFile, setScreenshotFile] = useState(null);
@@ -37,57 +48,64 @@ export default function StudentFees() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // UPI deep link generation
   function getUpiUri(feesType, amount) {
-    const collegeVpa = "hassankamala666@okaxis";
+    const collegeVpa = "9842491176@ptsbi";
     const collegeName = "Sri Vidyanikethan College ERP";
     const refNote = `Fees - ${feesType} - ${userProfile?.registerNo || ""}`.substring(0, 50);
     return `upi://pay?pa=${collegeVpa}&pn=${encodeURIComponent(collegeName)}&am=${amount}&cu=INR&tn=${encodeURIComponent(refNote)}`;
   }
 
-  // Helper to compress and convert image file to Base64 (Data URL)
   function compressAndToBase64(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
-      reader.onload = (event) => {
+      reader.onload = (e) => {
         const img = new Image();
-        img.src = event.target.result;
+        img.src = e.target.result;
         img.onload = () => {
           const canvas = document.createElement("canvas");
           let width = img.width;
           let height = img.height;
-          const MAX_WIDTH = 800;
-          const MAX_HEIGHT = 800;
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height = Math.round((height * MAX_WIDTH) / width);
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width = Math.round((width * MAX_HEIGHT) / height);
-              height = MAX_HEIGHT;
+          const maxDim = 1000;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
             }
           }
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL("image/jpeg", 0.6));
+          resolve(canvas.toDataURL("image/jpeg", 0.7));
         };
-        img.onerror = (e) => reject(e);
+        img.onerror = (err) => reject(err);
       };
-      reader.onerror = (e) => reject(e);
+      reader.onerror = (err) => reject(err);
     });
   }
 
-  // Handle fee payment submission
+  function handleOpenPayModal(feeItem) {
+    setPayingFee(feeItem);
+    setPayAmount(feeItem.amount || DEFAULT_FEE_AMOUNTS[feeItem.feesType] || "");
+    setUtrNumber("");
+    setScreenshotFile(null);
+    setUploadProgress(0);
+    setErrorMsg("");
+  }
+
   async function handlePaymentSubmit(e) {
     e.preventDefault();
-    if (!payingFee || !utrNumber.trim() || !screenshotFile || !payAmount) return;
+    if (!payingFee) return;
 
-    // Validate 12-digit UTR
+    if (!screenshotFile) {
+      setErrorMsg("Please select a transaction screenshot.");
+      return;
+    }
+
     if (!/^\d{12}$/.test(utrNumber.trim())) {
       setErrorMsg("Please enter a valid 12-digit UPI Transaction ID (UTR number).");
       return;
@@ -102,105 +120,109 @@ export default function StudentFees() {
       const screenshotUrl = await compressAndToBase64(screenshotFile);
       setUploadProgress(100);
 
-      const feeDocRef = doc(db, "fees", payingFee.docId);
       const timestamp = new Date().toISOString();
+      const amountPaidNum = Number(payAmount) || payingFee.amount || 0;
 
-      await updateDoc(feeDocRef, {
-        [`payments.${currentUser.uid}`]: {
-          status: "pending",
-          transactionId: utrNumber.trim(),
-          screenshotUrl,
-          amountPaid: Number(payAmount),
-          submittedAt: timestamp,
-          studentName: userProfile?.name || "Student",
-          studentRegisterNo: userProfile?.registerNo || "N/A",
-          studentDept: userProfile?.dept || "",
-          studentYear: userProfile?.year || ""
+      const paymentData = {
+        status: "pending",
+        transactionId: utrNumber.trim(),
+        screenshotUrl,
+        amountPaid: amountPaidNum,
+        paidAt: timestamp,
+        studentName: userProfile?.name || "Student",
+        studentRegisterNo: userProfile?.registerNo || "N/A",
+        studentDept: userProfile?.dept || "",
+        studentYear: userProfile?.year || ""
+      };
+
+      if (payingFee.docId) {
+        const feeDocRef = doc(db, "fees", payingFee.docId);
+        await updateDoc(feeDocRef, {
+          [`payments.${currentUser.uid}`]: paymentData
+        });
+      } else {
+        const isMonthly = MONTHLY_FEE_TYPES.includes(payingFee.feesType);
+        let docId = `${userProfile.dept}_${userProfile.year}_${payingFee.feesType}`.replace(/\s+/g, "_");
+        let extraFields = {};
+
+        if (isMonthly) {
+          docId += `_${CURRENT_MONTH.replace(/\s+/g, "_")}`;
+          extraFields = { month: CURRENT_MONTH };
         }
-      });
 
-      // Cleanup
+        const feeDocRef = doc(db, "fees", docId);
+        await setDoc(feeDocRef, {
+          dept: userProfile.dept,
+          year: userProfile.year,
+          feesType: payingFee.feesType,
+          amount: payingFee.amount || DEFAULT_FEE_AMOUNTS[payingFee.feesType] || 0,
+          updatedAt: timestamp,
+          ...extraFields,
+          payments: {
+            [currentUser.uid]: paymentData
+          }
+        }, { merge: true });
+      }
+
       setPayingFee(null);
-      setPayAmount("");
-      setUtrNumber("");
-      setScreenshotFile(null);
-      setUploadProgress(0);
-      await fetchFeesStatus();
+      setSubmitting(false);
+      fetchFeesStatus();
     } catch (err) {
-      console.error("Fees payment submit failed:", err);
-      setErrorMsg("Failed to submit payment details. Please try again.");
+      console.error("Payment submission failed:", err);
+      setErrorMsg("Failed to upload screenshot or submit payment details. Please try again.");
+      setSubmitting(false);
     }
-    setSubmitting(false);
   }
 
   async function fetchFeesStatus() {
+    if (!userProfile) return;
     setFetching(true);
     try {
       const results = [];
       for (const feesType of FEES_TYPES) {
-        // Exclude fees that are not applicable to this student
-        const isApplicable = userProfile.applicableFees
-          ? userProfile.applicableFees[feesType] !== false
-          : (
-              feesType !== "Mess Fees" && feesType !== "Bus Fees"
-            ) || (
-              feesType === "Mess Fees" && userProfile.studentType === "hosteller"
-            ) || (
-              feesType === "Bus Fees" && userProfile.busUser === true
-            );
-
-        if (!isApplicable) continue;
-
-        const isMonthly = MONTHLY_FEE_TYPES.includes(feesType);
-
-        // Skip monthly mess fees if office staff has disabled it for this student
-        if (isMonthly && feesType === "Mess Fees" && userProfile.monthlyMessFees === false) continue;
-
         try {
+          const isMonthly = MONTHLY_FEE_TYPES.includes(feesType);
           if (isMonthly) {
-            // Monthly fees: use deterministic docId per dept/year/type/month
-            const monthDocId = `${userProfile.dept}_${userProfile.year}_${feesType}_${CURRENT_MONTH}`.replace(/\s+/g, "_");
-            const monthDocRef = doc(db, "fees", monthDocId);
-            let monthDoc = await getDoc(monthDocRef);
+            const snap = await getDocs(query(
+              collection(db, "fees"),
+              where("dept", "==", userProfile.dept),
+              where("year", "==", userProfile.year),
+              where("feesType", "==", feesType),
+              where("month", "==", CURRENT_MONTH)
+            ));
 
-            // Auto-create this month's mess fees document if it doesn't exist
-            if (!monthDoc.exists()) {
-              const studentAmount = userProfile.feeAmounts?.[feesType] !== undefined
-                ? Number(userProfile.feeAmounts[feesType])
-                : DEFAULT_FEE_AMOUNTS[feesType];
+            let docId = null;
+            let paid = false;
+            let data = {};
+            let studentAmount = userProfile.feeAmounts?.[feesType] !== undefined
+              ? Number(userProfile.feeAmounts[feesType])
+              : DEFAULT_FEE_AMOUNTS[feesType];
 
-              await setDoc(monthDocRef, {
-                dept: userProfile.dept,
-                year: userProfile.year,
-                feesType: feesType,
-                month: CURRENT_MONTH,
-                amount: studentAmount,
-                payments: {},
-                updatedAt: new Date().toISOString(),
-                updatedBy: "System (Auto-generated)",
-                autoGenerated: true
-              });
-              monthDoc = await getDoc(monthDocRef);
+            if (!snap.empty) {
+              const docSnap = snap.docs[0];
+              data = docSnap.data();
+              docId = docSnap.id;
+              paid = data.payments?.[currentUser.uid] || false;
+              if (data.amount) studentAmount = data.amount;
             }
 
-            const data = monthDoc.data();
-            const paid = data.payments?.[currentUser.uid] || false;
-            const studentAmount = userProfile.feeAmounts?.[feesType] !== undefined
-              ? Number(userProfile.feeAmounts[feesType])
-              : (data.amount || DEFAULT_FEE_AMOUNTS[feesType]);
-
             results.push({
-              feesType,
+              feesType: `${feesType} (${CURRENT_MONTH})`,
+              rawType: feesType,
               paid,
               updatedAt: data.updatedAt,
-              docId: monthDocId,
+              docId,
               amount: studentAmount,
-              month: CURRENT_MONTH,
               isMonthly: true
             });
           } else {
-            // Non-monthly fees: original query logic
-            const snap = await getDocs(query(collection(db, "fees"), where("dept", "==", userProfile.dept), where("year", "==", userProfile.year), where("feesType", "==", feesType)));
+            const snap = await getDocs(query(
+              collection(db, "fees"),
+              where("dept", "==", userProfile.dept),
+              where("year", "==", userProfile.year),
+              where("feesType", "==", feesType)
+            ));
+
             if (!snap.empty) {
               const docSnap = snap.docs[0];
               const data = docSnap.data();
@@ -209,27 +231,29 @@ export default function StudentFees() {
                 ? Number(userProfile.feeAmounts[feesType])
                 : (data.amount || DEFAULT_FEE_AMOUNTS[feesType]);
 
-              results.push({ 
-                feesType, 
-                paid, 
-                updatedAt: data.updatedAt, 
-                docId: docSnap.id, 
-                amount: studentAmount 
+              results.push({
+                feesType,
+                rawType: feesType,
+                paid,
+                updatedAt: data.updatedAt,
+                docId: docSnap.id,
+                amount: studentAmount
               });
             } else {
               const studentAmount = userProfile.feeAmounts?.[feesType] !== undefined
                 ? Number(userProfile.feeAmounts[feesType])
                 : DEFAULT_FEE_AMOUNTS[feesType];
 
-              results.push({ 
-                feesType, 
+              results.push({
+                feesType,
+                rawType: feesType,
                 paid: null,
                 amount: studentAmount
               });
             }
           }
         } catch (e) {
-          results.push({ feesType, paid: null });
+          results.push({ feesType, rawType: feesType, paid: null });
         }
       }
       setFeesStatus(results);
@@ -247,26 +271,32 @@ export default function StudentFees() {
       <Sidebar />
       <main className="main-content">
         <div className="page-header">
-          <h1>💰 My Fees Status</h1>
-          <p>{userProfile?.dept} • {userProfile?.year}</p>
+          <h1>My Fees & Tuition Status</h1>
+          <p>{userProfile?.dept} Department • Year {userProfile?.year}</p>
         </div>
 
         {/* Stats */}
         <div className="stats-grid" style={{ marginBottom: 28 }}>
           <div className="stat-card">
-            <div className="stat-icon">✅</div>
-            <div className="stat-value" style={{ color: "#48bb78" }}>{paidCount}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <CheckCircle2 size={24} color="var(--success)" />
+            </div>
+            <div className="stat-value" style={{ color: "var(--success)" }}>{paidCount}</div>
             <div className="stat-label">Fees Paid</div>
           </div>
           <div className="stat-card">
-            <div className="stat-icon">⏳</div>
-            <div className="stat-value" style={{ color: "#fc8181" }}>{pendingCount}</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <Clock size={24} color="var(--danger)" />
+            </div>
+            <div className="stat-value" style={{ color: "var(--danger)" }}>{pendingCount}</div>
             <div className="stat-label">Fees Pending</div>
           </div>
           <div className="stat-card">
-            <div className="stat-icon">📋</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <CreditCard size={24} color="var(--highlight)" />
+            </div>
             <div className="stat-value">{feesStatus.filter(f => f.paid === null).length}</div>
-            <div className="stat-label">Not Updated Yet</div>
+            <div className="stat-label">Not Updated</div>
           </div>
         </div>
 
@@ -276,7 +306,7 @@ export default function StudentFees() {
             <div className="spinner" style={{ margin: "0 auto" }}></div>
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
             {feesStatus.map((feeItem) => {
               const { feesType, paid, updatedAt, amount } = feeItem;
               const isPaid = paid === true || paid?.status === "approved";
@@ -284,265 +314,193 @@ export default function StudentFees() {
               const isRejected = paid?.status === "rejected";
               const isUnpaid = paid === false;
               
-              let statusLabel = "— N/A";
-              let statusBg = "rgba(160,174,192,0.15)";
-              let statusColor = "#a0aec0";
-              let borderLeftColor = "#a0aec0";
+              let statusLabel = "Not Generated";
+              let statusBg = "rgba(148, 163, 184, 0.14)";
+              let statusColor = "var(--text-muted)";
+              let borderLeftColor = "var(--text-muted)";
+              let StatusIcon = Clock;
 
               if (isPaid) {
-                statusLabel = "✅ Paid";
-                statusBg = "rgba(72,187,120,0.15)";
-                statusColor = "#48bb78";
-                borderLeftColor = "#48bb78";
+                statusLabel = "Paid & Verified";
+                statusBg = "rgba(16, 185, 129, 0.14)";
+                statusColor = "var(--success)";
+                borderLeftColor = "var(--success)";
+                StatusIcon = CheckCircle2;
               } else if (isPending) {
-                statusLabel = "⏳ Verification Pending";
-                statusBg = "rgba(245,166,35,0.15)";
-                statusColor = "#f5a623";
-                borderLeftColor = "#f5a623";
+                statusLabel = "Verification Pending";
+                statusBg = "rgba(245, 158, 11, 0.14)";
+                statusColor = "var(--warning)";
+                borderLeftColor = "var(--warning)";
+                StatusIcon = Clock;
               } else if (isRejected) {
-                statusLabel = "❌ Rejected";
-                statusBg = "rgba(252,129,129,0.15)";
-                statusColor = "#fc8181";
-                borderLeftColor = "#fc8181";
+                statusLabel = "Payment Rejected";
+                statusBg = "rgba(239, 68, 68, 0.14)";
+                statusColor = "var(--danger)";
+                borderLeftColor = "var(--danger)";
+                StatusIcon = XCircle;
               } else if (isUnpaid) {
-                statusLabel = "❌ Pending";
-                statusBg = "rgba(252,129,129,0.15)";
-                statusColor = "#fc8181";
-                borderLeftColor = "#fc8181";
+                statusLabel = "Unpaid";
+                statusBg = "rgba(239, 68, 68, 0.14)";
+                statusColor = "var(--danger)";
+                borderLeftColor = "var(--danger)";
+                StatusIcon = XCircle;
               }
 
               return (
                 <div key={feesType} className="card" style={{
                   borderLeft: `4px solid ${borderLeftColor}`,
-                  position: "relative", overflow: "hidden",
-                  display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 12
+                  display: "flex", flexDirection: "column", justifyContent: "space-between"
                 }}>
                   <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-                      <div>
-                        <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 16, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
-                          {feesType}
-                          {feeItem.isMonthly && (
-                            <span style={{
-                              padding: "2px 8px", borderRadius: 12, fontSize: 10, fontWeight: 700,
-                              background: "rgba(66,153,225,0.15)", color: "#4299e1"
-                            }}>
-                              📅 Monthly
-                            </span>
-                          )}
-                        </div>
-                        {feeItem.month && (
-                          <div style={{ fontSize: 12, color: "#4299e1", fontWeight: 600, marginBottom: 2 }}>
-                            {feeItem.month}
-                          </div>
-                        )}
-                        {updatedAt && (
-                          <div style={{ fontSize: 11, color: "#a0aec0" }}>
-                            Updated: {new Date(updatedAt).toLocaleDateString()}
-                          </div>
-                        )}
-                      </div>
-                      <div style={{
-                        padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 700,
-                        background: statusBg, color: statusColor, whiteSpace: "nowrap"
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                      <span style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "4px 10px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+                        background: statusBg, color: statusColor
                       }}>
-                        {statusLabel}
-                      </div>
+                        <StatusIcon size={14} /> {statusLabel}
+                      </span>
+                      {amount && (
+                        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+                          ₹{amount.toLocaleString("en-IN")}
+                        </div>
+                      )}
                     </div>
 
-                    {/* Amount Info */}
-                    {amount !== undefined && (
-                      <div style={{ fontSize: 15, fontWeight: 700, marginTop: 10, color: "white" }}>
-                        Amount: <span style={{ color: "#48bb78" }}>₹{amount.toLocaleString("en-IN")}</span>
-                      </div>
-                    )}
+                    <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginBottom: 4, fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+                      {feesType}
+                    </h3>
+                    <p style={{ color: "var(--text-muted)", fontSize: 13, marginBottom: 16 }}>
+                      Academic Year {userProfile?.year} Fee Structure
+                    </p>
 
-                    {/* Rejected Reason Alert */}
                     {isRejected && paid?.rejectionReason && (
                       <div style={{
-                        marginTop: 10, padding: "8px 10px", background: "rgba(252,129,129,0.08)",
-                        borderRadius: 8, fontSize: 12, color: "#fc8181", border: "1px solid rgba(252,129,129,0.15)"
+                        padding: "10px 12px", borderRadius: "var(--radius-sm)", background: "rgba(239, 68, 68, 0.12)",
+                        border: "1px solid rgba(239, 68, 68, 0.3)", color: "var(--danger)",
+                        fontSize: 12, marginBottom: 16
                       }}>
-                        ⚠️ <strong>Reason:</strong> {paid.rejectionReason}
-                      </div>
-                    )}
-
-                    {/* Pending details summary */}
-                    {isPending && (
-                      <div style={{
-                        marginTop: 10, padding: "8px 10px", background: "rgba(245,166,35,0.06)",
-                        borderRadius: 8, fontSize: 12, color: "#a0aec0", border: "1px solid rgba(245,166,35,0.12)"
-                      }}>
-                        UTR: <span style={{ color: "white", fontFamily: "monospace" }}>{paid.transactionId}</span>
-                        <div style={{ marginTop: 4 }}>Submitted: {new Date(paid.submittedAt).toLocaleDateString()}</div>
+                        <strong>Rejection Reason:</strong> {paid.rejectionReason}
                       </div>
                     )}
                   </div>
 
-                  {/* Actions buttons */}
-                  {(isUnpaid || isRejected) && (
-                    <button
-                      onClick={() => {
-                        setPayingFee(feeItem);
-                        setPayAmount(amount || "");
-                      }}
-                      className="btn-primary"
-                      style={{
-                        padding: "8px 16px", fontSize: 12, background: isRejected ? "#fc8181" : "#e94560",
-                        border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600, width: "100%", marginTop: 8
-                      }}
-                    >
-                      {isRejected ? "🔄 Resubmit Payment" : "💳 Pay Online (UPI)"}
-                    </button>
-                  )}
+                  <div>
+                    {!isPaid && !isPending && (
+                      <button
+                        onClick={() => handleOpenPayModal(feeItem)}
+                        className="btn-primary"
+                        style={{ width: "100%", padding: "10px", fontSize: 13, marginTop: 8 }}
+                      >
+                        <CreditCard size={14} /> Pay via UPI
+                      </button>
+                    )}
+
+                    {isPending && (
+                      <div style={{ fontSize: 12, color: "var(--warning)", textAlign: "center", padding: "8px 0" }}>
+                        Payment UTR submitted. Office Staff verification in progress.
+                      </div>
+                    )}
+
+                    {isPaid && (
+                      <div style={{ fontSize: 12, color: "var(--success)", textAlign: "center", padding: "8px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                        <CheckCircle2 size={14} /> Payment verified and settled
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
         )}
+      </main>
 
-      {/* UPI Fee Payment Modal */}
+      {/* Pay Modal */}
       {payingFee && (
         <div style={{
           position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.75)",
-          display: "flex", alignItems: "center", justifyContent: "center", padding: 20
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+          backdropFilter: "blur(8px)"
         }}>
           <div className="card" style={{
-            width: "100%", maxWidth: 460, background: "#161625", padding: 24, borderRadius: 16,
-            border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+            width: "100%", maxWidth: 460, padding: 28, borderRadius: "var(--radius-lg)",
             overflowY: "auto", maxHeight: "90vh", margin: "auto"
           }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-              <h3 style={{ fontFamily: "Syne", fontSize: 18, color: "white" }}>
-                📱 Fee Payment Gateway
-              </h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <QrCode size={22} color="var(--highlight)" />
+                <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 18, color: "var(--text)", fontWeight: 700 }}>
+                  UPI Fee Payment
+                </h3>
+              </div>
               <button
-                onClick={() => {
-                  setPayingFee(null);
-                  setErrorMsg("");
-                  setPayAmount("");
-                  setUtrNumber("");
-                  setScreenshotFile(null);
-                }}
-                style={{
-                  background: "transparent", border: "none", color: "#a0aec0",
-                  fontSize: 20, cursor: "pointer"
-                }}
-              >✕</button>
+                onClick={() => setPayingFee(null)}
+                style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer" }}
+              >
+                <X size={20} />
+              </button>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handlePaymentSubmit}>
-              {/* Editable Amount Group */}
-              <div className="form-group" style={{ marginBottom: 16 }}>
-                <label>Amount to Pay (INR) *</label>
-                <input
-                  type="number"
-                  required
-                  placeholder="Enter amount to pay"
-                  value={payAmount}
-                  onChange={(e) => setPayAmount(e.target.value)}
-                  className="form-control"
-                  style={{ background: "#0f0f1b", border: "1px solid rgba(255,255,255,0.1)", color: "white", padding: 10, borderRadius: 8, width: "100%", marginTop: 6 }}
-                />
+            <div style={{
+              background: "rgba(11, 19, 43, 0.6)", padding: 16, borderRadius: "var(--radius-md)",
+              border: "1px solid var(--border)", marginBottom: 20
+            }}>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Paying For</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text)", marginTop: 2 }}>{payingFee.feesType}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "var(--success)", fontFamily: "Plus Jakarta Sans, sans-serif", marginTop: 8 }}>
+                ₹{Number(payAmount).toLocaleString("en-IN")}
               </div>
+            </div>
 
-              {/* Dynamic QR Code Display */}
-              {Number(payAmount) > 0 && (
-                <div style={{ textAlign: "center", marginBottom: 20 }}>
-                  <div style={{
-                    background: "white", padding: 12, borderRadius: 12,
-                    display: "inline-block", boxShadow: "0 4px 12px rgba(0,0,0,0.2)"
-                  }}>
-                    <QRCodeSVG value={getUpiUri(payingFee.feesType, payAmount)} size={180} />
-                  </div>
-                  <p style={{ fontSize: 11, color: "#a0aec0", marginTop: 8 }}>
-                    Scan QR code with GPay, PhonePe, Paytm, or BHIM
-                  </p>
-                  
-                  <div style={{ marginTop: 14 }}>
-                    <a
-                      href={getUpiUri(payingFee.feesType, payAmount)}
-                      style={{
-                        display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
-                        textDecoration: "none", background: "#e94560", color: "white",
-                        padding: "10px 18px", borderRadius: 8, fontWeight: 600, fontSize: 13,
-                        textAlign: "center", width: "100%"
-                      }}
-                    >
-                      📲 Pay via UPI App (Mobile)
-                    </a>
-                  </div>
-                </div>
-              )}
+            {/* QR Code */}
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <div style={{
+                background: "white", padding: 14, borderRadius: "var(--radius-md)",
+                display: "inline-block", boxShadow: "var(--shadow-md)"
+              }}>
+                <QRCodeSVG value={getUpiUri(payingFee.rawType || payingFee.feesType, payAmount)} size={170} />
+              </div>
+              <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 10 }}>
+                Scan using GPay, PhonePe, Paytm, or BHIM app
+              </p>
+            </div>
 
-              <div style={{ height: 1, background: "rgba(255,255,255,0.08)", marginBottom: 16 }}></div>
-
-              {/* UTR Input */}
+            <form onSubmit={handlePaymentSubmit}>
               <div className="form-group" style={{ marginBottom: 16 }}>
                 <label>12-Digit UPI Transaction ID (UTR) *</label>
                 <input
                   type="text"
-                  required
-                  placeholder="Enter UTR transaction number"
-                  maxLength={12}
+                  placeholder="e.g. 304589214732"
                   value={utrNumber}
-                  onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, ""))}
-                  className="form-control"
-                  style={{ background: "#0f0f1b", border: "1px solid rgba(255,255,255,0.1)", color: "white", padding: 10, borderRadius: 8, width: "100%", marginTop: 6 }}
+                  onChange={(e) => setUtrNumber(e.target.value)}
+                  maxLength={12}
+                  required
                 />
               </div>
 
-              {/* Screenshot Proof */}
               <div className="form-group" style={{ marginBottom: 20 }}>
-                <label>Screenshot Payment Proof *</label>
+                <label>Upload Payment Screenshot *</label>
                 <input
                   type="file"
-                  required
                   accept="image/*"
                   onChange={(e) => setScreenshotFile(e.target.files[0])}
-                  className="form-control"
-                  style={{ color: "#a0aec0", padding: "10px 0", cursor: "pointer", width: "100%", marginTop: 6 }}
+                  required
                 />
               </div>
 
-              {/* Error messages */}
-              {errorMsg && (
-                <div style={{ color: "#fc8181", fontSize: 13, marginBottom: 14, fontWeight: 600 }}>
-                  ⚠️ {errorMsg}
-                </div>
-              )}
-
-              {/* Progress bar */}
-              {uploadProgress > 0 && (
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#a0aec0", marginBottom: 4 }}>
-                    <span>Compressing & uploading...</span>
-                    <span>{uploadProgress}%</span>
-                  </div>
-                  <div style={{ width: "100%", height: 6, background: "rgba(255,255,255,0.1)", borderRadius: 3, overflow: "hidden" }}>
-                    <div style={{ width: `${uploadProgress}%`, height: "100%", background: "#48bb78", transition: "width 0.2s" }}></div>
-                  </div>
-                </div>
-              )}
+              {errorMsg && <div className="error-msg">{errorMsg}</div>}
 
               <button
                 type="submit"
-                disabled={submitting}
                 className="btn-primary"
-                style={{
-                  width: "100%", padding: "12px", borderRadius: 10, border: "none",
-                  background: "#48bb78", color: "white", fontWeight: 700, fontSize: 14,
-                  cursor: submitting ? "not-allowed" : "pointer", opacity: submitting ? 0.7 : 1
-                }}
+                disabled={submitting}
               >
-                {submitting ? "Submitting Payment..." : "Submit Payment Details"}
+                {submitting ? `Submitting... ${uploadProgress}%` : "Submit Fee Payment"}
               </button>
             </form>
           </div>
         </div>
       )}
-      </main>
     </div>
   );
 }

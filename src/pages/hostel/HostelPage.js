@@ -78,7 +78,7 @@ function AttendanceTab({ attendance, allotments, currentUser, userProfile, refre
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-          <h3 style={{ fontFamily: "Syne", fontSize: 18, margin: 0 }}>Mark Attendance</h3>
+          <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 18, margin: 0 }}>Mark Attendance</h3>
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ minWidth: 160 }} />
             <button onClick={toggleAll} style={btnGhost}>Toggle All</button>
@@ -114,7 +114,7 @@ function AttendanceTab({ attendance, allotments, currentUser, userProfile, refre
       {todayAtt.length > 0 && (
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
-            <h3 style={{ fontFamily: "Syne", fontSize: 17, margin: 0 }}>Saved - {fmtDate(date)}</h3>
+            <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, margin: 0 }}>Saved - {fmtDate(date)}</h3>
             <button onClick={() => exportCSV(todayAtt.map(a => [a.studentName, a.registerNo, a.dept, a.blockName, a.roomNo, a.present ? "Present" : "Absent", fmtDT(a.markedAt)]), ["Name", "Reg No", "Dept", "Block", "Room", "Status", "Marked At"], `attendance_${date}.csv`)} style={btnGhost}>Export CSV</button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -176,7 +176,7 @@ function MessTab({ messmenu, isStudent, currentUser, userProfile, refresh }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {!isStudent && (
         <Card>
-          <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 16 }}>Update Mess Menu</h3>
+          <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 18, marginBottom: 16 }}>Update Mess Menu</h3>
           <ErrMsg msg={err} /><SuccessMsg msg={suc} />
           <form onSubmit={saveMenu}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 12 }}>
@@ -203,7 +203,7 @@ function MessTab({ messmenu, isStudent, currentUser, userProfile, refresh }) {
       )}
 
       <Card>
-        <h3 style={{ fontFamily: "Syne", fontSize: 17, marginBottom: 16 }}>Weekly Menu</h3>
+        <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, marginBottom: 16 }}>Weekly Menu</h3>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
@@ -229,7 +229,7 @@ function MessTab({ messmenu, isStudent, currentUser, userProfile, refresh }) {
 
       {isStudent && (
         <Card>
-          <h3 style={{ fontFamily: "Syne", fontSize: 17, marginBottom: 14 }}>Rate Today's Meal</h3>
+          <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, marginBottom: 14 }}>Rate Today's Meal</h3>
           <ErrMsg msg={err} /><SuccessMsg msg={suc} />
           <form onSubmit={submitFeedback}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 12 }}>
@@ -290,7 +290,7 @@ function NoticesTab({ notices, isStudent, isWarden, isAdmin, currentUser, userPr
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {(isWarden || isAdmin) && (
         <Card>
-          <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 16 }}>Post Notice</h3>
+          <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 18, marginBottom: 16 }}>Post Notice</h3>
           <ErrMsg msg={err} /><SuccessMsg msg={suc} />
           <form onSubmit={postNotice}>
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
@@ -326,7 +326,7 @@ function NoticesTab({ notices, isStudent, isWarden, isAdmin, currentUser, userPr
             <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 6 }}>
-                  <span style={{ fontFamily: "Syne", fontSize: 16, fontWeight: 700 }}>{n.title}</span>
+                  <span style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 16, fontWeight: 700 }}>{n.title}</span>
                   {n.priority !== "normal" && (
                     <span style={{ padding: "2px 8px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: `${priorityColor[n.priority]}22`, color: priorityColor[n.priority], textTransform: "uppercase" }}>{n.priority}</span>
                   )}
@@ -377,7 +377,7 @@ function ReportsTab({ allotments, fees, complaints, attendance, blocks }) {
           { label: "Resolved Complaints", value: resolvedComplaints, color: "#48bb78" }
         ].map(s => (
           <div key={s.label} className="card" style={{ padding: "16px 20px" }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: s.color, fontFamily: "Syne" }}>{s.value}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: s.color, fontFamily: "Plus Jakarta Sans, sans-serif" }}>{s.value}</div>
             <div style={{ fontSize: 12, color: "#a0aec0", marginTop: 4 }}>{s.label}</div>
           </div>
         ))}
@@ -385,7 +385,7 @@ function ReportsTab({ allotments, fees, complaints, attendance, blocks }) {
 
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
-          <h3 style={{ fontFamily: "Syne", fontSize: 17, margin: 0 }}>Block-wise Occupancy</h3>
+          <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, margin: 0 }}>Block-wise Occupancy</h3>
           <div style={{ display: "flex", gap: 10 }}>
             <button onClick={() => exportCSV(blockOccupancy.map(b => [b.name, b.active, b.capacity, b.capacity ? Math.round((b.active / b.capacity) * 100) + "%" : "-"]), ["Block", "Occupied", "Capacity", "Occupancy %"], "block_occupancy.csv")} style={btnGhost}>Export CSV</button>
           </div>
@@ -411,7 +411,7 @@ function ReportsTab({ allotments, fees, complaints, attendance, blocks }) {
       </Card>
 
       <Card>
-        <h3 style={{ fontFamily: "Syne", fontSize: 17, marginBottom: 16 }}>Export Data</h3>
+        <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, marginBottom: 16 }}>Export Data</h3>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <button onClick={() => exportCSV(allotments.map(a => [a.studentName, a.registerNo, a.dept, a.year, a.blockName, a.roomNo, a.roomType, a.status, fmtDate(a.allottedAt)]), ["Name", "Reg No", "Dept", "Year", "Block", "Room", "Type", "Status", "Allotted On"], "allotments.csv")} style={btnGhost}>Allotments CSV</button>
           <button onClick={() => exportCSV(fees.map(f => [f.studentName, f.registerNo, f.dept, f.semester, f.amount, f.status, fmtDate(f.dueDate), fmtDate(f.paidAt)]), ["Name", "Reg No", "Dept", "Semester", "Amount", "Status", "Due Date", "Paid On"], "fees.csv")} style={btnGhost}>Fees CSV</button>
@@ -466,7 +466,7 @@ function ComplaintsTab({ complaints, isStudent, currentUser, userProfile, refres
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {isStudent && (
         <Card>
-          <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 16 }}>Raise Complaint</h3>
+          <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 18, marginBottom: 16 }}>Raise Complaint</h3>
           <ErrMsg msg={err} /><SuccessMsg msg={suc} />
           <form onSubmit={submitComplaint}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -494,10 +494,10 @@ function ComplaintsTab({ complaints, isStudent, currentUser, userProfile, refres
 
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
-          <h3 style={{ fontFamily: "Syne", fontSize: 17, margin: 0 }}>{isStudent ? "My Complaints" : "All Complaints"}</h3>
+          <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, margin: 0 }}>{isStudent ? "My Complaints" : "All Complaints"}</h3>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {["all", "open", "in_progress", "resolved", "closed"].map(s => (
-              <button key={s} onClick={() => setFilter(s)} style={{ ...btnGhost, background: filter === s ? "rgba(233,69,96,0.2)" : "rgba(255,255,255,0.05)", color: filter === s ? "#e94560" : "white", fontSize: 12 }}>
+              <button key={s} onClick={() => setFilter(s)} style={{ ...btnGhost, background: filter === s ? "rgba(233,69,96,0.2)" : "rgba(255,255,255,0.05)", color: filter === s ? "var(--highlight)" : "white", fontSize: 12 }}>
                 {s === "in_progress" ? "In Progress" : s.charAt(0).toUpperCase() + s.slice(1)}
               </button>
             ))}
@@ -579,7 +579,7 @@ function GatePassTab({ gatepasses, isStudent, currentUser, userProfile, refresh,
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {isStudent && (
         <Card>
-          <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 16 }}>Request Gate Pass</h3>
+          <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 18, marginBottom: 16 }}>Request Gate Pass</h3>
           <ErrMsg msg={err} /><SuccessMsg msg={suc} />
           <form onSubmit={submitPass}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
@@ -610,7 +610,7 @@ function GatePassTab({ gatepasses, isStudent, currentUser, userProfile, refresh,
       )}
 
       <Card>
-        <h3 style={{ fontFamily: "Syne", fontSize: 17, marginBottom: 14 }}>{isStudent ? "My Gate Passes" : "Gate Pass Requests"}</h3>
+        <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, marginBottom: 14 }}>{isStudent ? "My Gate Passes" : "Gate Pass Requests"}</h3>
         {gatepasses.length === 0 ? <div style={{ color: "#a0aec0", fontSize: 13 }}>No gate passes found.</div> : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {gatepasses.map(g => (
@@ -677,7 +677,7 @@ function VisitorsTab({ visitors, isStudent, currentUser, userProfile, refresh })
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {!isStudent && (
         <Card>
-          <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 16 }}>Log Visitor Entry</h3>
+          <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 18, marginBottom: 16 }}>Log Visitor Entry</h3>
           <ErrMsg msg={err} /><SuccessMsg msg={suc} />
           <form onSubmit={logVisitor}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
@@ -695,7 +695,7 @@ function VisitorsTab({ visitors, isStudent, currentUser, userProfile, refresh })
 
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
-          <h3 style={{ fontFamily: "Syne", fontSize: 17, margin: 0 }}>{isStudent ? "My Visitors" : "Visitor Log"}</h3>
+          <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, margin: 0 }}>{isStudent ? "My Visitors" : "Visitor Log"}</h3>
           {!isStudent && <button onClick={() => exportCSV(visitors.map(v => [v.visitorName, v.relation, v.phone, v.studentName, v.studentRegNo, v.blockName, v.roomNo, v.purpose, fmtDT(v.visitedAt), fmtDT(v.exitedAt)]), ["Visitor", "Relation", "Phone", "Student", "Reg No", "Block", "Room", "Purpose", "Entry", "Exit"], "visitors.csv")} style={btnGhost}>Export CSV</button>}
         </div>
         {displayVisitors.length === 0 ? <div style={{ color: "#a0aec0", fontSize: 13 }}>No visitor records.</div> : (
@@ -794,7 +794,7 @@ function AllotmentTab({ blocks, allotments, isAdmin, isWarden, isStudent, curren
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {myAllotment ? <MyRoomTab allotment={myAllotment} block={blocks.find(b => b.id === myAllotment.blockId)} /> : (
         <Card>
-          <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 16 }}>Request Room Allotment</h3>
+          <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 18, marginBottom: 16 }}>Request Room Allotment</h3>
           <ErrMsg msg={reqErr} /><SuccessMsg msg={reqSuc} />
           <form onSubmit={submitRequest}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -844,7 +844,7 @@ function AllotmentTab({ blocks, allotments, isAdmin, isWarden, isStudent, curren
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <Card>
-        <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 16 }}>Allot Room</h3>
+        <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 18, marginBottom: 16 }}>Allot Room</h3>
         <ErrMsg msg={err} /><SuccessMsg msg={suc} />
         <form onSubmit={handleAllot}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
@@ -886,7 +886,7 @@ function AllotmentTab({ blocks, allotments, isAdmin, isWarden, isStudent, curren
 
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
-          <h3 style={{ fontFamily: "Syne", fontSize: 17, margin: 0 }}>All Allotments</h3>
+          <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, margin: 0 }}>All Allotments</h3>
           <div style={{ display: "flex", gap: 10 }}>
             <input placeholder="Search student / room" value={search} onChange={e => setSearch(e.target.value)} style={{ minWidth: 200 }} />
             <button onClick={() => exportCSV(allotments.map(a => [a.studentName, a.registerNo, a.dept, a.year, a.blockName, a.roomNo, a.roomType, a.status, fmtDate(a.allottedAt)]),
@@ -966,18 +966,18 @@ function FeesTab({ fees, isStudent, currentUser, refresh }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
         <div className="card" style={{ flex: 1, minWidth: 150, padding: "16px 20px" }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#48bb78", fontFamily: "Syne" }}>Rs.{totalPaid.toLocaleString()}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#48bb78", fontFamily: "Plus Jakarta Sans, sans-serif" }}>Rs.{totalPaid.toLocaleString()}</div>
           <div style={{ fontSize: 12, color: "#a0aec0", marginTop: 4 }}>Total Paid</div>
         </div>
         <div className="card" style={{ flex: 1, minWidth: 150, padding: "16px 20px" }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#fc8181", fontFamily: "Syne" }}>Rs.{totalDue.toLocaleString()}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#fc8181", fontFamily: "Plus Jakarta Sans, sans-serif" }}>Rs.{totalDue.toLocaleString()}</div>
           <div style={{ fontSize: 12, color: "#a0aec0", marginTop: 4 }}>Total Pending</div>
         </div>
       </div>
 
       {!isStudent && (
         <Card>
-          <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 16 }}>Add Fee Record</h3>
+          <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 18, marginBottom: 16 }}>Add Fee Record</h3>
           <ErrMsg msg={err} /><SuccessMsg msg={suc} />
           <form onSubmit={addFee}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
@@ -999,10 +999,10 @@ function FeesTab({ fees, isStudent, currentUser, refresh }) {
 
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
-          <h3 style={{ fontFamily: "Syne", fontSize: 17, margin: 0 }}>{isStudent ? "My Fee Records" : "All Fee Records"}</h3>
+          <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, margin: 0 }}>{isStudent ? "My Fee Records" : "All Fee Records"}</h3>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             {["all", "pending", "paid", "overdue"].map(f => (
-              <button key={f} onClick={() => setFilter(f)} style={{ ...btnGhost, background: filter === f ? "rgba(233,69,96,0.2)" : "rgba(255,255,255,0.05)", color: filter === f ? "#e94560" : "white" }}>
+              <button key={f} onClick={() => setFilter(f)} style={{ ...btnGhost, background: filter === f ? "rgba(233,69,96,0.2)" : "rgba(255,255,255,0.05)", color: filter === f ? "var(--highlight)" : "white" }}>
                 {f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
             ))}
@@ -1080,7 +1080,7 @@ function SuccessMsg({ msg }) {
 }
 const btnPrimary = {
   padding: "10px 18px", borderRadius: 10, border: "1px solid rgba(233,69,96,0.4)",
-  background: "rgba(233,69,96,0.2)", color: "#e94560", cursor: "pointer", fontWeight: 600, fontSize: 14
+  background: "rgba(233,69,96,0.2)", color: "var(--highlight)", cursor: "pointer", fontWeight: 600, fontSize: 14
 };
 const btnGhost = {
   padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.2)",
@@ -1234,7 +1234,7 @@ export default function HostelPage() {
               { label: "Gate Passes", value: gatepasses.filter(g => g.status === "approved").length, color: "#48bb78" }
             ].map(s => (
               <div key={s.label} className="card" style={{ flex: 1, minWidth: 150, padding: "16px 20px" }}>
-                <div style={{ fontSize: 20, fontWeight: 700, color: s.color, fontFamily: "Syne" }}>{s.value}</div>
+                <div style={{ fontSize: 20, fontWeight: 700, color: s.color, fontFamily: "Plus Jakarta Sans, sans-serif" }}>{s.value}</div>
                 <div style={{ fontSize: 12, color: "#a0aec0", marginTop: 4 }}>{s.label}</div>
               </div>
             ))}
@@ -1250,7 +1250,7 @@ export default function HostelPage() {
               { label: "Open Complaints", value: complaints.filter(c => c.status === "open").length, color: "#fc8181" }
             ].map(s => (
               <div key={s.label} className="card" style={{ flex: 1, minWidth: 140, padding: "16px 20px" }}>
-                <div style={{ fontSize: 26, fontWeight: 700, color: s.color, fontFamily: "Syne" }}>{s.value}</div>
+                <div style={{ fontSize: 26, fontWeight: 700, color: s.color, fontFamily: "Plus Jakarta Sans, sans-serif" }}>{s.value}</div>
                 <div style={{ fontSize: 12, color: "#a0aec0", marginTop: 4 }}>{s.label}</div>
               </div>
             ))}
@@ -1263,8 +1263,8 @@ export default function HostelPage() {
           {tabs.map(t => (
             <button key={t.key} onClick={() => setTab(t.key)} style={{
               padding: "9px 18px", borderRadius: 10, border: "none", cursor: "pointer",
-              fontFamily: "Syne", fontWeight: 600, fontSize: 13,
-              background: tab === t.key ? "#e94560" : "rgba(255,255,255,0.07)", color: "white"
+              fontFamily: "Plus Jakarta Sans, sans-serif", fontWeight: 600, fontSize: 13,
+              background: tab === t.key ? "var(--highlight)" : "rgba(255,255,255,0.07)", color: "white"
             }}>{t.label}</button>
           ))}
         </div>
@@ -1287,7 +1287,7 @@ function MyRoomTab({ allotment, block }) {
   );
   return (
     <Card>
-      <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 20 }}>My Room Details</h3>
+      <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 18, marginBottom: 20 }}>My Room Details</h3>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16 }}>
         {[
           ["Block", allotment.blockName],
@@ -1350,7 +1350,7 @@ function BlockSetupTab({ blocks, refresh, currentUser }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <Card>
-        <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 16 }}>Add Block</h3>
+        <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 18, marginBottom: 16 }}>Add Block</h3>
         <ErrMsg msg={err} /><SuccessMsg msg={suc} />
         <form onSubmit={handleAdd}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12 }}>
@@ -1397,7 +1397,7 @@ function BlockSetupTab({ blocks, refresh, currentUser }) {
               ) : (
                 <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
                   <div>
-                    <div style={{ fontFamily: "Syne", fontSize: 17, fontWeight: 700 }}>{b.blockName}</div>
+                    <div style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, fontWeight: 700 }}>{b.blockName}</div>
                     <div style={{ color: "#a0aec0", fontSize: 13, marginTop: 4 }}>{b.address}</div>
                     <div style={{ color: "#a0aec0", fontSize: 12, marginTop: 4 }}>
                       Rooms: {b.totalRooms} | Capacity: {b.capacity} | Warden: {b.wardenName || "-"}

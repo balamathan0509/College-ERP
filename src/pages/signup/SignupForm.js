@@ -1,4 +1,5 @@
 import React from "react";
+import { GraduationCap, ArrowRight } from "lucide-react";
 
 export default function SignupForm({
   title,
@@ -15,7 +16,9 @@ export default function SignupForm({
     <div className="auth-wrapper">
       <div className="auth-card">
         <div className="auth-logo">
-          <div className="logo-icon">🎓</div>
+          <div className="logo-icon">
+            <GraduationCap size={32} color="#ffffff" />
+          </div>
           <h1>{title}</h1>
           <p>{subtitle}</p>
         </div>
@@ -56,7 +59,7 @@ export default function SignupForm({
           ))}
 
           <button className="btn-primary" type="submit" disabled={sendingOtp}>
-            {sendingOtp ? "Sending OTP..." : "Continue →"}
+            {sendingOtp ? "Sending OTP..." : <>Continue <ArrowRight size={16} /></>}
           </button>
         </form>
 

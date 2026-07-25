@@ -5,11 +5,20 @@ import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
 import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
 import { notifyStudentAlert } from "../../utils/notifications";
+import {
+  Bell,
+  Megaphone,
+  RefreshCw,
+  Search,
+  PlusCircle,
+  CheckCircle2,
+  Inbox
+} from "lucide-react";
 
 const ALERT_TYPES = [
-  { value: "leave", label: "Leave Alert", color: "#f6ad55" },
-  { value: "circular", label: "Circular", color: "#4299e1" },
-  { value: "general", label: "General", color: "#48bb78" }
+  { value: "leave", label: "Leave Alert", color: "var(--warning)" },
+  { value: "circular", label: "Circular", color: "var(--highlight)" },
+  { value: "general", label: "General", color: "var(--success)" }
 ];
 
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
@@ -48,69 +57,69 @@ function getAudienceLabel(alert) {
   if (alert.roleTarget === "hod_only") roleLabel = "All Dept HODs Only";
   if (alert.roleTarget === "staff_hod") roleLabel = "All Staff and HODs";
 
-  const deptLabel = alert.deptTarget === "all" ? "All Departments" : alert.deptTarget;
-  const yearLabel = alert.yearTarget === "all" ? "All Years" : alert.yearTarget;
+  const deptLabel = alert.deptTarget === "all"
+    ? "All Depts"
+    : alert.deptTarget;
+
+  const yearLabel = alert.yearTarget === "all"
+    ? "All Years"
+    : alert.yearTarget;
 
   if (alert.roleTarget === "student") {
-    return `${roleLabel} - ${deptLabel} - ${yearLabel}`;
+    return `${roleLabel} • ${deptLabel} • ${yearLabel}`;
   }
-  return `${roleLabel} - ${deptLabel}`;
+
+  return `${roleLabel} • ${deptLabel}`;
 }
 
 export default function AlertsPage() {
   const { currentUser, userProfile } = useAuth();
-  const role = userProfile?.role;
-  const canCreate = role === "staff" || role === "hod" || role === "principal";
-
   const [alerts, setAlerts] = useState([]);
-  const [fetching, setFetching] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [listError, setListError] = useState("");
-  const [filterType, setFilterType] = useState("all");
   const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState("all");
 
   const [form, setForm] = useState({
-    type: "circular",
+    type: "leave",
+    targetRole: "student",
+    deptScope: "dept",
     title: "",
     message: "",
-    targetRole: role === "principal" ? "all" : "student",
-    targetYear: "all",
-    deptScope: "dept"
+    targetYear: "all"
   });
-  const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!userProfile) return;
-    fetchAlerts();
-  }, [userProfile]);
-
-  useEffect(() => {
-    if (form.targetRole !== "student" && form.targetYear !== "all") {
-      setForm(prev => ({ ...prev, targetYear: "all" }));
-    }
-  }, [form.targetRole]);
+  const role = userProfile?.role || "student";
+  const canCreate = role === "staff" || role === "hod" || role === "principal" || role === "officestaff" || role === "warden" || role === "admin" || role === "management";
 
   async function fetchAlerts() {
     setFetching(true);
     setListError("");
     try {
       const snap = await getDocs(collection(db, "alerts"));
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      const visible = list.filter(a => isVisibleToUser(a, userProfile));
+      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      const visible = list.filter(alert => isVisibleToUser(alert, userProfile));
+      visible.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
       setAlerts(visible);
-      if (currentUser && visible.length > 0) {
-        localStorage.setItem(`alerts_last_seen_${currentUser.uid}`, visible[0].createdAt);
-      }
     } catch (err) {
-      setListError("Failed to load alerts. Please try again.");
+      console.error(err);
+      setListError("Failed to fetch alerts.");
     }
     setFetching(false);
   }
 
+  useEffect(() => {
+    if (userProfile) {
+      fetchAlerts();
+    }
+  }, [userProfile]);
+
   function handleFormChange(e) {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setForm({ ...form, [e.target.name]: e.target.value });
   }
 
   async function handleSubmit(e) {
@@ -118,83 +127,53 @@ export default function AlertsPage() {
     setFormError("");
     setFormSuccess("");
 
-    if (!currentUser || !userProfile) {
-      return setFormError("Please wait for your profile to load.");
-    }
-
     if (!form.title.trim() || !form.message.trim()) {
-      return setFormError("Please fill all fields.");
+      setFormError("Title and message are required.");
+      return;
     }
-
-    const deptTarget = (role === "hod" && form.deptScope === "all") || role === "principal"
-      ? "all"
-      : userProfile?.dept;
-    const yearTarget = (form.targetRole === "student" || form.targetRole === "all") ? form.targetYear : "all";
 
     setSaving(true);
     try {
-      await addDoc(collection(db, "alerts"), {
-        title: form.title.trim(),
-        message: form.message.trim(),
-        type: form.type,
-        roleTarget: form.targetRole,
-        deptTarget,
-        yearTarget,
-        createdById: currentUser.uid,
-        createdByName: userProfile?.name || "Staff",
-        createdByRole: role,
-        createdByDept: userProfile?.dept || "",
-        createdAt: new Date().toISOString()
-      });
-
-      // 📧 Send SMS + Email to all targeted students
-      if (form.targetRole === "student" || form.targetRole === "all") {
-        try {
-          // Build query for target students
-          let studentQuery;
-          if (deptTarget === "all" && yearTarget === "all") {
-            studentQuery = query(collection(db, "users"), where("role", "==", "student"));
-          } else if (deptTarget === "all") {
-            studentQuery = query(
-              collection(db, "users"),
-              where("role", "==", "student"),
-              where("year", "==", yearTarget)
-            );
-          } else if (yearTarget === "all") {
-            studentQuery = query(
-              collection(db, "users"),
-              where("role", "==", "student"),
-              where("dept", "==", deptTarget)
-            );
-          } else {
-            studentQuery = query(
-              collection(db, "users"),
-              where("role", "==", "student"),
-              where("dept", "==", deptTarget),
-              where("year", "==", yearTarget)
-            );
-          }
-
-          const studSnap = await getDocs(studentQuery);
-          const students = studSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-          // Send notification to each student
-          for (const student of students) {
-            await notifyStudentAlert({
-              email: student.email || "",
-              phone: student.phone || "",
-              name: student.name,
-              title: form.title.trim(),
-              message: form.message.trim()
-            });
-          }
-          console.log(`✅ Notifications sent to ${students.length} student(s)`);
-        } catch (notifyErr) {
-          console.error("Error sending notifications:", notifyErr);
-        }
+      let deptTarget = userProfile?.dept || "all";
+      if (role === "principal") {
+        deptTarget = "all";
+      } else if (role === "hod" && form.deptScope === "all") {
+        deptTarget = "all";
       }
 
-      setFormSuccess("Alert sent successfully and notifications sent to students!");
+      const roleTarget = role === "principal"
+        ? (form.targetRole || "all")
+        : (form.targetRole || "all");
+
+      const yearTarget = (roleTarget === "student" || roleTarget === "all")
+        ? form.targetYear
+        : "all";
+
+      const newAlert = {
+        type: form.type,
+        roleTarget,
+        deptTarget,
+        yearTarget,
+        title: form.title.trim(),
+        message: form.message.trim(),
+        createdById: currentUser?.uid || "",
+        createdByName: userProfile?.name || "Staff",
+        createdByRole: role,
+        createdAt: new Date().toISOString()
+      };
+
+      await addDoc(collection(db, "alerts"), newAlert);
+
+      if (roleTarget === "student" || roleTarget === "all") {
+        notifyStudentAlert({
+          title: form.title.trim(),
+          message: form.message.trim(),
+          targetDept: deptTarget,
+          targetYear: yearTarget
+        });
+      }
+
+      setFormSuccess("Alert broadcasted successfully!");
       setForm(prev => ({
         ...prev,
         title: "",
@@ -246,32 +225,32 @@ export default function AlertsPage() {
       <Sidebar />
       <main className="main-content">
         <div className="page-header">
-          <h1>Alerts Center</h1>
-          <p>Share leave alerts, circulars, and announcements based on role</p>
+          <h1>Alerts & Broadcast Center</h1>
+          <p>Institutional announcements, circulars, and role-based notifications</p>
         </div>
 
         <div className={`alerts-layout ${canCreate ? "" : "single"}`}>
           {canCreate && (
             <div className="card" style={{ height: "fit-content" }}>
-              <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 20 }}>Create Alert</h3>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                <PlusCircle size={20} color="var(--highlight)" />
+                <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, fontWeight: 700 }}>Create Alert</h3>
+              </div>
+
               {formError && <div className="error-msg">{formError}</div>}
               {formSuccess && (
                 <div style={{
-                  background: "rgba(72,187,120,0.1)",
-                  border: "1px solid rgba(72,187,120,0.3)",
-                  borderRadius: 10,
-                  padding: "12px 16px",
-                  color: "#48bb78",
-                  fontSize: 14,
-                  marginBottom: 20
+                  background: "rgba(16, 185, 129, 0.15)", border: "1px solid rgba(16, 185, 129, 0.3)",
+                  borderRadius: "var(--radius-md)", padding: "12px 16px", color: "var(--success)",
+                  fontSize: 14, marginBottom: 20, display: "flex", alignItems: "center", gap: 8
                 }}>
-                  {formSuccess}
+                  <CheckCircle2 size={16} /> {formSuccess}
                 </div>
               )}
 
               <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                  <label>Alert Type</label>
+                  <label>Alert Category *</label>
                   <select name="type" value={form.type} onChange={handleFormChange}>
                     {ALERT_TYPES.map(t => (
                       <option key={t.value} value={t.value}>{t.label}</option>
@@ -280,41 +259,31 @@ export default function AlertsPage() {
                 </div>
 
                 <div className="form-group">
-                  <label>Title</label>
+                  <label>Title *</label>
                   <input
                     type="text"
                     name="title"
                     placeholder="Short, clear title"
                     value={form.title}
                     onChange={handleFormChange}
+                    required
                   />
                 </div>
 
                 <div className="form-group">
-                  <label>Message</label>
+                  <label>Message Content *</label>
                   <textarea
                     name="message"
                     rows={4}
-                    placeholder="Write the alert details..."
+                    placeholder="Write the complete announcement details..."
                     value={form.message}
                     onChange={handleFormChange}
-                    style={{
-                      width: "100%",
-                      padding: "12px 16px",
-                      background: "rgba(255,255,255,0.07)",
-                      border: "1px solid rgba(255,255,255,0.12)",
-                      borderRadius: 12,
-                      color: "white",
-                      fontSize: 15,
-                      fontFamily: "DM Sans, sans-serif",
-                      outline: "none",
-                      resize: "vertical"
-                    }}
+                    required
                   />
                 </div>
 
                 <div className="form-group">
-                  <label>Send To</label>
+                  <label>Target Audience *</label>
                   <select name="targetRole" value={form.targetRole} onChange={handleFormChange}>
                     {roleOptions.map(r => (
                       <option key={r.value} value={r.value}>{r.label}</option>
@@ -334,7 +303,7 @@ export default function AlertsPage() {
 
                 {(form.targetRole === "student" || form.targetRole === "all") && (
                   <div className="form-group">
-                    <label>Year</label>
+                    <label>Year Filter</label>
                     <select name="targetYear" value={form.targetYear} onChange={handleFormChange}>
                       <option value="all">All Years</option>
                       {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
@@ -343,7 +312,7 @@ export default function AlertsPage() {
                 )}
 
                 <button className="btn-primary" type="submit" disabled={saving}>
-                  {saving ? "Sending..." : "Send Alert"}
+                  {saving ? "Broadcasting..." : "Broadcast Alert"}
                 </button>
               </form>
             </div>
@@ -353,25 +322,17 @@ export default function AlertsPage() {
             <div className="card" style={{ marginBottom: 20 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
                 <div>
-                  <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 6 }}>Latest Alerts</h3>
-                  <p style={{ color: "#a0aec0", fontSize: 13 }}>
-                    {role === "student" ? `${userProfile?.dept} - ${userProfile?.year}` : userProfile?.dept}
+                  <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, fontWeight: 700 }}>Latest Alerts</h3>
+                  <p style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 2 }}>
+                    {role === "student" ? `${userProfile?.dept} • ${userProfile?.year}` : userProfile?.dept || "All Departments"}
                   </p>
                 </div>
                 <button
                   onClick={fetchAlerts}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: 8,
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    background: "rgba(255,255,255,0.05)",
-                    color: "white",
-                    cursor: "pointer",
-                    fontSize: 13,
-                    fontWeight: 600
-                  }}
+                  className="btn-secondary"
+                  style={{ margin: 0, padding: "8px 16px", fontSize: 13, width: "auto", display: "inline-flex", alignItems: "center", gap: 6 }}
                 >
-                  Refresh
+                  <RefreshCw size={14} /> Refresh
                 </button>
               </div>
 
@@ -379,14 +340,10 @@ export default function AlertsPage() {
                 <button
                   onClick={() => setFilterType("all")}
                   style={{
-                    padding: "6px 14px",
-                    borderRadius: 20,
-                    border: "1px solid rgba(255,255,255,0.2)",
-                    background: filterType === "all" ? "rgba(233,69,96,0.2)" : "transparent",
-                    color: "white",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    cursor: "pointer"
+                    padding: "6px 14px", borderRadius: 20, border: "none",
+                    background: filterType === "all" ? "rgba(37, 99, 235, 0.18)" : "rgba(255,255,255,0.04)",
+                    color: filterType === "all" ? "var(--highlight)" : "var(--text-muted)",
+                    fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease"
                   }}
                 >
                   All
@@ -396,14 +353,10 @@ export default function AlertsPage() {
                     key={t.value}
                     onClick={() => setFilterType(t.value)}
                     style={{
-                      padding: "6px 14px",
-                      borderRadius: 20,
-                      border: `1px solid ${t.color}55`,
-                      background: filterType === t.value ? `${t.color}22` : "transparent",
-                      color: t.color,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: "pointer"
+                      padding: "6px 14px", borderRadius: 20, border: "none",
+                      background: filterType === t.value ? "rgba(37, 99, 235, 0.18)" : "rgba(255,255,255,0.04)",
+                      color: filterType === t.value ? t.color : "var(--text-muted)",
+                      fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease"
                     }}
                   >
                     {t.label}
@@ -414,19 +367,9 @@ export default function AlertsPage() {
               <div style={{ marginTop: 16 }}>
                 <input
                   type="text"
-                  placeholder="Search alerts..."
+                  placeholder="Search alerts by title or content..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "10px 14px",
-                    background: "rgba(255,255,255,0.07)",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    borderRadius: 10,
-                    color: "white",
-                    fontSize: 14,
-                    outline: "none"
-                  }}
                 />
               </div>
             </div>
@@ -438,9 +381,11 @@ export default function AlertsPage() {
                 <div className="spinner" style={{ margin: "0 auto" }}></div>
               </div>
             ) : filteredAlerts.length === 0 ? (
-              <div className="card" style={{ textAlign: "center", padding: 60 }}>
-                <div style={{ fontSize: 42, marginBottom: 12 }}>No Alerts</div>
-                <p style={{ color: "#a0aec0" }}>Nothing to show for the selected filters.</p>
+              <div className="card" style={{ textAlign: "center", padding: 50 }}>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+                  <Inbox size={48} color="var(--text-muted)" />
+                </div>
+                <p style={{ color: "var(--text-muted)" }}>No alerts match your current view.</p>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -451,47 +396,34 @@ export default function AlertsPage() {
                     <div key={alert.id} className="card">
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
                         <div style={{ flex: 1, minWidth: 220 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-                            <span style={{
-                              padding: "4px 10px",
-                              borderRadius: 20,
-                              background: `${typeMeta.color}22`,
-                              color: typeMeta.color,
-                              fontSize: 12,
-                              fontWeight: 700
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+                            <span className="badge" style={{
+                              background: "rgba(37, 99, 235, 0.14)", color: typeMeta.color,
+                              border: "1px solid rgba(37, 99, 235, 0.3)"
                             }}>
                               {typeMeta.label}
                             </span>
                             {createdByMe && (
-                              <span style={{
-                                padding: "4px 10px",
-                                borderRadius: 20,
-                                background: "rgba(233,69,96,0.2)",
-                                color: "#e94560",
-                                fontSize: 12,
-                                fontWeight: 700
-                              }}>
-                                You
-                              </span>
+                              <span className="badge badge-success">You</span>
                             )}
                           </div>
-                          <div style={{ fontFamily: "Syne", fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
+                          <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, fontWeight: 700, marginBottom: 8, color: "var(--text)" }}>
                             {alert.title}
-                          </div>
-                          <div style={{ color: "#a0aec0", fontSize: 14, lineHeight: 1.6 }}>
+                          </h3>
+                          <p style={{ color: "var(--text-muted)", fontSize: 14, lineHeight: 1.6 }}>
                             {alert.message}
-                          </div>
+                          </p>
                         </div>
 
                         <div style={{ minWidth: 180, textAlign: "right" }}>
-                          <div style={{ fontSize: 12, color: "#a0aec0", marginBottom: 6 }}>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>
                             {getAudienceLabel(alert)}
                           </div>
-                          <div style={{ fontSize: 12, color: "#a0aec0" }}>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                             {formatDate(alert.createdAt)}
                           </div>
-                          <div style={{ fontSize: 12, color: "#a0aec0", marginTop: 6 }}>
-                            {alert.createdByName} - {alert.createdByRole?.toUpperCase()}
+                          <div style={{ fontSize: 12, color: "var(--highlight)", fontWeight: 600, marginTop: 6 }}>
+                            {alert.createdByName} • {alert.createdByRole?.toUpperCase()}
                           </div>
                         </div>
                       </div>

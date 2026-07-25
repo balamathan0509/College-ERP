@@ -28,7 +28,7 @@ export default function StudentSignup(props) {
         { name: "phone", label: "Phone Number", type: "tel", placeholder: "+91 9876543210" },
         { name: "dept", label: "Department", placeholder: "Select department", options: deptOptions },
         { name: "year", label: "Year", placeholder: "Select year", options: yearOptions },
-        { name: "studentType", label: "Student Type", placeholder: "Select scholar type", options: [{ value: "dayscholar", label: "🏡 Day Scholar" }, { value: "hosteller", label: "🏠 Hosteller" }] },
+        { name: "studentType", label: "Student Type", placeholder: "Select scholar type", options: [{ value: "dayscholar", label: "Day Scholar" }, { value: "hosteller", label: "Hosteller" }] },
         { name: "registerNo", label: "Register Number", placeholder: "Register number" },
         { name: "password", label: "Password", type: "password", placeholder: "Min 6 characters" },
         { name: "confirmPassword", label: "Confirm Password", type: "password", placeholder: "Re-enter password" },

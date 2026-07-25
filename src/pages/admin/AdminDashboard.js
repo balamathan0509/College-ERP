@@ -2,12 +2,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "../../components/Sidebar";
 import DateTimeHeader from "../../components/DateTimeHeader";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
+import { db, auth } from "../../firebase/config";
 import {
   collection, getDocs, doc, updateDoc, deleteDoc, setDoc, query, orderBy, where
 } from "firebase/firestore";
-import { auth } from "../../firebase/config";
 import { createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+import { Users, GraduationCap, UserCheck, Award, Building2, CreditCard, ShieldCheck, Building, Landmark, ShieldAlert, Search, UserPlus } from "lucide-react";
 
 const BACKEND_URL = "http://localhost:3002";
 
@@ -27,15 +27,15 @@ const ROLE_COLORS = {
 };
 
 const ROLE_ICONS = {
-  student: "🎒",
-  staff: "👨‍🏫",
-  hod: "👑",
-  warden: "🏠",
-  officestaff: "📋",
-  security: "🔐",
-  management: "🏢",
-  principal: "🏛️",
-  admin: "⚡"
+  student: <GraduationCap size={16} />,
+  staff: <UserCheck size={16} />,
+  hod: <Award size={16} />,
+  warden: <Building2 size={16} />,
+  officestaff: <CreditCard size={16} />,
+  security: <ShieldCheck size={16} />,
+  management: <Building size={16} />,
+  principal: <Landmark size={16} />,
+  admin: <ShieldAlert size={16} />
 };
 
 export default function AdminDashboard() {
@@ -360,23 +360,21 @@ export default function AdminDashboard() {
 
         <DateTimeHeader />
         <div className="page-header">
-          <h1>⚡ Super Admin Panel</h1>
-          <p>Full control over all users and roles</p>
+          <h1>Super Admin Panel</h1>
+          <p>Full system control over all user accounts, roles, and permissions</p>
         </div>
-
-
 
         {/* Stats */}
         <div className="stats-grid">
           {[
-            { icon: "👥", value: stats.total, label: "Total Users", color: "#4299e1" },
-            { icon: "🎒", value: stats.students, label: "Students", color: "#e94560" },
-            { icon: "👨‍🏫", value: stats.staff, label: "Staff", color: "#f5a623" },
-            { icon: "👑", value: stats.hods, label: "HODs", color: "#48bb78" },
-            { icon: "⚡", value: stats.admins, label: "Super Admins", color: "#e53e3e" }
+            { icon: <Users size={22} color="#3b82f6" />, value: stats.total, label: "Total Users", color: "#3b82f6" },
+            { icon: <GraduationCap size={22} color="#10b981" />, value: stats.students, label: "Students", color: "#10b981" },
+            { icon: <UserCheck size={22} color="#f59e0b" />, value: stats.staff, label: "Faculty Staff", color: "#f59e0b" },
+            { icon: <Award size={22} color="#6366f1" />, value: stats.hods, label: "HODs", color: "#6366f1" },
+            { icon: <ShieldAlert size={22} color="#ef4444" />, value: stats.admins, label: "Super Admins", color: "#ef4444" }
           ].map((s, i) => (
             <div key={i} className="stat-card">
-              <div className="stat-icon">{s.icon}</div>
+              <div style={{ marginBottom: 12 }}>{s.icon}</div>
               <div className="stat-value" style={{ color: s.color }}>{s.value}</div>
               <div className="stat-label">{s.label}</div>
             </div>
@@ -389,7 +387,7 @@ export default function AdminDashboard() {
             <div style={{ display: "flex", gap: 12, flex: 1, flexWrap: "wrap", alignItems: "center" }}>
               {/* Search */}
               <div style={{ position: "relative", flex: "1 1 240px", maxWidth: 360 }}>
-                <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 16, opacity: 0.5 }}>🔍</span>
+                <Search size={16} color="var(--text-muted)" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)" }} />
                 <input
                   type="text"
                   placeholder="Search by name, email, or register no..."
@@ -397,39 +395,35 @@ export default function AdminDashboard() {
                   onChange={e => setSearch(e.target.value)}
                   style={{
                     width: "100%", padding: "11px 16px 11px 40px",
-                    background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)",
-                    borderRadius: 12, color: "white", fontSize: 14, outline: "none",
-                    fontFamily: "'DM Sans', sans-serif"
+                    background: "rgba(255,255,255,0.07)", border: "1px solid var(--border)",
+                    borderRadius: "var(--radius-md)", color: "var(--text)", fontSize: 14, outline: "none",
+                    fontFamily: "Inter, sans-serif"
                   }}
                 />
               </div>
               {/* Role Filter */}
               <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} style={{
-                padding: "11px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 12, color: "white", fontSize: 14, outline: "none", cursor: "pointer",
-                fontFamily: "'DM Sans', sans-serif", minWidth: 140
+                padding: "11px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)", color: "var(--text)", fontSize: 14, outline: "none", cursor: "pointer",
+                fontFamily: "Inter, sans-serif", minWidth: 140
               }}>
                 <option value="all">All Roles</option>
                 {ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
               </select>
               {/* Dept Filter */}
               <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)} style={{
-                padding: "11px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 12, color: "white", fontSize: 14, outline: "none", cursor: "pointer",
-                fontFamily: "'DM Sans', sans-serif", minWidth: 140
+                padding: "11px 16px", background: "rgba(255,255,255,0.07)", border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)", color: "var(--text)", fontSize: 14, outline: "none", cursor: "pointer",
+                fontFamily: "Inter, sans-serif", minWidth: 140
               }}>
                 <option value="all">All Depts</option>
                 {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
-            <button onClick={() => setShowAddModal(true)} style={{
-              padding: "12px 28px", borderRadius: 12, border: "none", cursor: "pointer",
-              background: "linear-gradient(135deg, #e94560, #c0392b)", color: "white",
-              fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 14,
-              boxShadow: "0 4px 16px rgba(233,69,96,0.3)", transition: "all 0.2s",
-              whiteSpace: "nowrap"
+            <button className="btn-primary" onClick={() => setShowAddModal(true)} style={{
+              width: "auto", display: "inline-flex", alignItems: "center", gap: 8
             }}>
-              ➕ Add User
+              <UserPlus size={16} /> Add User
             </button>
           </div>
           <div style={{ marginTop: 12, fontSize: 13, color: "#a0aec0" }}>
@@ -507,32 +501,29 @@ export default function AdminDashboard() {
                       <td style={{ padding: "14px 20px" }}>
                         {user.isSuperAdmin ? (
                           <span style={{
-                            padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 700,
-                            background: "rgba(229,62,62,0.15)", color: "#e53e3e"
-                          }}>⚡ SUPER ADMIN</span>
+                            fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 10,
+                            background: "rgba(37, 99, 235, 0.15)", color: "var(--highlight)", border: "1px solid rgba(37, 99, 235, 0.3)"
+                          }}>SUPER ADMIN</span>
                         ) : (
-                          <span style={{ fontSize: 13, color: "#4a5568" }}>—</span>
+                          <span style={{ color: "var(--text-muted)", fontSize: 13 }}>Standard</span>
                         )}
                       </td>
                       {/* Actions */}
-                      <td style={{ padding: "14px 20px" }}>
-                        <div style={{ display: "flex", gap: 8 }}>
+                      <td style={{ padding: "14px 20px", textAlign: "right" }}>
+                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                           <button onClick={() => openEditModal(user)} style={{
-                            padding: "7px 16px", borderRadius: 8,
-                            border: "1px solid rgba(66,153,225,0.3)",
-                            background: "rgba(66,153,225,0.1)", color: "#4299e1",
-                            fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all 0.15s"
+                            padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border)",
+                            background: "rgba(255,255,255,0.05)", color: "var(--text)", fontSize: 12,
+                            fontWeight: 600, cursor: "pointer"
                           }}>
-                            ✏️ Edit
+                            Edit
                           </button>
                           <button onClick={() => openDeleteModal(user)} disabled={user.uid === currentUser?.uid} style={{
-                            padding: "7px 16px", borderRadius: 8,
-                            border: "1px solid rgba(252,129,129,0.3)",
-                            background: "rgba(252,129,129,0.1)", color: "#fc8181",
-                            fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all 0.15s",
-                            opacity: user.uid === currentUser?.uid ? 0.3 : 1
+                            padding: "6px 12px", borderRadius: 8, border: "none",
+                            background: "rgba(239, 68, 68, 0.15)", color: "var(--danger)", fontSize: 12,
+                            fontWeight: 600, cursor: "pointer", opacity: user.uid === currentUser?.uid ? 0.3 : 1
                           }}>
-                            🗑️ Delete
+                            Delete
                           </button>
                         </div>
                       </td>

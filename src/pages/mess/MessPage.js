@@ -13,6 +13,15 @@ import {
   setDoc,
   where
 } from "firebase/firestore";
+import {
+  Utensils,
+  PlusCircle,
+  CheckCircle2,
+  RefreshCw,
+  Clock,
+  CreditCard,
+  Inbox
+} from "lucide-react";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const MEALS = ["Breakfast", "Lunch", "Dinner"];
@@ -50,153 +59,121 @@ export default function MessPage() {
   const [selectedMonth, setSelectedMonth] = useState(getMonthValue());
   const [students, setStudents] = useState([]);
   const [payments, setPayments] = useState({});
-  const [paymentsFetching, setPaymentsFetching] = useState(false);
+  const [studentsFetching, setStudentsFetching] = useState(false);
   const [paymentsSaving, setPaymentsSaving] = useState(false);
-  const [paymentsError, setPaymentsError] = useState("");
   const [paymentsSaved, setPaymentsSaved] = useState(false);
+  const [paymentsError, setPaymentsError] = useState("");
 
-  const [studentMonth, setStudentMonth] = useState(getMonthValue());
-  const [studentPaid, setStudentPaid] = useState(false);
-  const [studentFetching, setStudentFetching] = useState(false);
-
-  useEffect(() => {
-    if (!userProfile || !currentUser) return;
-    fetchMenu();
-  }, [userProfile, currentUser]);
-
-  useEffect(() => {
-    if (!userProfile || !currentUser) return;
-    if (isStudent) {
-      fetchStudentPayment(studentMonth);
-    }
-  }, [userProfile, currentUser, isStudent, studentMonth]);
-
-  useEffect(() => {
-    if (!userProfile || !currentUser) return;
-    if ((isStaff || isHod) && selectedYear && selectedMonth) {
-      fetchPayments(selectedYear, selectedMonth);
-    }
-  }, [userProfile, currentUser, isStaff, isHod, selectedYear, selectedMonth]);
+  const [myPaymentMonth, setMyPaymentMonth] = useState(getMonthValue());
+  const [myPaid, setMyPaid] = useState(null);
+  const [myFetching, setMyFetching] = useState(false);
 
   async function fetchMenu() {
     setMenuFetching(true);
     setMenuError("");
     try {
-      const q = query(
-        collection(db, "mess_menu"),
-        where("dept", "==", userProfile.dept)
-      );
+      const q = query(collection(db, "mess_menu"), where("dept", "==", userProfile?.dept || ""));
       const snap = await getDocs(q);
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      const dayOrder = DAYS.reduce((acc, day, idx) => ({ ...acc, [day]: idx }), {});
-      const mealOrder = MEALS.reduce((acc, meal, idx) => ({ ...acc, [meal]: idx }), {});
-      list.sort((a, b) => {
-        const dayDiff = (dayOrder[a.day] ?? 0) - (dayOrder[b.day] ?? 0);
-        if (dayDiff !== 0) return dayDiff;
-        return (mealOrder[a.meal] ?? 0) - (mealOrder[b.meal] ?? 0);
-      });
       setMenuEntries(list);
     } catch (err) {
-      setMenuError("Failed to load mess menu. Please try again.");
+      console.error(err);
+      setMenuError("Failed to fetch mess menu.");
     }
     setMenuFetching(false);
   }
 
+  useEffect(() => {
+    if (userProfile) {
+      fetchMenu();
+    }
+  }, [userProfile]);
+
   function handleMenuChange(e) {
-    setMenuForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setMenuForm({ ...menuForm, [e.target.name]: e.target.value });
   }
 
   async function handleMenuSubmit(e) {
     e.preventDefault();
     setMenuError("");
     setMenuSuccess("");
+
     if (!menuForm.day || !menuForm.meal || !menuForm.items.trim()) {
-      return setMenuError("Please fill all required fields.");
+      setMenuError("All fields are required.");
+      return;
     }
+
     setMenuSaving(true);
     try {
       await addDoc(collection(db, "mess_menu"), {
-        dept: userProfile.dept,
+        dept: userProfile?.dept || "",
         day: menuForm.day,
         meal: menuForm.meal,
         items: menuForm.items.trim(),
-        createdById: currentUser.uid,
-        createdByName: userProfile.name,
+        createdById: currentUser?.uid || "",
+        createdByName: userProfile?.name || "Staff",
         createdAt: new Date().toISOString()
       });
+
+      setMenuSuccess("Menu item added successfully!");
       setMenuForm({ day: "", meal: "", items: "" });
-      setMenuSuccess("Menu entry added.");
       fetchMenu();
     } catch (err) {
-      setMenuError("Failed to add menu entry.");
+      console.error(err);
+      setMenuError("Failed to add menu item.");
     }
     setMenuSaving(false);
   }
 
-  async function fetchPayments(year, month) {
-    setPaymentsFetching(true);
+  async function fetchStudentsAndPayments() {
+    if (!selectedYear || !selectedMonth || !userProfile) return;
+
+    setStudentsFetching(true);
     setPaymentsError("");
     setPaymentsSaved(false);
+
     try {
-      const q = query(
+      const studQ = query(
         collection(db, "users"),
         where("role", "==", "student"),
         where("dept", "==", userProfile.dept),
-        where("year", "==", year)
+        where("year", "==", selectedYear)
       );
-      const snap = await getDocs(q);
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      list.sort((a, b) => a.name.localeCompare(b.name));
-      setStudents(list);
+      const studSnap = await getDocs(studQ);
+      const studList = studSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      studList.sort((a, b) => (a.registerNo || "").localeCompare(b.registerNo || ""));
+      setStudents(studList);
 
-      const docId = `${userProfile.dept}_${year}_${month}`.replace(/\s+/g, "_");
-      const payDoc = await getDoc(doc(db, "mess_payments", docId));
-      if (payDoc.exists()) {
-        setPayments(payDoc.data().payments || {});
+      const docId = `${userProfile.dept}_${selectedYear}_${selectedMonth}`.replace(/\s+/g, "_");
+      const paySnap = await getDoc(doc(db, "mess_payments", docId));
+      if (paySnap.exists()) {
+        setPayments(paySnap.data().payments || {});
       } else {
-        setPayments({});
+        const initial = {};
+        studList.forEach(s => { initial[s.id] = false; });
+        setPayments(initial);
       }
     } catch (err) {
-      setPaymentsError("Failed to load payments.");
+      console.error(err);
+      setPaymentsError("Failed to fetch students or payments.");
     }
-    setPaymentsFetching(false);
+    setStudentsFetching(false);
   }
 
-  async function fetchStudentPayment(month) {
-    setStudentFetching(true);
-    try {
-      const docId = `${userProfile.dept}_${userProfile.year}_${month}`.replace(/\s+/g, "_");
-      const payDoc = await getDoc(doc(db, "mess_payments", docId));
-      if (payDoc.exists()) {
-        const map = payDoc.data().payments || {};
-        setStudentPaid(!!map[currentUser.uid]);
-      } else {
-        setStudentPaid(false);
-      }
-    } catch (err) {
-      setStudentPaid(false);
+  useEffect(() => {
+    if (tab === "payments") {
+      fetchStudentsAndPayments();
     }
-    setStudentFetching(false);
-  }
+  }, [tab, selectedYear, selectedMonth, userProfile]);
 
-  function togglePayment(studentId) {
+  function handlePaymentToggle(studentId) {
     setPayments(prev => ({
       ...prev,
       [studentId]: !prev[studentId]
     }));
   }
 
-  function selectAll() {
-    const all = {};
-    students.forEach(s => { all[s.id] = true; });
-    setPayments(all);
-  }
-
-  function clearAll() {
-    setPayments({});
-  }
-
-  async function savePayments() {
+  async function handleSavePayments() {
     if (!selectedYear || !selectedMonth) return;
     setPaymentsSaving(true);
     try {
@@ -216,6 +193,30 @@ export default function MessPage() {
     setPaymentsSaving(false);
   }
 
+  async function fetchMyPayment() {
+    if (!isStudent || !myPaymentMonth || !userProfile) return;
+    setMyFetching(true);
+    try {
+      const docId = `${userProfile.dept}_${userProfile.year}_${myPaymentMonth}`.replace(/\s+/g, "_");
+      const snap = await getDoc(doc(db, "mess_payments", docId));
+      if (snap.exists()) {
+        const val = snap.data().payments?.[currentUser?.uid];
+        setMyPaid(val === true);
+      } else {
+        setMyPaid(null);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    setMyFetching(false);
+  }
+
+  useEffect(() => {
+    if (tab === "my-payment") {
+      fetchMyPayment();
+    }
+  }, [tab, myPaymentMonth, userProfile]);
+
   const filteredMenu = useMemo(() => {
     return menuEntries.filter(entry => dayFilter === "all" || entry.day === dayFilter);
   }, [menuEntries, dayFilter]);
@@ -230,19 +231,16 @@ export default function MessPage() {
     return map;
   }, [filteredMenu]);
 
-  const paidCount = students.filter(s => payments[s.id]).length;
-  const pendingCount = students.length - paidCount;
-
   return (
     <div className="dashboard-wrapper">
       <Sidebar />
       <main className="main-content">
         <div className="page-header">
-          <h1>Mess Management</h1>
-          <p>Role-based mess menu and payment tracking</p>
+          <h1>Mess & Dining Portal</h1>
+          <p>Weekly dining menu and monthly mess billing management</p>
         </div>
 
-        <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap", borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
           {["menu", isStudent ? "my-payment" : "payments"]
             .filter(Boolean)
             .map(t => (
@@ -250,18 +248,13 @@ export default function MessPage() {
                 key={t}
                 onClick={() => setTab(t)}
                 style={{
-                  padding: "10px 24px",
-                  borderRadius: 10,
-                  border: "none",
-                  cursor: "pointer",
-                  fontFamily: "Syne",
-                  fontWeight: 600,
-                  fontSize: 14,
-                  background: tab === t ? "#e94560" : "rgba(255,255,255,0.07)",
-                  color: "white"
+                  padding: "8px 18px", borderRadius: 20, border: "none", cursor: "pointer",
+                  fontSize: 13, fontWeight: 600, transition: "all 0.2s ease",
+                  background: tab === t ? "rgba(37, 99, 235, 0.18)" : "rgba(255,255,255,0.04)",
+                  color: tab === t ? "var(--highlight)" : "var(--text-muted)"
                 }}
               >
-                {t === "menu" ? "Menu" : isStudent ? "My Payment" : "Payments"}
+                {t === "menu" ? "Mess Menu" : isStudent ? "My Mess Bills" : "Mess Payments"}
               </button>
             ))}
         </div>
@@ -270,47 +263,49 @@ export default function MessPage() {
           <div className={`mess-layout ${isStaff ? "" : "single"}`}>
             {isStaff && (
               <div className="card" style={{ height: "fit-content" }}>
-                <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 20 }}>Add Menu Item</h3>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                  <PlusCircle size={20} color="var(--highlight)" />
+                  <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, fontWeight: 700 }}>Add Menu Item</h3>
+                </div>
+
                 {menuError && <div className="error-msg">{menuError}</div>}
                 {menuSuccess && (
                   <div style={{
-                    background: "rgba(72,187,120,0.1)",
-                    border: "1px solid rgba(72,187,120,0.3)",
-                    borderRadius: 10,
-                    padding: "12px 16px",
-                    color: "#48bb78",
-                    fontSize: 14,
-                    marginBottom: 20
+                    background: "rgba(16, 185, 129, 0.15)", border: "1px solid rgba(16, 185, 129, 0.3)",
+                    borderRadius: "var(--radius-md)", padding: "12px 16px", color: "var(--success)",
+                    fontSize: 14, marginBottom: 20, display: "flex", alignItems: "center", gap: 8
                   }}>
-                    {menuSuccess}
+                    <CheckCircle2 size={16} /> {menuSuccess}
                   </div>
                 )}
+
                 <form onSubmit={handleMenuSubmit}>
                   <div className="form-group">
-                    <label>Day</label>
-                    <select name="day" value={menuForm.day} onChange={handleMenuChange}>
-                      <option value="">Select Day</option>
+                    <label>Day *</label>
+                    <select name="day" value={menuForm.day} onChange={handleMenuChange} required>
+                      <option value="" disabled>Select Day</option>
                       {DAYS.map(day => <option key={day} value={day}>{day}</option>)}
                     </select>
                   </div>
                   <div className="form-group">
-                    <label>Meal</label>
-                    <select name="meal" value={menuForm.meal} onChange={handleMenuChange}>
-                      <option value="">Select Meal</option>
+                    <label>Meal *</label>
+                    <select name="meal" value={menuForm.meal} onChange={handleMenuChange} required>
+                      <option value="" disabled>Select Meal</option>
                       {MEALS.map(meal => <option key={meal} value={meal}>{meal}</option>)}
                     </select>
                   </div>
                   <div className="form-group">
-                    <label>Items</label>
+                    <label>Food Items *</label>
                     <input
                       name="items"
                       value={menuForm.items}
                       onChange={handleMenuChange}
-                      placeholder="Example: Idli, Sambar, Chutney"
+                      placeholder="e.g. Idli, Sambar, Chutney"
+                      required
                     />
                   </div>
                   <button className="btn-primary" type="submit" disabled={menuSaving}>
-                    {menuSaving ? "Saving..." : "Add Menu"}
+                    {menuSaving ? "Saving..." : "Add Menu Item"}
                   </button>
                 </form>
               </div>
@@ -320,28 +315,20 @@ export default function MessPage() {
               <div className="card" style={{ marginBottom: 20 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
                   <div>
-                    <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 6 }}>Weekly Menu</h3>
-                    <p style={{ color: "#a0aec0", fontSize: 13 }}>{userProfile?.dept}</p>
+                    <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, fontWeight: 700 }}>Weekly Mess Menu</h3>
+                    <p style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 2 }}>{userProfile?.dept} Department Mess</p>
                   </div>
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <select value={dayFilter} onChange={e => setDayFilter(e.target.value)}>
+                    <select value={dayFilter} onChange={e => setDayFilter(e.target.value)} style={{ width: "auto" }}>
                       <option value="all">All Days</option>
                       {DAYS.map(day => <option key={day} value={day}>{day}</option>)}
                     </select>
                     <button
                       onClick={fetchMenu}
-                      style={{
-                        padding: "8px 16px",
-                        borderRadius: 8,
-                        border: "1px solid rgba(255,255,255,0.2)",
-                        background: "rgba(255,255,255,0.05)",
-                        color: "white",
-                        cursor: "pointer",
-                        fontSize: 13,
-                        fontWeight: 600
-                      }}
+                      className="btn-secondary"
+                      style={{ margin: 0, padding: "8px 14px", fontSize: 13, width: "auto", display: "inline-flex", alignItems: "center", gap: 6 }}
                     >
-                      Refresh
+                      <RefreshCw size={14} /> Refresh
                     </button>
                   </div>
                 </div>
@@ -355,38 +342,30 @@ export default function MessPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   {(dayFilter === "all" ? DAYS : [dayFilter]).map(day => (
                     <div key={day} className="card">
-                      <div style={{ fontFamily: "Syne", fontSize: 16, fontWeight: 700, marginBottom: 12 }}>
+                      <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 16, fontWeight: 700, marginBottom: 14, color: "var(--text)" }}>
                         {day}
-                      </div>
+                      </h3>
                       {menuByDay[day] && menuByDay[day].length > 0 ? (
                         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                           {menuByDay[day].map(entry => (
                             <div key={entry.id} style={{
-                              padding: "12px 14px",
-                              borderRadius: 12,
-                              border: "1px solid rgba(255,255,255,0.08)",
-                              background: "rgba(255,255,255,0.03)",
-                              display: "flex",
-                              justifyContent: "space-between",
-                              flexWrap: "wrap",
-                              gap: 10
+                              padding: "12px 16px", borderRadius: "var(--radius-md)",
+                              border: "1px solid var(--border)", background: "rgba(11, 19, 43, 0.4)",
+                              display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10
                             }}>
                               <div>
-                                <div style={{ fontWeight: 700 }}>{entry.meal}</div>
-                                <div style={{ fontSize: 12, color: "#a0aec0", marginTop: 4 }}>
+                                <span className="badge" style={{ background: "rgba(37, 99, 235, 0.12)", color: "var(--highlight)", border: "1px solid rgba(37, 99, 235, 0.3)", marginBottom: 4 }}>
+                                  {entry.meal}
+                                </span>
+                                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", marginTop: 6 }}>
                                   {entry.items}
                                 </div>
                               </div>
-                              {!isStudent && (
-                                <div style={{ fontSize: 12, color: "#a0aec0" }}>
-                                  Added by {entry.createdByName}
-                                </div>
-                              )}
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div style={{ color: "#a0aec0", fontSize: 13 }}>No menu entries.</div>
+                        <div style={{ color: "var(--text-muted)", fontSize: 13 }}>No menu items specified for this day.</div>
                       )}
                     </div>
                   ))}
@@ -396,176 +375,39 @@ export default function MessPage() {
           </div>
         )}
 
-        {tab === "payments" && (isStaff || isHod) && (
-          <div>
-            <div className="card" style={{ marginBottom: 20 }}>
-              <div className="form-row">
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label>Select Year</label>
-                  <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}>
-                    <option value="">Choose Year</option>
-                    {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label>Month</label>
-                  <input type="month" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} />
-                </div>
-              </div>
-            </div>
-
-            {paymentsError && <div className="error-msg">{paymentsError}</div>}
-
-            {paymentsFetching ? (
-              <div style={{ textAlign: "center", padding: 60 }}>
-                <div className="spinner" style={{ margin: "0 auto" }}></div>
-              </div>
-            ) : selectedYear ? (
-              students.length > 0 ? (
-                <div className="card">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
-                    <div>
-                      <h3 style={{ fontFamily: "Syne", fontSize: 18 }}>
-                        Mess Payments - {selectedYear} ({selectedMonth})
-                      </h3>
-                      <p style={{ color: "#a0aec0", fontSize: 13 }}>{userProfile?.dept}</p>
-                    </div>
-                    {isStaff && (
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                        <button onClick={selectAll} style={{
-                          padding: "8px 16px",
-                          borderRadius: 8,
-                          border: "1px solid rgba(72,187,120,0.3)",
-                          background: "rgba(72,187,120,0.1)",
-                          color: "#48bb78",
-                          cursor: "pointer",
-                          fontSize: 13,
-                          fontWeight: 600
-                        }}>Select All</button>
-                        <button onClick={clearAll} style={{
-                          padding: "8px 16px",
-                          borderRadius: 8,
-                          border: "1px solid rgba(252,129,129,0.3)",
-                          background: "rgba(252,129,129,0.1)",
-                          color: "#fc8181",
-                          cursor: "pointer",
-                          fontSize: 13,
-                          fontWeight: 600
-                        }}>Clear All</button>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="stats-grid" style={{ marginBottom: 20 }}>
-                    <div className="stat-card">
-                      <div className="stat-value">{students.length}</div>
-                      <div className="stat-label">Total Students</div>
-                    </div>
-                    <div className="stat-card">
-                      <div className="stat-value" style={{ color: "#48bb78" }}>{paidCount}</div>
-                      <div className="stat-label">Paid</div>
-                    </div>
-                    <div className="stat-card">
-                      <div className="stat-value" style={{ color: "#fc8181" }}>{pendingCount}</div>
-                      <div className="stat-label">Pending</div>
-                    </div>
-                  </div>
-
-                  <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <thead>
-                        <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-                          <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>S.No</th>
-                          <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>Name</th>
-                          <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>Register No</th>
-                          <th style={{ padding: "12px 16px", textAlign: "center", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {students.map((student, idx) => {
-                          const isPaid = !!payments[student.id];
-                          return (
-                            <tr
-                              key={student.id}
-                              style={{
-                                borderBottom: "1px solid rgba(255,255,255,0.05)",
-                                background: isPaid ? "rgba(72,187,120,0.05)" : "transparent",
-                                cursor: isStaff ? "pointer" : "default"
-                              }}
-                              onClick={() => isStaff && togglePayment(student.id)}
-                            >
-                              <td style={{ padding: "14px 16px", color: "#a0aec0", fontSize: 14 }}>{idx + 1}</td>
-                              <td style={{ padding: "14px 16px", fontWeight: 600, fontSize: 15 }}>{student.name}</td>
-                              <td style={{ padding: "14px 16px", color: "#a0aec0", fontSize: 14 }}>{student.registerNo}</td>
-                              <td style={{ padding: "14px 16px", textAlign: "center" }}>
-                                <div style={{
-                                  width: 28,
-                                  height: 28,
-                                  borderRadius: 8,
-                                  border: isPaid ? "2px solid #48bb78" : "2px solid rgba(255,255,255,0.2)",
-                                  background: isPaid ? "#48bb78" : "transparent",
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  margin: "0 auto",
-                                  fontSize: 16,
-                                  transition: "all 0.2s"
-                                }}>
-                                  {isPaid ? "OK" : ""}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {isStaff && (
-                    <div style={{ marginTop: 24, display: "flex", gap: 12, alignItems: "center" }}>
-                      <button className="btn-primary" onClick={savePayments} disabled={paymentsSaving} style={{ width: "auto", padding: "12px 32px" }}>
-                        {paymentsSaving ? "Saving..." : "Save Payments"}
-                      </button>
-                      {paymentsSaved && (
-                        <span style={{ color: "#48bb78", fontWeight: 600, fontSize: 14 }}>Saved successfully!</span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="card" style={{ textAlign: "center", padding: 60 }}>
-                  <p style={{ color: "#a0aec0" }}>No students found for {selectedYear}.</p>
-                </div>
-              )
-            ) : (
-              <div className="card" style={{ textAlign: "center", padding: 60 }}>
-                <p style={{ color: "#a0aec0" }}>Select year and month to view payments.</p>
-              </div>
-            )}
-          </div>
-        )}
-
         {tab === "my-payment" && isStudent && (
-          <div className="card" style={{ maxWidth: 480 }}>
-            <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 16 }}>My Mess Payment</h3>
-            <div className="form-group">
-              <label>Month</label>
-              <input type="month" value={studentMonth} onChange={e => setStudentMonth(e.target.value)} />
+          <div className="card" style={{ maxWidth: 500 }}>
+            <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, fontWeight: 700, marginBottom: 20 }}>
+              My Mess Fee Status
+            </h3>
+            <div className="form-group" style={{ marginBottom: 20 }}>
+              <label>Select Month</label>
+              <input
+                type="month"
+                value={myPaymentMonth}
+                onChange={e => setMyPaymentMonth(e.target.value)}
+              />
             </div>
-            {studentFetching ? (
-              <div style={{ textAlign: "center", padding: 30 }}>
+
+            {myFetching ? (
+              <div style={{ textAlign: "center", padding: 40 }}>
                 <div className="spinner" style={{ margin: "0 auto" }}></div>
               </div>
+            ) : myPaid === true ? (
+              <div style={{ padding: 20, borderRadius: "var(--radius-md)", background: "rgba(16, 185, 129, 0.14)", border: "1px solid rgba(16, 185, 129, 0.3)", textAlign: "center" }}>
+                <CheckCircle2 size={32} color="var(--success)" style={{ margin: "0 auto 8px" }} />
+                <div style={{ color: "var(--success)", fontWeight: 700, fontSize: 16 }}>Mess Fee Settled</div>
+                <div style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 4 }}>Your mess bill for {myPaymentMonth} is fully paid.</div>
+              </div>
+            ) : myPaid === false ? (
+              <div style={{ padding: 20, borderRadius: "var(--radius-md)", background: "rgba(239, 68, 68, 0.14)", border: "1px solid rgba(239, 68, 68, 0.3)", textAlign: "center" }}>
+                <Clock size={32} color="var(--danger)" style={{ margin: "0 auto 8px" }} />
+                <div style={{ color: "var(--danger)", fontWeight: 700, fontSize: 16 }}>Mess Fee Pending</div>
+                <div style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 4 }}>Your mess bill for {myPaymentMonth} is currently unpaid. Please submit payment via Fees portal.</div>
+              </div>
             ) : (
-              <div style={{
-                padding: "14px 16px",
-                borderRadius: 12,
-                background: studentPaid ? "rgba(72,187,120,0.1)" : "rgba(252,129,129,0.1)",
-                border: `1px solid ${studentPaid ? "rgba(72,187,120,0.3)" : "rgba(252,129,129,0.3)"}`,
-                color: studentPaid ? "#48bb78" : "#fc8181",
-                fontWeight: 700
-              }}>
-                {studentPaid ? "Paid" : "Pending"}
+              <div style={{ textAlign: "center", padding: 30, color: "var(--text-muted)" }}>
+                No mess bill generated for {myPaymentMonth}.
               </div>
             )}
           </div>

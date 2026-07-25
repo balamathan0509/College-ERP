@@ -4,22 +4,34 @@ import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase/config";
 import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
+import {
+  AlertOctagon,
+  BookOpen,
+  Home,
+  Book,
+  ClipboardList,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Eye,
+  X
+} from "lucide-react";
 
 const CATEGORY_STYLES = {
-  "Disciplinary": { bg: "rgba(252,129,129,0.12)", color: "#fc8181", icon: "⚠️" },
-  "Academic": { bg: "rgba(66,153,225,0.12)", color: "#4299e1", icon: "📚" },
-  "Hostel": { bg: "rgba(159,122,234,0.12)", color: "#9f7aea", icon: "🏠" },
-  "Library": { bg: "rgba(246,173,85,0.12)", color: "#f6ad55", icon: "📖" },
-  "Other": { bg: "rgba(160,174,192,0.12)", color: "#a0aec0", icon: "📋" }
+  "Disciplinary": { bg: "rgba(239, 68, 68, 0.14)", color: "var(--danger)", icon: <AlertOctagon size={16} /> },
+  "Academic": { bg: "rgba(37, 99, 235, 0.14)", color: "var(--highlight)", icon: <BookOpen size={16} /> },
+  "Hostel": { bg: "rgba(139, 92, 246, 0.14)", color: "#8b5cf6", icon: <Home size={16} /> },
+  "Library": { bg: "rgba(245, 158, 11, 0.14)", color: "var(--warning)", icon: <Book size={16} /> },
+  "Other": { bg: "rgba(148, 163, 184, 0.14)", color: "var(--text-muted)", icon: <ClipboardList size={16} /> }
 };
 
 export default function OfficeStaffFines() {
   const { userProfile } = useAuth();
   const [fines, setFines] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterTab, setFilterTab] = useState("pending"); // pending, approved, rejected
-  const [selectedScreenshot, setSelectedScreenshot] = useState(null); // URL of screenshot to show in modal
-  const [rejectionFine, setRejectionFine] = useState(null); // Fine object currently being rejected
+  const [filterTab, setFilterTab] = useState("pending");
+  const [selectedScreenshot, setSelectedScreenshot] = useState(null);
+  const [rejectionFine, setRejectionFine] = useState(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -40,141 +52,133 @@ export default function OfficeStaffFines() {
     fetchFines();
   }, []);
 
-  // Process fines into individual submission items
   const submissions = [];
   fines.forEach(fine => {
     if (fine.studentUid) {
-      // Individual fine
       const hasPayment = fine.paymentDetails;
       if (hasPayment) {
         submissions.push({
           fineId: fine.id,
-          type: "individual",
+          isGroup: false,
           studentUid: fine.studentUid,
-          studentName: fine.studentName,
-          studentRegisterNo: fine.studentRegisterNo,
-          studentDept: fine.studentDept,
-          studentYear: fine.studentYear,
-          title: fine.title,
+          studentName: fine.studentName || "Student",
+          studentRegisterNo: fine.studentRegisterNo || "N/A",
+          studentDept: fine.studentDept || "",
+          studentYear: fine.studentYear || "",
+          fineTitle: fine.title,
           category: fine.category,
-          amount: fine.paymentDetails.amountPaid || fine.amount,
-          baseAmount: fine.amount,
-          dueDate: fine.dueDate,
-          createdAt: fine.createdAt,
-          createdBy: fine.createdBy,
-          status: fine.paymentDetails.status || (fine.status === "paid" ? "approved" : "pending"),
+          originalAmount: fine.amount,
+          amountPaid: fine.paymentDetails.amountPaid || fine.amount,
           transactionId: fine.paymentDetails.transactionId,
           screenshotUrl: fine.paymentDetails.screenshotUrl,
           paidAt: fine.paymentDetails.paidAt,
+          status: fine.paymentDetails.status || "pending",
           rejectionReason: fine.paymentDetails.rejectionReason,
-          originalFine: fine
+          rawFine: fine
         });
       }
     } else if (fine.payments) {
-      // Group/department-wide fine where students have paid
       Object.entries(fine.payments).forEach(([studentUid, payment]) => {
         submissions.push({
           fineId: fine.id,
-          type: "group",
-          studentUid: studentUid,
-          studentName: payment.studentName || "Group Student",
+          isGroup: true,
+          studentUid,
+          studentName: payment.studentName || "Student",
           studentRegisterNo: payment.studentRegisterNo || "N/A",
-          studentDept: payment.studentDept || fine.targetDept,
-          studentYear: payment.studentYear || fine.targetYear,
-          title: fine.title,
+          studentDept: payment.studentDept || fine.targetDept || "",
+          studentYear: payment.studentYear || fine.targetYear || "",
+          fineTitle: fine.title,
           category: fine.category,
-          amount: payment.amountPaid || fine.amount,
-          baseAmount: fine.amount,
-          dueDate: fine.dueDate,
-          createdAt: fine.createdAt,
-          createdBy: fine.createdBy,
-          status: payment.status || "pending",
+          originalAmount: fine.amount,
+          amountPaid: payment.amountPaid || fine.amount,
           transactionId: payment.transactionId,
           screenshotUrl: payment.screenshotUrl,
           paidAt: payment.paidAt,
+          status: payment.status || "pending",
           rejectionReason: payment.rejectionReason,
-          originalFine: fine
+          rawFine: fine
         });
       });
     }
   });
 
-  // Filter submissions by user role (Only HOD is allowed to see/verify fine payments)
-  const filteredSubmissions = submissions.filter(sub => {
-    if (userProfile?.role === "hod") {
-      return sub.studentDept === userProfile.dept;
-    }
-    return false;
-  });
+  const pendingSubmissions = submissions.filter(s => s.status === "pending");
+  const approvedSubmissions = submissions.filter(s => s.status === "verified");
+  const rejectedSubmissions = submissions.filter(s => s.status === "rejected");
 
-  // Filter submissions by tab
-  const pendingSubmissions = filteredSubmissions.filter(s => s.status === "pending");
-  const approvedSubmissions = filteredSubmissions.filter(s => s.status === "approved" || s.status === "verified");
-  const rejectedSubmissions = filteredSubmissions.filter(s => s.status === "rejected" || s.status === "payment_rejected");
-
-  const activeSubmissions = 
-    filterTab === "pending" ? pendingSubmissions :
-    filterTab === "approved" ? approvedSubmissions : rejectedSubmissions;
+  const activeSubmissions = filterTab === "pending"
+    ? pendingSubmissions
+    : filterTab === "approved"
+    ? approvedSubmissions
+    : rejectedSubmissions;
 
   async function handleApprove(sub) {
-    if (window.confirm(`Are you sure you want to approve payment of ₹${sub.amount} for ${sub.studentName}?`)) {
-      setActionLoading(true);
-      try {
-        const fineRef = doc(db, "fines", sub.fineId);
-        if (sub.type === "individual") {
-          await updateDoc(fineRef, {
-            status: "paid",
-            "paymentDetails.status": "approved",
-            "paymentDetails.verifiedAt": new Date().toISOString(),
-            "paymentDetails.verifiedBy": userProfile?.name || "Super Admin"
-          });
-        } else {
-          // Group fine
-          await updateDoc(fineRef, {
-            [`payments.${sub.studentUid}.status`]: "verified",
-            [`payments.${sub.studentUid}.verifiedAt`]: new Date().toISOString(),
-            [`payments.${sub.studentUid}.verifiedBy`]: userProfile?.name || "Super Admin"
-          });
-        }
-        await fetchFines();
-      } catch (err) {
-        console.error("Error approving payment:", err);
-        alert("Failed to approve payment. Please try again.");
-      }
-      setActionLoading(false);
-    }
-  }
+    if (!window.confirm(`Approve fine payment of ₹${sub.amountPaid} for ${sub.studentName}?`)) return;
 
-  async function handleRejectSubmit(e) {
-    e.preventDefault();
-    if (!rejectionReason.trim() || !rejectionFine) return;
     setActionLoading(true);
-    const sub = rejectionFine;
     try {
       const fineRef = doc(db, "fines", sub.fineId);
-      if (sub.type === "individual") {
+      const verifiedAt = new Date().toISOString();
+
+      if (!sub.isGroup) {
         await updateDoc(fineRef, {
-          status: "payment_rejected",
-          "paymentDetails.status": "rejected",
-          "paymentDetails.rejectionReason": rejectionReason.trim(),
-          "paymentDetails.rejectedAt": new Date().toISOString(),
-          "paymentDetails.rejectedBy": userProfile?.name || "Super Admin"
+          status: "paid",
+          "paymentDetails.status": "verified",
+          "paymentDetails.verifiedAt": verifiedAt,
+          "paymentDetails.verifiedBy": userProfile?.name || "Office Staff"
         });
       } else {
-        // Group fine
+        await updateDoc(fineRef, {
+          [`payments.${sub.studentUid}.status`]: "verified",
+          [`payments.${sub.studentUid}.verifiedAt`]: verifiedAt,
+          [`payments.${sub.studentUid}.verifiedBy`]: userProfile?.name || "Office Staff"
+        });
+      }
+
+      await fetchFines();
+    } catch (err) {
+      console.error("Failed to approve payment:", err);
+      alert("Error approving payment.");
+    }
+    setActionLoading(false);
+  }
+
+  async function handleConfirmReject() {
+    if (!rejectionFine) return;
+    if (!rejectionReason.trim()) {
+      alert("Please provide a reason for rejecting the payment.");
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const sub = rejectionFine;
+      const fineRef = doc(db, "fines", sub.fineId);
+      const rejectedAt = new Date().toISOString();
+
+      if (!sub.isGroup) {
+        await updateDoc(fineRef, {
+          status: "active",
+          "paymentDetails.status": "rejected",
+          "paymentDetails.rejectionReason": rejectionReason.trim(),
+          "paymentDetails.rejectedAt": rejectedAt,
+          "paymentDetails.rejectedBy": userProfile?.name || "Office Staff"
+        });
+      } else {
         await updateDoc(fineRef, {
           [`payments.${sub.studentUid}.status`]: "rejected",
           [`payments.${sub.studentUid}.rejectionReason`]: rejectionReason.trim(),
-          [`payments.${sub.studentUid}.rejectedAt`]: new Date().toISOString(),
-          [`payments.${sub.studentUid}.rejectedBy`]: userProfile?.name || "Super Admin"
+          [`payments.${sub.studentUid}.rejectedAt`]: rejectedAt,
+          [`payments.${sub.studentUid}.rejectedBy`]: userProfile?.name || "Office Staff"
         });
       }
+
       setRejectionFine(null);
       setRejectionReason("");
       await fetchFines();
     } catch (err) {
-      console.error("Error rejecting payment:", err);
-      alert("Failed to reject payment. Please try again.");
+      console.error("Failed to reject payment:", err);
+      alert("Error rejecting payment.");
     }
     setActionLoading(false);
   }
@@ -184,320 +188,265 @@ export default function OfficeStaffFines() {
       <Sidebar />
       <main className="main-content">
         <div className="page-header">
-          <h1>⚠️ Verify Student Fines</h1>
-          <p>{userProfile?.dept} Department HOD Portal • Review UPI Payments & screenshots</p>
+          <h1>Fine Verification & Audit</h1>
+          <p>Review student UPI payment submissions & verify UTR records</p>
         </div>
 
-        {/* Stats Grid */}
+        {/* Stats */}
         <div className="stats-grid" style={{ marginBottom: 28 }}>
-          <div className="stat-card" style={{ borderLeft: "4px solid #f5a623" }}>
-            <div className="stat-icon">⏳</div>
-            <div className="stat-value" style={{ color: "#f5a623" }}>
+          <div className="stat-card" style={{ cursor: "pointer" }} onClick={() => setFilterTab("pending")}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <Clock size={24} color="var(--warning)" />
+            </div>
+            <div className="stat-value" style={{ color: pendingSubmissions.length > 0 ? "var(--warning)" : "var(--success)" }}>
               {loading ? "..." : pendingSubmissions.length}
             </div>
             <div className="stat-label">Pending Verification</div>
           </div>
-          <div className="stat-card" style={{ borderLeft: "4px solid #48bb78" }}>
-            <div className="stat-icon">✅</div>
-            <div className="stat-value" style={{ color: "#48bb78" }}>
-              {loading ? "..." : approvedSubmissions.length}
+          <div className="stat-card" style={{ cursor: "pointer" }} onClick={() => setFilterTab("approved")}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <CheckCircle2 size={24} color="var(--success)" />
             </div>
+            <div className="stat-value" style={{ color: "var(--success)" }}>{loading ? "..." : approvedSubmissions.length}</div>
             <div className="stat-label">Approved Payments</div>
           </div>
-          <div className="stat-card" style={{ borderLeft: "4px solid #fc8181" }}>
-            <div className="stat-icon">❌</div>
-            <div className="stat-value" style={{ color: "#fc8181" }}>
-              {loading ? "..." : rejectedSubmissions.length}
+          <div className="stat-card" style={{ cursor: "pointer" }} onClick={() => setFilterTab("rejected")}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+              <XCircle size={24} color="var(--danger)" />
             </div>
-            <div className="stat-label">Rejected Payments</div>
+            <div className="stat-value" style={{ color: "var(--danger)" }}>{loading ? "..." : rejectedSubmissions.length}</div>
+            <div className="stat-label">Rejected Submissions</div>
           </div>
         </div>
 
-        {/* Navigation Tabs */}
-        <div style={{ display: "flex", gap: 12, marginBottom: 24, borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: 12 }}>
-          {[
-            { id: "pending", label: "Pending Verifications", count: pendingSubmissions.length, color: "#f5a623", bg: "rgba(245,166,35,0.15)" },
-            { id: "approved", label: "Approved Payments", count: approvedSubmissions.length, color: "#48bb78", bg: "rgba(72,187,120,0.15)" },
-            { id: "rejected", label: "Rejected Payments", count: rejectedSubmissions.length, color: "#fc8181", bg: "rgba(252,129,129,0.15)" }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setFilterTab(tab.id)}
-              style={{
-                padding: "10px 20px",
-                borderRadius: 20,
-                border: "none",
-                cursor: "pointer",
-                fontWeight: 600,
-                fontSize: 14,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                transition: "all 0.2s",
-                background: filterTab === tab.id ? tab.bg : "rgba(255,255,255,0.04)",
-                color: filterTab === tab.id ? tab.color : "#a0aec0"
-              }}
-            >
-              {tab.label} <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, background: "rgba(255,255,255,0.1)", color: filterTab === tab.id ? "white" : "#a0aec0" }}>{tab.count}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Content Body */}
-        {loading ? (
-          <div style={{ textAlign: "center", padding: 60 }}>
-            <div className="spinner" style={{ margin: "0 auto" }}></div>
-          </div>
-        ) : activeSubmissions.length === 0 ? (
-          <div className="card" style={{ textAlign: "center", padding: 60, color: "#a0aec0" }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>🔍</div>
-            <h3>No submissions found</h3>
-            <p style={{ marginTop: 8 }}>There are no payments in the "{filterTab}" category.</p>
-          </div>
-        ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: 20 }}>
-            {activeSubmissions.map((sub, i) => {
-              const catStyle = CATEGORY_STYLES[sub.category] || CATEGORY_STYLES["Other"];
-              return (
-                <div key={`${sub.fineId}_${sub.studentUid}_${i}`} className="card" style={{
-                  borderLeft: `4px solid ${sub.status === "pending" ? "#f5a623" : sub.status === "approved" || sub.status === "verified" ? "#48bb78" : "#fc8181"}`,
-                  display: "flex", flexDirection: "column", justifyContent: "space-between"
-                }}>
-                  <div>
-                    {/* Top Badges */}
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, alignItems: "center" }}>
-                      <span style={{
-                        display: "inline-flex", alignItems: "center", gap: 6,
-                        padding: "3px 10px", borderRadius: 12, fontSize: 11, fontWeight: 600,
-                        background: catStyle.bg, color: catStyle.color
-                      }}>
-                        {catStyle.icon} {sub.category}
-                      </span>
-                      <span style={{ fontSize: 12, color: "#a0aec0" }}>
-                        Type: {sub.type === "individual" ? "Individual" : "Group"}
-                      </span>
-                    </div>
-
-                    {/* Fine Title */}
-                    <h3 style={{ fontFamily: "Syne", fontSize: 17, fontWeight: 700, marginBottom: 12 }}>
-                      {sub.title}
-                    </h3>
-
-                    {/* Student details panel */}
-                    <div style={{
-                      padding: "10px 12px", borderRadius: 8, background: "rgba(255, 255, 255, 0.03)",
-                      border: "1px solid rgba(255, 255, 255, 0.06)", marginBottom: 16
-                    }}>
-                      <div style={{ fontWeight: 600, color: "white", fontSize: 14 }}>🧑‍🎓 {sub.studentName}</div>
-                      <div style={{ fontSize: 12, color: "#e94560", fontWeight: 600, marginTop: 2 }}>{sub.studentRegisterNo}</div>
-                      <div style={{ fontSize: 12, color: "#a0aec0", marginTop: 4 }}>{sub.studentDept} • {sub.studentYear}</div>
-                    </div>
-
-                    {/* Payment Info */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 100px", gap: 12, marginBottom: 16 }}>
-                      <div>
-                        <div style={{ fontSize: 11, color: "#a0aec0" }}>UTR / UPI Transaction ID</div>
-                        <div style={{ fontSize: 14, color: "white", fontFamily: "monospace", fontWeight: 700, marginTop: 2 }}>{sub.transactionId}</div>
-                        
-                        <div style={{ fontSize: 11, color: "#a0aec0", marginTop: 10 }}>Amount Paid</div>
-                        <div style={{ fontSize: 18, color: "#48bb78", fontWeight: 800, fontFamily: "Syne", marginTop: 2 }}>
-                          ₹{sub.amount?.toLocaleString("en-IN")}
-                        </div>
-                        {sub.amount > sub.baseAmount && (
-                          <div style={{ fontSize: 10, color: "#fc8181", marginTop: 4 }}>
-                            Includes ₹{(sub.amount - sub.baseAmount).toLocaleString("en-IN")} late fee (+10%/day)
-                          </div>
-                        )}
-
-                        {sub.paidAt && (
-                          <div style={{ fontSize: 11, color: "#a0aec0", marginTop: 10 }}>
-                            Paid On: {new Date(sub.paidAt).toLocaleString("en-IN")}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Screenshot proof */}
-                      <div>
-                        <div style={{ fontSize: 11, color: "#a0aec0", marginBottom: 4, textAlign: "center" }}>Proof</div>
-                        {sub.screenshotUrl ? (
-                          <div 
-                            onClick={() => setSelectedScreenshot(sub.screenshotUrl)}
-                            style={{
-                              width: "100%", height: 80, borderRadius: 8, overflow: "hidden", 
-                              border: "1px solid rgba(255, 255, 255, 0.15)", cursor: "pointer",
-                              position: "relative", background: "#0f0f1b"
-                            }}
-                          >
-                            <img 
-                              src={sub.screenshotUrl} 
-                              alt="Proof screenshot" 
-                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                            />
-                            <div style={{
-                              position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)",
-                              display: "flex", alignItems: "center", justifyContent: "center",
-                              opacity: 0, transition: "opacity 0.2s", color: "white", fontSize: 10, fontWeight: 600
-                            }}
-                            onMouseOver={e => e.currentTarget.style.opacity = 1}
-                            onMouseOut={e => e.currentTarget.style.opacity = 0}
-                            >
-                              🔍 View
-                            </div>
-                          </div>
-                        ) : (
-                          <div style={{
-                            width: "100%", height: 80, borderRadius: 8, 
-                            border: "1px dashed rgba(255, 255, 255, 0.15)",
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            fontSize: 10, color: "#a0aec0", textAlign: "center"
-                          }}>No Image</div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Rejection reason display */}
-                    {sub.rejectionReason && (
-                      <div style={{
-                        padding: "10px 12px", borderRadius: 8, background: "rgba(252, 129, 129, 0.08)",
-                        border: "1px solid rgba(252, 129, 129, 0.2)", color: "#fc8181", fontSize: 12, marginBottom: 16
-                      }}>
-                        <strong>Rejection Reason:</strong> {sub.rejectionReason}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions footer */}
-                  {sub.status === "pending" && (
-                    <div style={{
-                      display: "flex", gap: 10, marginTop: 12, paddingTop: 12,
-                      borderTop: "1px solid rgba(255,255,255,0.06)"
-                    }}>
-                      <button
-                        onClick={() => handleApprove(sub)}
-                        disabled={actionLoading}
-                        style={{
-                          flex: 1, padding: "10px 14px", borderRadius: 8, border: "none",
-                          background: "#48bb78", color: "white", fontWeight: 600, cursor: "pointer",
-                          fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 6
-                        }}
-                      >
-                        ✅ Approve
-                      </button>
-                      <button
-                        onClick={() => setRejectionFine(sub)}
-                        disabled={actionLoading}
-                        style={{
-                          flex: 1, padding: "10px 14px", borderRadius: 8, border: "1px solid rgba(252, 129, 129, 0.4)",
-                          background: "rgba(252, 129, 129, 0.08)", color: "#fc8181", fontWeight: 600, cursor: "pointer",
-                          fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", gap: 6
-                        }}
-                      >
-                        ❌ Reject
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Modal: Screenshot Preview */}
-        {selectedScreenshot && (
-          <div style={{
-            position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.85)",
-            display: "flex", alignItems: "center", justifyContent: "center", padding: 20
-          }}
-          onClick={() => setSelectedScreenshot(null)}
-          >
-            <div style={{
-              position: "relative", maxWidth: "90%", maxHeight: "90%",
-              background: "#161625", padding: 10, borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 10px 25px rgba(0,0,0,0.5)"
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: 12, marginBottom: 20, borderBottom: "1px solid var(--border)", paddingBottom: 12 }}>
+          <button
+            onClick={() => setFilterTab("pending")}
+            style={{
+              padding: "8px 18px", borderRadius: 20, border: "none", cursor: "pointer",
+              fontSize: 13, fontWeight: 600, transition: "all 0.2s ease",
+              background: filterTab === "pending" ? "rgba(245,158,11,0.18)" : "rgba(255,255,255,0.04)",
+              color: filterTab === "pending" ? "var(--warning)" : "var(--text-muted)"
             }}
-            onClick={e => e.stopPropagation()}
-            >
-              <button 
+          >
+            Pending Verification ({pendingSubmissions.length})
+          </button>
+          <button
+            onClick={() => setFilterTab("approved")}
+            style={{
+              padding: "8px 18px", borderRadius: 20, border: "none", cursor: "pointer",
+              fontSize: 13, fontWeight: 600, transition: "all 0.2s ease",
+              background: filterTab === "approved" ? "rgba(16,185,129,0.18)" : "rgba(255,255,255,0.04)",
+              color: filterTab === "approved" ? "var(--success)" : "var(--text-muted)"
+            }}
+          >
+            Approved History ({approvedSubmissions.length})
+          </button>
+          <button
+            onClick={() => setFilterTab("rejected")}
+            style={{
+              padding: "8px 18px", borderRadius: 20, border: "none", cursor: "pointer",
+              fontSize: 13, fontWeight: 600, transition: "all 0.2s ease",
+              background: filterTab === "rejected" ? "rgba(239,68,68,0.18)" : "rgba(255,255,255,0.04)",
+              color: filterTab === "rejected" ? "var(--danger)" : "var(--text-muted)"
+            }}
+          >
+            Rejected History ({rejectedSubmissions.length})
+          </button>
+        </div>
+
+        {/* Submissions Table / Cards */}
+        <div className="card">
+          {loading ? (
+            <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>Loading fine submissions...</div>
+          ) : activeSubmissions.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 50, color: "var(--text-muted)" }}>
+              No submissions found in this category.
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Student Details</th>
+                    <th>Fine Title & Category</th>
+                    <th>12-Digit UTR Number</th>
+                    <th>Amount Paid</th>
+                    <th>Payment Date</th>
+                    <th style={{ textAlign: "right" }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeSubmissions.map((sub, idx) => {
+                    const catStyle = CATEGORY_STYLES[sub.category] || CATEGORY_STYLES["Other"];
+
+                    return (
+                      <tr key={`${sub.fineId}-${sub.studentUid}-${idx}`}>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{sub.studentName}</div>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                            Reg: {sub.studentRegisterNo} • {sub.studentDept} (Yr {sub.studentYear})
+                          </div>
+                        </td>
+
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{sub.fineTitle}</div>
+                          <span style={{
+                            display: "inline-flex", alignItems: "center", gap: 4,
+                            padding: "2px 8px", borderRadius: 12, fontSize: 11, fontWeight: 600,
+                            background: catStyle.bg, color: catStyle.color, marginTop: 4
+                          }}>
+                            {catStyle.icon} {sub.category}
+                          </span>
+                        </td>
+
+                        <td>
+                          <div style={{
+                            fontFamily: "monospace", fontSize: 13, fontWeight: 700,
+                            color: "var(--highlight)", background: "rgba(37, 99, 235, 0.1)",
+                            padding: "4px 10px", borderRadius: "var(--radius-sm)", display: "inline-block"
+                          }}>
+                            {sub.transactionId || "N/A"}
+                          </div>
+                        </td>
+
+                        <td style={{ fontWeight: 700, color: "var(--success)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
+                          ₹{sub.amountPaid.toLocaleString("en-IN")}
+                        </td>
+
+                        <td style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                          {sub.paidAt ? new Date(sub.paidAt).toLocaleDateString("en-IN", {
+                            day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+                          }) : "N/A"}
+                        </td>
+
+                        <td style={{ textAlign: "right" }}>
+                          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", alignItems: "center" }}>
+                            {sub.screenshotUrl && (
+                              <button
+                                onClick={() => setSelectedScreenshot(sub.screenshotUrl)}
+                                className="btn-secondary"
+                                style={{ margin: 0, padding: "6px 12px", fontSize: 12, width: "auto", display: "inline-flex", alignItems: "center", gap: 4 }}
+                              >
+                                <Eye size={14} /> View Slip
+                              </button>
+                            )}
+
+                            {filterTab === "pending" && (
+                              <>
+                                <button
+                                  onClick={() => handleApprove(sub)}
+                                  disabled={actionLoading}
+                                  style={{
+                                    padding: "6px 14px", borderRadius: "var(--radius-sm)",
+                                    background: "var(--success)", border: "none", color: "white",
+                                    fontSize: 12, fontWeight: 600, cursor: "pointer"
+                                  }}
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => { setRejectionFine(sub); setRejectionReason(""); }}
+                                  disabled={actionLoading}
+                                  style={{
+                                    padding: "6px 14px", borderRadius: "var(--radius-sm)",
+                                    background: "var(--danger)", border: "none", color: "white",
+                                    fontSize: 12, fontWeight: 600, cursor: "pointer"
+                                  }}
+                                >
+                                  Reject
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* Screenshot Preview Modal */}
+      {selectedScreenshot && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 2000, background: "rgba(0,0,0,0.85)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+          backdropFilter: "blur(8px)"
+        }}>
+          <div className="card" style={{ maxWidth: 600, width: "100%", textAlign: "center", position: "relative" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 16 }}>Payment Receipt Screenshot</h3>
+              <button
                 onClick={() => setSelectedScreenshot(null)}
-                style={{
-                  position: "absolute", top: -15, right: -15, width: 30, height: 30,
-                  borderRadius: "50%", background: "#e94560", border: "none", color: "white",
-                  fontSize: 16, fontWeight: "bold", cursor: "pointer", display: "flex",
-                  alignItems: "center", justifyContent: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.3)"
-                }}
-              >✕</button>
-              <img 
-                src={selectedScreenshot} 
-                alt="Payment proof zoom" 
-                style={{ maxWidth: "100%", maxHeight: "80vh", objectFit: "contain", borderRadius: 8 }}
+                style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer" }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <img
+              src={selectedScreenshot}
+              alt="Payment Slip"
+              style={{ maxWidth: "100%", maxHeight: "70vh", borderRadius: "var(--radius-md)", border: "1px solid var(--border)" }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Rejection Reason Modal */}
+      {rejectionFine && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 2000, background: "rgba(0,0,0,0.85)",
+          display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
+          backdropFilter: "blur(8px)"
+        }}>
+          <div className="card" style={{ maxWidth: 440, width: "100%" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <h3 style={{ fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 16, color: "var(--danger)" }}>Reject Payment</h3>
+              <button
+                onClick={() => setRejectionFine(null)}
+                style={{ background: "transparent", border: "none", color: "var(--text-muted)", cursor: "pointer" }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
+              Please enter the reason for rejecting {rejectionFine.studentName}'s payment. This will be shown to the student.
+            </p>
+            <div className="form-group" style={{ marginBottom: 20 }}>
+              <label>Rejection Reason *</label>
+              <textarea
+                rows={3}
+                placeholder="e.g. UTR number does not match bank records or screenshot is blurry"
+                value={rejectionReason}
+                onChange={e => setRejectionReason(e.target.value)}
+                required
               />
             </div>
-          </div>
-        )}
-
-        {/* Modal: Reject Reason Request */}
-        {rejectionFine && (
-          <div style={{
-            position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.6)",
-            display: "flex", alignItems: "center", justifyContent: "center", padding: 20
-          }}>
-            <div style={{
-              width: "100%", maxWidth: 450, background: "#161625", padding: 24, borderRadius: 16,
-              border: "1px solid rgba(255,255,255,0.1)", boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
-              margin: "auto"
-            }}>
-              <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 12, color: "#fc8181" }}>
-                ❌ Reject Payment Verification
-              </h3>
-              <p style={{ color: "#a0aec0", fontSize: 13, marginBottom: 16 }}>
-                Please specify the reason for rejecting the payment of ₹{rejectionFine.amount} submitted by {rejectionFine.studentName}. This reason will be shown to the student to help them resubmit.
-              </p>
-
-              <form onSubmit={handleRejectSubmit}>
-                <div className="form-group" style={{ marginBottom: 20 }}>
-                  <label>Rejection Reason *</label>
-                  <textarea
-                    rows="3"
-                    placeholder="e.g. Screenshot blur, incorrect UTR number, amount mismatch..."
-                    value={rejectionReason}
-                    onChange={e => setRejectionReason(e.target.value)}
-                    required
-                    style={{
-                      width: "100%", padding: 12, borderRadius: 10,
-                      background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
-                      color: "white", fontFamily: "inherit", fontSize: 14, resize: "none"
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
-                  <button
-                    type="submit"
-                    className="btn-primary"
-                    disabled={actionLoading || !rejectionReason.trim()}
-                    style={{ width: "auto", padding: "10px 20px", background: "#fc8181", border: "none" }}
-                  >
-                    {actionLoading ? "Rejecting..." : "Confirm Rejection"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setRejectionFine(null);
-                      setRejectionReason("");
-                    }}
-                    style={{
-                      padding: "10px 20px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.2)",
-                      background: "transparent", color: "white", cursor: "pointer", fontSize: 14
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                className="btn-secondary"
+                onClick={() => setRejectionFine(null)}
+                style={{ width: "auto", margin: 0 }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-primary"
+                onClick={handleConfirmReject}
+                disabled={actionLoading}
+                style={{ width: "auto", background: "var(--danger)" }}
+              >
+                Confirm Rejection
+              </button>
             </div>
           </div>
-        )}
-      </main>
+        </div>
+      )}
     </div>
   );
 }

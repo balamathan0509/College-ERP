@@ -7,7 +7,16 @@ import { notifyStudentAbsent, notifyHodAbsentSummary } from "../../utils/notific
 import {
   collection, query, where, getDocs, doc, setDoc
 } from "firebase/firestore";
-
+import {
+  CheckSquare,
+  Users,
+  CheckCircle2,
+  Briefcase,
+  XCircle,
+  Save,
+  PieChart,
+  Calendar
+} from "lucide-react";
 
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 
@@ -37,7 +46,6 @@ export default function StaffAttendance() {
       list.sort((a, b) => a.name.localeCompare(b.name));
       setStudents(list);
 
-      // Fetch existing attendance for this date
       const attQ = query(
         collection(db, "attendance"),
         where("dept", "==", userProfile.dept),
@@ -50,84 +58,58 @@ export default function StaffAttendance() {
         const mappedRecords = {};
         list.forEach(s => {
           const val = records[s.id];
-          if (val === true || val === "present" || val === undefined) {
-            mappedRecords[s.id] = "P";
-          } else if (val === false || val === "absent") {
-            mappedRecords[s.id] = "A";
-          } else {
-            mappedRecords[s.id] = val; // e.g. "OD" or "P" or "A"
-          }
+          if (val === "OD") mappedRecords[s.id] = "OD";
+          else if (val === false || val === "A") mappedRecords[s.id] = "A";
+          else mappedRecords[s.id] = "P";
         });
         setAttendance(mappedRecords);
       } else {
-        // Default all present
-        const defaultAtt = {};
-        list.forEach(s => { defaultAtt[s.id] = "P"; });
-        setAttendance(defaultAtt);
+        const defaultMap = {};
+        list.forEach(s => { defaultMap[s.id] = "P"; });
+        setAttendance(defaultMap);
       }
     } catch (err) {}
     setFetching(false);
   }
 
-  function toggleAttendance(studentId) {
-    setAttendance(prev => {
-      const current = prev[studentId] || "P";
-      let next = "P";
-      if (current === "P") next = "A";
-      else if (current === "A") next = "OD";
-      else next = "P";
-      return { ...prev, [studentId]: next };
-    });
+  function handleStatusChange(studentId, status) {
+    setAttendance(prev => ({
+      ...prev,
+      [studentId]: status
+    }));
+    setSaved(false);
   }
 
-  function markAllPresent() {
-    const all = {};
-    students.forEach(s => { all[s.id] = "P"; });
-    setAttendance(all);
+  function handleMarkAll(status) {
+    const updated = {};
+    students.forEach(s => { updated[s.id] = status; });
+    setAttendance(updated);
+    setSaved(false);
   }
 
-  function markAllAbsent() {
-    const all = {};
-    students.forEach(s => { all[s.id] = "A"; });
-    setAttendance(all);
-  }
-
-  async function saveAttendance() {
+  async function handleSave() {
+    if (!selectedYear) return;
     setSaving(true);
     try {
-      const absentStudents = students.filter(s => attendance[s.id] === "A");
-      const odStudents = students.filter(s => attendance[s.id] === "OD");
-      const attDocId = `${userProfile.dept}_${selectedYear}_${selectedDate}`.replace(/\s+/g, "_");
+      const docId = `${userProfile.dept}_${selectedYear}_${selectedDate}`.replace(/\s+/g, "_");
 
-      await setDoc(doc(db, "attendance", attDocId), {
+      const rawRecords = {};
+      Object.entries(attendance).forEach(([uid, st]) => {
+        rawRecords[uid] = st;
+      });
+
+      const absentStudents = students.filter(s => attendance[s.id] === "A");
+
+      await setDoc(doc(db, "attendance"), {
         dept: userProfile.dept,
         year: selectedYear,
         date: selectedDate,
-        records: attendance,
-        absentCount: absentStudents.length,
-        odCount: odStudents.length,
+        records: rawRecords,
         totalCount: students.length,
         markedBy: userProfile.name,
-        markedAt: new Date().toISOString()
-      });
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
 
-      // Save absent alerts for HOD
-      for (const student of absentStudents) {
-        const alertId = `absent_${student.id}_${selectedDate}`;
-        await setDoc(doc(db, "attendance_alerts", alertId), {
-          studentId: student.id,
-          studentName: student.name,
-          registerNo: student.registerNo,
-          dept: userProfile.dept,
-          year: selectedYear,
-          date: selectedDate,
-          markedBy: userProfile.name,
-          seen: false,
-          createdAt: new Date().toISOString()
-        });
-      }
-
-      // Notify absent students
       for (const student of absentStudents) {
         await notifyStudentAbsent({
           email: student.email || "",
@@ -138,7 +120,6 @@ export default function StaffAttendance() {
         });
       }
 
-      // Notify HOD with daily absent summary
       if (absentStudents.length > 0) {
         const hodQuery = query(
           collection(db, "users"),
@@ -181,22 +162,22 @@ export default function StaffAttendance() {
       <Sidebar />
       <main className="main-content">
         <div className="page-header">
-          <h1>✅ Mark Attendance</h1>
-          <p>{userProfile?.dept} Department</p>
+          <h1>Mark Student Attendance</h1>
+          <p>{userProfile?.dept} Department • Faculty Portal</p>
         </div>
 
         {/* Filters */}
         <div className="card" style={{ marginBottom: 24 }}>
           <div className="form-row">
             <div className="form-group" style={{ margin: 0 }}>
-              <label>Select Year</label>
+              <label>Select Year *</label>
               <select value={selectedYear} onChange={e => setSelectedYear(e.target.value)}>
                 <option value="">Choose Year</option>
                 {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
             <div className="form-group" style={{ margin: 0 }}>
-              <label>Date</label>
+              <label>Attendance Date *</label>
               <input
                 type="date"
                 value={selectedDate}
@@ -209,155 +190,148 @@ export default function StaffAttendance() {
         {/* Stats */}
         {students.length > 0 && (
           <div className="stats-grid" style={{ marginBottom: 24 }}>
-            <div className="stat-card" style={{ border: "1px solid rgba(255,255,255,0.05)" }}>
-              <div className="stat-icon">👥</div>
+            <div className="stat-card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <Users size={24} color="var(--highlight)" />
+              </div>
               <div className="stat-value">{students.length}</div>
               <div className="stat-label">Total Students</div>
             </div>
-            <div className="stat-card" style={{ border: "1px solid rgba(72,187,120,0.15)" }}>
-              <div className="stat-icon">✅</div>
-              <div className="stat-value" style={{ color: "#48bb78" }}>{presentCount}</div>
+            <div className="stat-card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <CheckCircle2 size={24} color="var(--success)" />
+              </div>
+              <div className="stat-value" style={{ color: "var(--success)" }}>{presentCount}</div>
               <div className="stat-label">Present</div>
             </div>
-            <div className="stat-card" style={{ border: "1px solid rgba(252,129,129,0.15)" }}>
-              <div className="stat-icon">❌</div>
-              <div className="stat-value" style={{ color: "#fc8181" }}>{absentCount}</div>
-              <div className="stat-label">Absent</div>
-            </div>
-            <div className="stat-card" style={{ border: "1px solid rgba(245,158,11,0.15)" }}>
-              <div className="stat-icon">💼</div>
-              <div className="stat-value" style={{ color: "#f5a623" }}>{odCount}</div>
+            <div className="stat-card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <Briefcase size={24} color="var(--warning)" />
+              </div>
+              <div className="stat-value" style={{ color: "var(--warning)" }}>{odCount}</div>
               <div className="stat-label">On Duty (OD)</div>
             </div>
-            <div className="stat-card" style={{ border: "1px solid rgba(255,255,255,0.05)" }}>
-              <div className="stat-icon">📊</div>
-              <div className="stat-value" style={{ color: attendancePercentage >= 75 ? "#48bb78" : "#fc8181" }}>
-                {attendancePercentage}%
+            <div className="stat-card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <XCircle size={24} color="var(--danger)" />
               </div>
-              <div className="stat-label">Attendance %</div>
+              <div className="stat-value" style={{ color: "var(--danger)" }}>{absentCount}</div>
+              <div className="stat-label">Absent</div>
+            </div>
+            <div className="stat-card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <PieChart size={24} color="var(--highlight)" />
+              </div>
+              <div className="stat-value" style={{ color: "var(--highlight)" }}>{attendancePercentage}%</div>
+              <div className="stat-label">Attendance Rate</div>
             </div>
           </div>
         )}
 
         {/* Student List */}
-        {fetching ? (
-          <div style={{ textAlign: "center", padding: 60 }}>
-            <div className="spinner" style={{ margin: "0 auto" }}></div>
-          </div>
-        ) : students.length > 0 ? (
+        {selectedYear && (
           <div className="card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
-              <h3 style={{ fontFamily: "Syne", fontSize: 18 }}>
-                {selectedYear} — {selectedDate}
-              </h3>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={markAllPresent} style={{
-                  padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(72,187,120,0.3)",
-                  background: "rgba(72,187,120,0.1)", color: "#48bb78", cursor: "pointer", fontSize: 13, fontWeight: 600
-                }}>✅ All Present</button>
-                <button onClick={markAllAbsent} style={{
-                  padding: "8px 16px", borderRadius: 8, border: "1px solid rgba(252,129,129,0.3)",
-                  background: "rgba(252,129,129,0.1)", color: "#fc8181", cursor: "pointer", fontSize: 13, fontWeight: 600
-                }}>❌ All Absent</button>
+            {fetching ? (
+              <div style={{ textAlign: "center", padding: 60 }}>
+                <div className="spinner" style={{ margin: "0 auto" }}></div>
               </div>
-            </div>
+            ) : students.length === 0 ? (
+              <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>
+                No students enrolled in {selectedYear}.
+              </div>
+            ) : (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 16 }}>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => handleMarkAll("P")}
+                      style={{ margin: 0, padding: "8px 14px", fontSize: 13, width: "auto" }}
+                    >
+                      Mark All Present
+                    </button>
+                    <button
+                      className="btn-secondary"
+                      onClick={() => handleMarkAll("A")}
+                      style={{ margin: 0, padding: "8px 14px", fontSize: 13, width: "auto" }}
+                    >
+                      Mark All Absent
+                    </button>
+                  </div>
 
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-                    <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>S.No</th>
-                    <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>Name</th>
-                    <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>Register No</th>
-                    <th style={{ padding: "12px 16px", textAlign: "center", fontSize: 12, color: "#a0aec0", fontWeight: 600, textTransform: "uppercase" }}>Status / Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {students.map((student, idx) => {
-                    const status = attendance[student.id] || "P";
-                    return (
-                      <tr
-                        key={student.id}
-                        onClick={() => toggleAttendance(student.id)}
-                        style={{
-                          borderBottom: "1px solid rgba(255,255,255,0.05)",
-                          background:
-                            status === "P" ? "rgba(72,187,120,0.04)" :
-                            status === "OD" ? "rgba(245,166,35,0.04)" :
-                            "rgba(252,129,129,0.04)",
-                          cursor: "pointer", transition: "all 0.15s"
-                        }}
-                      >
-                        <td style={{ padding: "14px 16px", color: "#a0aec0", fontSize: 14 }}>{idx + 1}</td>
-                        <td style={{ padding: "14px 16px", fontWeight: 600, fontSize: 15 }}>{student.name}</td>
-                        <td style={{ padding: "14px 16px", color: "#a0aec0", fontSize: 14 }}>{student.registerNo}</td>
-                        <td style={{ padding: "14px 16px", textAlign: "center" }} onClick={e => e.stopPropagation()}>
-                          <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                            <button
-                              onClick={() => setAttendance(prev => ({ ...prev, [student.id]: "P" }))}
-                              style={{
-                                width: 34, height: 30, borderRadius: 8, border: "none",
-                                background: status === "P" ? "#48bb78" : "rgba(255,255,255,0.05)",
-                                color: status === "P" ? "white" : "#a0aec0",
-                                fontWeight: 700, cursor: "pointer", transition: "all 0.2s"
-                              }}
-                              title="Present"
-                            >
-                              P
-                            </button>
-                            <button
-                              onClick={() => setAttendance(prev => ({ ...prev, [student.id]: "A" }))}
-                              style={{
-                                width: 34, height: 30, borderRadius: 8, border: "none",
-                                background: status === "A" ? "#fc8181" : "rgba(255,255,255,0.05)",
-                                color: status === "A" ? "white" : "#a0aec0",
-                                fontWeight: 700, cursor: "pointer", transition: "all 0.2s"
-                              }}
-                              title="Absent"
-                            >
-                              A
-                            </button>
-                            <button
-                              onClick={() => setAttendance(prev => ({ ...prev, [student.id]: "OD" }))}
-                              style={{
-                                width: 38, height: 30, borderRadius: 8, border: "none",
-                                background: status === "OD" ? "#f5a623" : "rgba(255,255,255,0.05)",
-                                color: status === "OD" ? "white" : "#a0aec0",
-                                fontWeight: 700, cursor: "pointer", transition: "all 0.2s"
-                              }}
-                              title="On Duty"
-                            >
-                              OD
-                            </button>
-                          </div>
-                        </td>
+                  <button
+                    className="btn-primary"
+                    onClick={handleSave}
+                    disabled={saving}
+                    style={{ width: "auto", padding: "8px 24px" }}
+                  >
+                    {saving ? "Saving..." : saved ? "Saved!" : "Save Attendance"}
+                  </button>
+                </div>
+
+                <div style={{ overflowX: "auto" }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>S.No</th>
+                        <th>Reg No</th>
+                        <th>Student Name</th>
+                        <th style={{ textAlign: "center" }}>Attendance Status</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <div style={{ marginTop: 24, display: "flex", gap: 12, alignItems: "center" }}>
-              <button className="btn-primary" onClick={saveAttendance} disabled={saving} style={{ width: "auto", padding: "12px 32px" }}>
-                {saving ? "Saving..." : "💾 Save Attendance"}
-              </button>
-              {saved && (
-                <span style={{ color: "#48bb78", fontWeight: 600, fontSize: 14 }}>
-                  ✅ Saved! Absent list forwarded to HOD.
-                </span>
-              )}
-            </div>
-          </div>
-        ) : selectedYear ? (
-          <div className="card" style={{ textAlign: "center", padding: 60 }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>👥</div>
-            <p style={{ color: "#a0aec0" }}>No students found for {selectedYear} - {userProfile?.dept}</p>
-          </div>
-        ) : (
-          <div className="card" style={{ textAlign: "center", padding: 60 }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
-            <p style={{ color: "#a0aec0" }}>Select Year and Date to mark attendance</p>
+                    </thead>
+                    <tbody>
+                      {students.map((student, idx) => {
+                        const status = attendance[student.id] || "P";
+                        return (
+                          <tr key={student.id}>
+                            <td style={{ color: "var(--text-muted)" }}>{idx + 1}</td>
+                            <td style={{ fontFamily: "monospace", fontWeight: 600 }}>{student.registerNo || "N/A"}</td>
+                            <td style={{ fontWeight: 600 }}>{student.name}</td>
+                            <td style={{ textAlign: "center" }}>
+                              <div style={{ display: "inline-flex", gap: 8, background: "rgba(11, 19, 43, 0.6)", padding: 4, borderRadius: "var(--radius-md)", border: "1px solid var(--border)" }}>
+                                <button
+                                  onClick={() => handleStatusChange(student.id, "P")}
+                                  style={{
+                                    padding: "6px 14px", borderRadius: "var(--radius-sm)", border: "none", cursor: "pointer",
+                                    fontSize: 12, fontWeight: 700, transition: "all 0.2s ease",
+                                    background: status === "P" ? "var(--success)" : "transparent",
+                                    color: status === "P" ? "white" : "var(--text-muted)"
+                                  }}
+                                >
+                                  Present
+                                </button>
+                                <button
+                                  onClick={() => handleStatusChange(student.id, "OD")}
+                                  style={{
+                                    padding: "6px 14px", borderRadius: "var(--radius-sm)", border: "none", cursor: "pointer",
+                                    fontSize: 12, fontWeight: 700, transition: "all 0.2s ease",
+                                    background: status === "OD" ? "var(--warning)" : "transparent",
+                                    color: status === "OD" ? "white" : "var(--text-muted)"
+                                  }}
+                                >
+                                  OD
+                                </button>
+                                <button
+                                  onClick={() => handleStatusChange(student.id, "A")}
+                                  style={{
+                                    padding: "6px 14px", borderRadius: "var(--radius-sm)", border: "none", cursor: "pointer",
+                                    fontSize: 12, fontWeight: 700, transition: "all 0.2s ease",
+                                    background: status === "A" ? "var(--danger)" : "transparent",
+                                    color: status === "A" ? "white" : "var(--text-muted)"
+                                  }}
+                                >
+                                  Absent
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
           </div>
         )}
       </main>
