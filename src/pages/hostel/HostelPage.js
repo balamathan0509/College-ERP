@@ -1154,7 +1154,9 @@ export default function HostelPage() {
     try {
       const [bSnap, alSnap, fSnap, cSnap, gpSnap, vSnap, attSnap, mSnap, nSnap] = await Promise.all([
         getDocs(collection(db, "hostel_blocks")),
-        getDocs(collection(db, "hostel_allotments")),
+        getDocs(isStudent 
+          ? query(collection(db, "hostel_allotments"), where("studentId", "==", currentUser.uid))
+          : collection(db, "hostel_allotments")),
         getDocs(isStudent
           ? query(collection(db, "hostel_fees"), where("studentId", "==", currentUser.uid))
           : isWarden

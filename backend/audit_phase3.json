@@ -1,0 +1,526 @@
+{
+  "cia_question_papers": [
+    {
+      "file": "components\\Sidebar.js",
+      "context": "useEffect(() => {\nif (!role) return;\nimport('firebase/firestore').then(({ collection, query, onSnapshot, where }) => {\nimport('../firebase/config').then(({ db }) => {\nif (role === 'hod') {\nconst q = query(collection(db, \"cia_question_papers\"), where(\"status\", \"in\", [\"SUBMITTED_TO_HOD\", \"RETURNED_TO_HOD\"]));\nconst unsub = onSnapshot(q, snap => setReviewCount(snap.docs.length));\nreturn () => unsub();\n}\nif (role === 'principal') {\nconst q = query(collection(db, \"cia_question_papers\"), where(\"status\", \"==\", \"SUBMITTED_TO_PRINCIPAL\"));\nconst unsub = onSnapshot(q, snap => setReviewCount(snap.docs.length));\nreturn () => unsub();\n}\n});\n});\n"
+    },
+    {
+      "file": "components\\Sidebar.js",
+      "context": "const q = query(collection(db, \"cia_question_papers\"), where(\"status\", \"in\", [\"SUBMITTED_TO_HOD\", \"RETURNED_TO_HOD\"]));\nconst unsub = onSnapshot(q, snap => setReviewCount(snap.docs.length));\nreturn () => unsub();\n}\nif (role === 'principal') {\nconst q = query(collection(db, \"cia_question_papers\"), where(\"status\", \"==\", \"SUBMITTED_TO_PRINCIPAL\"));\nconst unsub = onSnapshot(q, snap => setReviewCount(snap.docs.length));\nreturn () => unsub();\n}\n});\n});\n}, [role]);\n\nconst navItems =\nisSuperAdmin ? adminNav :\nrole === \"student\" ? studentNav :\n"
+    },
+    {
+      "file": "pages\\cia\\HodQuestionPaperReview.js",
+      "context": "\nconst fetchPendingPapers = async () => {\nsetLoading(true);\ntry {\nconst q = query(\ncollection(db, \"cia_question_papers\"),\nwhere(\"status\", \"in\", [\"SUBMITTED_TO_HOD\", \"RETURNED_TO_HOD\"])\n);\nconst snap = await getDocs(q);\nconst list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));\nlist.sort((a, b) => (b.submittedToHodAt?.toMillis() || 0) - (a.submittedToHodAt?.toMillis() || 0));\nsetPapers(list);\n} catch (err) {\nconsole.error(err);\ntoast.error(\"Failed to load pending question papers.\");\n}\n"
+    },
+    {
+      "file": "pages\\cia\\HodQuestionPaperReview.js",
+      "context": "role: userProfile.role,\nremarks: remarks.trim(),\ntimestamp: new Date().toISOString()\n};\n\nconst docRef = doc(db, \"cia_question_papers\", selectedPaper.id);\n\nconst updateData = {\nstatus: newStatus,\nhodReviewedAt: new Date().toISOString(),\nhodReviewedBy: userProfile.uid,\nhodDecision: decision,\nhodRemarks: remarks.trim(),\napprovalHistory: [...(selectedPaper.approvalHistory || []), historyEntry]\n};\n\n"
+    },
+    {
+      "file": "pages\\cia\\MyQuestionPapers.js",
+      "context": "\nconst fetchPapers = async () => {\nsetLoading(true);\ntry {\nconst q = query(\ncollection(db, \"cia_question_papers\"),\nwhere(\"createdBy\", \"==\", userProfile.uid)\n);\nconst snap = await getDocs(q);\nconst list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));\n// Sort by createdAt descending manually since orderBy requires an index\nlist.sort((a, b) => {\nconst tA = a.createdAt?.toMillis() || 0;\nconst tB = b.createdAt?.toMillis() || 0;\nreturn tB - tA;\n});\n"
+    },
+    {
+      "file": "pages\\cia\\PrincipalQuestionPaperReview.js",
+      "context": "\nconst fetchPendingPapers = async () => {\nsetLoading(true);\ntry {\nconst q = query(\ncollection(db, \"cia_question_papers\"),\nwhere(\"status\", \"==\", \"SUBMITTED_TO_PRINCIPAL\")\n);\nconst snap = await getDocs(q);\nconst list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));\nlist.sort((a, b) => (b.submittedToPrincipalAt?.toMillis() || 0) - (a.submittedToPrincipalAt?.toMillis() || 0));\nsetPapers(list);\n} catch (err) {\nconsole.error(err);\ntoast.error(\"Failed to load pending question papers.\");\n}\n"
+    },
+    {
+      "file": "pages\\cia\\PrincipalQuestionPaperReview.js",
+      "context": "role: userProfile.role,\nremarks: remarks.trim(),\ntimestamp: new Date().toISOString()\n};\n\nconst docRef = doc(db, \"cia_question_papers\", selectedPaper.id);\n\nconst updateData = {\nstatus: newStatus,\nprincipalReviewedAt: new Date().toISOString(),\nprincipalReviewedBy: userProfile.uid,\nprincipalDecision: decision,\nprincipalRemarks: remarks.trim(),\napprovalHistory: [...(selectedPaper.approvalHistory || []), historyEntry]\n};\n\n"
+    },
+    {
+      "file": "pages\\cia\\QuestionPaper.js",
+      "context": "}\n\nasync function loadExistingPaper(id) {\nsetLoading(true);\ntry {\nconst docRef = doc(db, \"cia_question_papers\", id);\nconst docSnap = await getDoc(docRef);\nif (docSnap.exists()) {\nconst data = docSnap.data();\nsetFilterCourse(data.courseCode);\nsetHeaderConfig(data.headerConfig || headerConfig);\nsetCourseOutcomes(data.courseOutcomes || courseOutcomes);\nsetCam(data.cam || cam);\nsetPartAHeading(data.headings?.partA || partAHeading);\nsetPartBHeading(data.headings?.partB || partBHeading);\nsetPartCHeading(data.headings?.partC || partCHeading);\n"
+    },
+    {
+      "file": "pages\\cia\\QuestionPaper.js",
+      "context": "payload.approvalHistory = [historyEntry];\nif (targetStatus === 'SUBMITTED_TO_HOD') {\npayload.submittedToHodAt = serverTimestamp();\npayload.submittedToHodBy = userProfile.uid || 'unknown';\n}\nawait addDoc(collection(db, \"cia_question_papers\"), payload);\ntoast.success(targetStatus === 'DRAFT' ? \"Draft saved successfully!\" : \"Submitted to HOD!\");\nnavigate('/cia/my-papers');\n} else {\nconst docRef = doc(db, \"cia_question_papers\", editId);\npayload.approvalHistory = [...approvalHistory, historyEntry];\nif (targetStatus === 'SUBMITTED_TO_HOD') {\npayload.submittedToHodAt = serverTimestamp();\npayload.submittedToHodBy = userProfile.uid || 'unknown';\n}\nawait updateDoc(docRef, payload);\n"
+    },
+    {
+      "file": "pages\\cia\\QuestionPaper.js",
+      "context": "}\nawait addDoc(collection(db, \"cia_question_papers\"), payload);\ntoast.success(targetStatus === 'DRAFT' ? \"Draft saved successfully!\" : \"Submitted to HOD!\");\nnavigate('/cia/my-papers');\n} else {\nconst docRef = doc(db, \"cia_question_papers\", editId);\npayload.approvalHistory = [...approvalHistory, historyEntry];\nif (targetStatus === 'SUBMITTED_TO_HOD') {\npayload.submittedToHodAt = serverTimestamp();\npayload.submittedToHodBy = userProfile.uid || 'unknown';\n}\nawait updateDoc(docRef, payload);\ntoast.success(targetStatus === 'DRAFT' ? \"Draft updated successfully!\" : \"Submitted to HOD!\");\nsetPaperStatus(targetStatus);\n}\n} catch (err) {\n"
+    },
+    {
+      "file": "pages\\student\\StudentQuestionPapers.js",
+      "context": "\nconst fetchPapers = async () => {\nsetLoading(true);\ntry {\nconst q = query(\ncollection(db, \"cia_question_papers\"),\nwhere(\"status\", \"==\", \"APPROVED\")\n);\nconst snap = await getDocs(q);\nconst list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));\n\nlist.sort((a, b) => {\nconst tA = a.createdAt?.toMillis() || 0;\nconst tB = b.createdAt?.toMillis() || 0;\nreturn tB - tA;\n});\n"
+    }
+  ],
+  "course_allocations": [
+    {
+      "file": "pages\\academics\\CourseAllocation.js",
+      "context": "\nasync function fetchAllocations() {\nif (!filterSession) { toast.error(\"Please select Academic Session.\"); return; }\nsetLoading(true);\ntry {\nlet q = query(collection(db, \"course_allocations\"), where(\"sessionId\", \"==\", filterSession));\nconst snap = await getDocs(q);\nlet list = snap.docs.map(d => ({ id: d.id, ...d.data() }));\nif (filterSemester) list = list.filter(a => a.semester === filterSemester);\nif (filterProgramme) list = list.filter(a => a.programme === filterProgramme);\nif (filterDept) list = list.filter(a => a.department === filterDept);\nif (filterRegulation) list = list.filter(a => a.regulationId === filterRegulation);\nsetAllocations(list);\n} catch (err) { console.error(err); toast.error(\"Failed to load allocations.\"); }\nsetLoading(false);\n}\n"
+    },
+    {
+      "file": "pages\\academics\\CourseAllocation.js",
+      "context": "updatedAt: serverTimestamp(),\nupdatedBy: userProfile?.uid\n};\nif (modalMode === 'add') {\n// Check duplicate\nconst dupQ = query(collection(db, \"course_allocations\"),\nwhere(\"sessionId\", \"==\", form.sessionId),\nwhere(\"courseId\", \"==\", form.courseId),\nwhere(\"facultyId\", \"==\", form.facultyId)\n);\nconst dupSnap = await getDocs(dupQ);\nif (!dupSnap.empty) { toast.error(\"This course is already allocated to this faculty.\"); setSaving(false); return; }\n\npayload.createdAt = serverTimestamp();\npayload.createdBy = userProfile?.uid;\nawait addDoc(collection(db, \"course_allocations\"), payload);\n"
+    },
+    {
+      "file": "pages\\academics\\CourseAllocation.js",
+      "context": "const dupSnap = await getDocs(dupQ);\nif (!dupSnap.empty) { toast.error(\"This course is already allocated to this faculty.\"); setSaving(false); return; }\n\npayload.createdAt = serverTimestamp();\npayload.createdBy = userProfile?.uid;\nawait addDoc(collection(db, \"course_allocations\"), payload);\ntoast.success(\"Course allocated successfully!\");\n} else {\nawait updateDoc(doc(db, \"course_allocations\", editId), payload);\ntoast.success(\"Allocation updated!\");\n}\nsetShowModal(false);\nfetchAllocations();\n} catch (err) { console.error(err); toast.error(\"Failed to save.\"); }\nsetSaving(false);\n}\n"
+    },
+    {
+      "file": "pages\\academics\\CourseAllocation.js",
+      "context": "payload.createdAt = serverTimestamp();\npayload.createdBy = userProfile?.uid;\nawait addDoc(collection(db, \"course_allocations\"), payload);\ntoast.success(\"Course allocated successfully!\");\n} else {\nawait updateDoc(doc(db, \"course_allocations\", editId), payload);\ntoast.success(\"Allocation updated!\");\n}\nsetShowModal(false);\nfetchAllocations();\n} catch (err) { console.error(err); toast.error(\"Failed to save.\"); }\nsetSaving(false);\n}\n\nasync function handleDelete(id) {\nif (!window.confirm(\"Delete this allocation?\")) return;\n"
+    },
+    {
+      "file": "pages\\academics\\CourseAllocation.js",
+      "context": "}\n\nasync function handleDelete(id) {\nif (!window.confirm(\"Delete this allocation?\")) return;\ntry {\nawait deleteDoc(doc(db, \"course_allocations\", id));\ntoast.success(\"Deleted.\");\nfetchAllocations();\n} catch (err) { toast.error(\"Delete failed.\"); }\n}\n\n// Session CRUD\nasync function handleSaveSession() {\nif (!sessionForm.name) { toast.error(\"Session name is required.\"); return; }\ntry {\n// Check duplicate\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\Assignments.js",
+      "context": "});\nconst [selectedStudents, setSelectedStudents] = useState([]);\n\nuseEffect(() => {\nif (userProfile?.uid) {\ngetDocs(query(collection(db, \"course_allocations\"), where(\"facultyId\", \"==\", userProfile.uid)))\n.then(snap => setAllocations(snap.docs.map(d => ({ id: d.id, ...d.data() }))));\n}\n}, [userProfile]);\n\nuseEffect(() => {\nif (selectedAlloc) {\nfetchAssignments();\nfetchEnrolledStudents();\n}\n}, [selectedAlloc]);\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\CourseContents.js",
+      "context": "}, [userProfile]);\n\nasync function fetchAllocations() {\nsetLoading(true);\ntry {\nconst q = query(collection(db, \"course_allocations\"), where(\"facultyId\", \"==\", userProfile.uid));\nconst snap = await getDocs(q);\nsetAllocations(snap.docs.map(d => ({ id: d.id, ...d.data() })));\n} catch (err) { console.error(err); toast.error(\"Failed to load courses.\"); }\nsetLoading(false);\n}\n\nasync function fetchPlans(allocId) {\ntry {\nconst q = query(collection(db, \"course_plans\"), where(\"allocationId\", \"==\", allocId));\nconst snap = await getDocs(q);\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\CoursePlanCompletion.js",
+      "context": "if (userProfile?.uid) fetchAllocations();\n}, [userProfile]);\n\nasync function fetchAllocations() {\ntry {\nconst q = query(collection(db, \"course_allocations\"), where(\"facultyId\", \"==\", userProfile.uid));\nconst snap = await getDocs(q);\nsetAllocations(snap.docs.map(d => ({ id: d.id, ...d.data() })));\n} catch (err) { console.error(err); toast.error(\"Failed to load courses.\"); }\n}\n\nuseEffect(() => {\nif (selectedAlloc) fetchPlans(selectedAlloc);\n}, [selectedAlloc]);\n\nasync function fetchPlans(allocId) {\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\CoursePlanFeedback.js",
+      "context": "// For feedback giving, usually it's HOD or higher. Let's load based on role.\nasync function fetchAllocs() {\ntry {\nlet q;\nif (isSuperAdmin || userProfile?.role === 'admin' || userProfile?.role === 'principal') {\nq = query(collection(db, \"course_allocations\"));\n} else if (userProfile?.role === 'hod') {\nq = query(collection(db, \"course_allocations\"), where(\"department\", \"==\", userProfile.dept));\n} else {\n// staff just viewing their own feedback\nq = query(collection(db, \"course_allocations\"), where(\"facultyId\", \"==\", userProfile?.uid));\n}\nconst snap = await getDocs(q);\nsetAllocations(snap.docs.map(d => ({ id: d.id, ...d.data() })));\n} catch (err) { console.error(err); }\n}\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\CoursePlanFeedback.js",
+      "context": "try {\nlet q;\nif (isSuperAdmin || userProfile?.role === 'admin' || userProfile?.role === 'principal') {\nq = query(collection(db, \"course_allocations\"));\n} else if (userProfile?.role === 'hod') {\nq = query(collection(db, \"course_allocations\"), where(\"department\", \"==\", userProfile.dept));\n} else {\n// staff just viewing their own feedback\nq = query(collection(db, \"course_allocations\"), where(\"facultyId\", \"==\", userProfile?.uid));\n}\nconst snap = await getDocs(q);\nsetAllocations(snap.docs.map(d => ({ id: d.id, ...d.data() })));\n} catch (err) { console.error(err); }\n}\nif (userProfile?.uid) fetchAllocs();\n}, [userProfile, isSuperAdmin]);\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\CoursePlanFeedback.js",
+      "context": "q = query(collection(db, \"course_allocations\"));\n} else if (userProfile?.role === 'hod') {\nq = query(collection(db, \"course_allocations\"), where(\"department\", \"==\", userProfile.dept));\n} else {\n// staff just viewing their own feedback\nq = query(collection(db, \"course_allocations\"), where(\"facultyId\", \"==\", userProfile?.uid));\n}\nconst snap = await getDocs(q);\nsetAllocations(snap.docs.map(d => ({ id: d.id, ...d.data() })));\n} catch (err) { console.error(err); }\n}\nif (userProfile?.uid) fetchAllocs();\n}, [userProfile, isSuperAdmin]);\n\nuseEffect(() => {\nif (selectedAlloc) fetchPlans(selectedAlloc);\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\FacultyTimetable.js",
+      "context": "async function handleShow() {\nif (!filterSession) { toast.error(\"Select a session.\"); return; }\nsetLoading(true);\ntry {\n// 1. Get faculty's allocations for this session\nconst aQ = query(collection(db, \"course_allocations\"), where(\"sessionId\", \"==\", filterSession), where(\"facultyId\", \"==\", userProfile?.uid));\nconst aSnap = await getDocs(aQ);\nconst myAllocIds = aSnap.docs.map(d => d.id);\nconst myAllocData = {};\naSnap.docs.forEach(d => { myAllocData[d.id] = { ...d.data(), id: d.id }; });\n\nif (myAllocIds.length === 0) {\ntoast.error(\"No courses allocated for this session.\");\nsetSchedule({}); setLoading(false); return;\n}\n\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\MarkAttendance.js",
+      "context": "setLoading(true);\ntry {\nconst d = new Date(date);\nconst dayName = DAYS[d.getDay()];\n\nconst aQ = query(collection(db, \"course_allocations\"), where(\"sessionId\", \"==\", filterSession), where(\"facultyId\", \"==\", userProfile?.uid));\nconst aSnap = await getDocs(aQ);\nconst myAllocIds = aSnap.docs.map(doc => doc.id);\nconst myAllocData = {};\naSnap.docs.forEach(doc => { myAllocData[doc.id] = { ...doc.data(), id: doc.id }; });\n\nif (myAllocIds.length === 0) {\nsetTodaysClasses([]); setLoading(false); return;\n}\n\nconst tQ = query(collection(db, \"academic_timetable\"), where(\"sessionId\", \"==\", filterSession));\n"
+    },
+    {
+      "file": "pages\\academics\\TimetableConfig.js",
+      "context": "async function handleCreate() {\nif (!filterSession || !filterSemester || !filterSection) {\ntoast.error(\"Session, Semester and Section are required.\"); return;\n}\n// Load allocations for filter\nconst aQ = query(collection(db, \"course_allocations\"), where(\"sessionId\", \"==\", filterSession));\nconst aSnap = await getDocs(aQ);\nlet allocs = aSnap.docs.map(d => ({ id: d.id, ...d.data() }));\nif (filterSemester) allocs = allocs.filter(a => a.semester === filterSemester);\nif (filterDept) allocs = allocs.filter(a => a.department === filterDept);\nsetAllocations(allocs);\n\n// Load existing timetable\nconst docId = `${filterSession}_${filterDept || 'ALL'}_${filterSemester}_${filterSection}`;\nconst existingSnap = await getDocs(query(collection(db, \"academic_timetable\"),\nwhere(\"sessionId\", \"==\", filterSession),\n"
+    },
+    {
+      "file": "pages\\academics\\ViewTimetable.js",
+      "context": "const snap = await getDocs(q);\nif (snap.empty) { toast.error(\"No timetable found.\"); setSchedule(null); return; }\nconst data = snap.docs[0].data();\nsetSchedule(data.schedule || {});\n// Load allocations to resolve names\nconst aQ = query(collection(db, \"course_allocations\"), where(\"sessionId\", \"==\", filterSession));\nconst aSnap = await getDocs(aQ);\nsetAllocations(aSnap.docs.map(d => ({ id: d.id, ...d.data() })));\n} catch (err) { console.error(err); toast.error(\"Failed.\"); }\n}\n\nfunction getAllocName(allocId) {\nconst a = allocations.find(x => x.id === allocId);\nreturn a ? `${a.courseCode}\\n${a.facultyName?.split(' ')[0] || ''}` : '';\n}\n\n"
+    }
+  ],
+  "academic_activities": [
+    {
+      "file": "pages\\academics\\lms\\AcademicActivities.js",
+      "context": "}, [userProfile]);\n\nasync function fetchActivities() {\nsetLoading(true);\ntry {\nconst q = query(collection(db, \"academic_activities\"), where(\"facultyId\", \"==\", userProfile.uid));\nconst snap = await getDocs(q);\nconst list = snap.docs.map(d => ({ id: d.id, ...d.data() }));\nlist.sort((a, b) => new Date(b.fromDate || 0) - new Date(a.fromDate || 0));\nsetActivities(list);\n} catch (err) { toast.error(\"Failed to load activities.\"); }\nsetLoading(false);\n}\n\nfunction openAdd() {\nsetModalMode('add'); setEditId(null);\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\AcademicActivities.js",
+      "context": "setSaving(true);\ntry {\nconst payload = { ...form, facultyId: userProfile.uid, updatedAt: serverTimestamp() };\nif (modalMode === 'add') {\npayload.createdAt = serverTimestamp();\nawait addDoc(collection(db, \"academic_activities\"), payload);\ntoast.success(\"Activity added.\");\n} else {\nawait updateDoc(doc(db, \"academic_activities\", editId), payload);\ntoast.success(\"Activity updated.\");\n}\nsetShowModal(false);\nfetchActivities();\n} catch (err) { toast.error(\"Save failed.\"); }\nsetSaving(false);\n}\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\AcademicActivities.js",
+      "context": "if (modalMode === 'add') {\npayload.createdAt = serverTimestamp();\nawait addDoc(collection(db, \"academic_activities\"), payload);\ntoast.success(\"Activity added.\");\n} else {\nawait updateDoc(doc(db, \"academic_activities\", editId), payload);\ntoast.success(\"Activity updated.\");\n}\nsetShowModal(false);\nfetchActivities();\n} catch (err) { toast.error(\"Save failed.\"); }\nsetSaving(false);\n}\n\nasync function handleDelete(id) {\nif (!window.confirm(\"Delete this activity?\")) return;\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\AcademicActivities.js",
+      "context": "}\n\nasync function handleDelete(id) {\nif (!window.confirm(\"Delete this activity?\")) return;\ntry {\nawait deleteDoc(doc(db, \"academic_activities\", id));\ntoast.success(\"Deleted.\");\nfetchActivities();\n} catch (err) { toast.error(\"Delete failed.\"); }\n}\n\nfunction handleExport() {\nconst data = activities.map((a, i) => ({\n'S.No': i + 1, 'Programme Title': a.title, 'Year': a.year, 'Department': a.department, 'Type': a.type,\n'From Date': a.fromDate, 'To Date': a.toDate, 'Resource Person': a.resourcePerson, 'Participants': a.participants\n}));\n"
+    }
+  ],
+  "academic_assignments": [
+    {
+      "file": "pages\\academics\\lms\\Assignments.js",
+      "context": "}, [selectedAlloc]);\n\nasync function fetchAssignments() {\nsetLoading(true);\ntry {\nconst q = query(collection(db, \"academic_assignments\"), where(\"allocationId\", \"==\", selectedAlloc));\nconst snap = await getDocs(q);\nsetAssignments(snap.docs.map(d => ({ id: d.id, ...d.data() })));\n} catch (err) { toast.error(\"Failed to load assignments.\"); }\nsetLoading(false);\n}\n\nasync function fetchEnrolledStudents() {\ntry {\nconst alloc = allocations.find(a => a.id === selectedAlloc);\nif (!alloc) return;\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\Assignments.js",
+      "context": "updatedAt: serverTimestamp()\n};\n\nif (modalMode === 'add') {\npayload.createdAt = serverTimestamp();\nawait addDoc(collection(db, \"academic_assignments\"), payload);\ntoast.success(\"Assignment created.\");\n} else {\nawait updateDoc(doc(db, \"academic_assignments\", editId), payload);\ntoast.success(\"Assignment updated.\");\n}\nsetShowModal(false);\nfetchAssignments();\n} catch (err) { toast.error(\"Save failed.\"); }\nsetSaving(false);\n}\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\Assignments.js",
+      "context": "if (modalMode === 'add') {\npayload.createdAt = serverTimestamp();\nawait addDoc(collection(db, \"academic_assignments\"), payload);\ntoast.success(\"Assignment created.\");\n} else {\nawait updateDoc(doc(db, \"academic_assignments\", editId), payload);\ntoast.success(\"Assignment updated.\");\n}\nsetShowModal(false);\nfetchAssignments();\n} catch (err) { toast.error(\"Save failed.\"); }\nsetSaving(false);\n}\n\nasync function handleDelete(id) {\nif (!window.confirm(\"Delete this assignment?\")) return;\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\Assignments.js",
+      "context": "}\n\nasync function handleDelete(id) {\nif (!window.confirm(\"Delete this assignment?\")) return;\ntry {\nawait deleteDoc(doc(db, \"academic_assignments\", id));\ntoast.success(\"Deleted.\");\nfetchAssignments();\n} catch (err) { toast.error(\"Delete failed.\"); }\n}\n\nfunction toggleStudent(id) {\nsetSelectedStudents(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);\n}\n\nconst inputStyle = { width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: '#ffffff', color: 'var(--text)', fontSize: 13 };\n"
+    }
+  ],
+  "course_plans": [
+    {
+      "file": "pages\\academics\\lms\\CourseContents.js",
+      "context": "setLoading(false);\n}\n\nasync function fetchPlans(allocId) {\ntry {\nconst q = query(collection(db, \"course_plans\"), where(\"allocationId\", \"==\", allocId));\nconst snap = await getDocs(q);\nconst list = snap.docs.map(d => ({ id: d.id, ...d.data() }));\nlist.sort((a, b) => Number(a.unit) - Number(b.unit) || a.topic.localeCompare(b.topic));\nsetPlans(list);\n} catch (err) { console.error(err); toast.error(\"Failed to load course plan.\"); }\n}\n\nfunction handleSelectCourse(alloc) {\nsetSelectedAlloc(alloc);\nfetchPlans(alloc.id);\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\CourseContents.js",
+      "context": "status: 'Planned', actualDate: '', deviation: 0, remarks: '',\nupdatedAt: serverTimestamp()\n};\nif (modalMode === 'add') {\npayload.createdAt = serverTimestamp();\nawait addDoc(collection(db, \"course_plans\"), payload);\ntoast.success(\"Content added.\");\n} else {\nawait updateDoc(doc(db, \"course_plans\", editId), payload);\ntoast.success(\"Content updated.\");\n}\nsetShowModal(false);\nfetchPlans(selectedAlloc.id);\n} catch (err) { toast.error(\"Save failed.\"); }\nsetSaving(false);\n}\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\CourseContents.js",
+      "context": "if (modalMode === 'add') {\npayload.createdAt = serverTimestamp();\nawait addDoc(collection(db, \"course_plans\"), payload);\ntoast.success(\"Content added.\");\n} else {\nawait updateDoc(doc(db, \"course_plans\", editId), payload);\ntoast.success(\"Content updated.\");\n}\nsetShowModal(false);\nfetchPlans(selectedAlloc.id);\n} catch (err) { toast.error(\"Save failed.\"); }\nsetSaving(false);\n}\n\nasync function handleDelete(id) {\nif (!window.confirm(\"Delete this content?\")) return;\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\CourseContents.js",
+      "context": "}\n\nasync function handleDelete(id) {\nif (!window.confirm(\"Delete this content?\")) return;\ntry {\nawait deleteDoc(doc(db, \"course_plans\", id));\ntoast.success(\"Deleted.\");\nfetchPlans(selectedAlloc.id);\n} catch (err) { toast.error(\"Delete failed.\"); }\n}\n\nconst inputStyle = { width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: '#ffffff', color: 'var(--text)', fontSize: 13 };\nconst labelStyle = { fontSize: 12, color: 'var(--text-muted)', marginBottom: 4, display: 'block' };\n\nreturn (\n<div className=\"dashboard-wrapper\">\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\CoursePlanCompletion.js",
+      "context": "}, [selectedAlloc]);\n\nasync function fetchPlans(allocId) {\nsetLoading(true);\ntry {\nconst q = query(collection(db, \"course_plans\"), where(\"allocationId\", \"==\", allocId));\nconst snap = await getDocs(q);\nconst list = snap.docs.map(d => ({ id: d.id, ...d.data() }));\nlist.sort((a, b) => Number(a.unit) - Number(b.unit) || a.topic.localeCompare(b.topic));\nsetPlans(list);\n} catch (err) { console.error(err); toast.error(\"Failed to load plans.\"); }\nsetLoading(false);\n}\n\nfunction openEdit(plan) {\nsetEditPlan(plan);\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\CoursePlanCompletion.js",
+      "context": "let deviation = 0;\n// In a real scenario with plannedDate vs actualDate, deviation = (actualDate - plannedDate) in days.\n// Since plannedDate wasn't explicitly captured in contents yet (using just plannedHours),\n// deviation here can be manually logged or derived if plannedDate was added. For now, 0 or manual.\n\nawait updateDoc(doc(db, \"course_plans\", editPlan.id), {\nactualDate: form.actualDate,\nstatus: form.status,\nremarks: form.remarks,\nupdatedAt: serverTimestamp()\n});\ntoast.success(\"Completion updated.\");\nsetShowModal(false);\nfetchPlans(selectedAlloc);\n} catch (err) { toast.error(\"Save failed.\"); }\nsetSaving(false);\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\CoursePlanFeedback.js",
+      "context": "}, [selectedAlloc]);\n\nasync function fetchPlans(allocId) {\nsetLoading(true);\ntry {\nconst q = query(collection(db, \"course_plans\"), where(\"allocationId\", \"==\", allocId));\nconst snap = await getDocs(q);\nconst list = snap.docs.map(d => ({ id: d.id, ...d.data() }));\nlist.sort((a, b) => Number(a.unit) - Number(b.unit) || a.topic.localeCompare(b.topic));\nsetPlans(list);\n\nconst initialFeedback = {};\nlist.forEach(p => {\ninitialFeedback[p.id] = p.feedback || '';\n});\nsetFeedbackData(initialFeedback);\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\CoursePlanFeedback.js",
+      "context": "}\n\nasync function handleSaveFeedback(planId) {\nsetSaving(true);\ntry {\nawait updateDoc(doc(db, \"course_plans\", planId), {\nfeedback: feedbackData[planId],\nreviewer: userProfile?.name || 'Reviewer',\nfeedbackDate: new Date().toISOString().split('T')[0],\nupdatedAt: serverTimestamp()\n});\ntoast.success(\"Feedback saved.\");\nfetchPlans(selectedAlloc);\n} catch (err) { toast.error(\"Save failed.\"); }\nsetSaving(false);\n}\n"
+    }
+  ],
+  "academic_timetable": [
+    {
+      "file": "pages\\academics\\lms\\FacultyTimetable.js",
+      "context": "toast.error(\"No courses allocated for this session.\");\nsetSchedule({}); setLoading(false); return;\n}\n\n// 2. Scan academic_timetable for these allocations\nconst tQ = query(collection(db, \"academic_timetable\"), where(\"sessionId\", \"==\", filterSession));\nconst tSnap = await getDocs(tQ);\n\nconst newSchedule = {};\nDAYS.forEach(d => { newSchedule[d] = {}; });\n\ntSnap.docs.forEach(docSnap => {\nconst tData = docSnap.data();\nif (!tData.schedule) return;\nDAYS.forEach(day => {\nSLOTS.filter(s => !s.isBreak).forEach(slot => {\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\MarkAttendance.js",
+      "context": "\nif (myAllocIds.length === 0) {\nsetTodaysClasses([]); setLoading(false); return;\n}\n\nconst tQ = query(collection(db, \"academic_timetable\"), where(\"sessionId\", \"==\", filterSession));\nconst tSnap = await getDocs(tQ);\n\nconst classes = [];\ntSnap.docs.forEach(docSnap => {\nconst tData = docSnap.data();\nif (!tData.schedule?.[dayName]) return;\nSLOTS.forEach(slot => {\nconst allocId = tData.schedule[dayName][slot.id]?.allocationId;\nif (allocId && myAllocIds.includes(allocId)) {\nclasses.push({\n"
+    },
+    {
+      "file": "pages\\academics\\TimetableConfig.js",
+      "context": "if (filterDept) allocs = allocs.filter(a => a.department === filterDept);\nsetAllocations(allocs);\n\n// Load existing timetable\nconst docId = `${filterSession}_${filterDept || 'ALL'}_${filterSemester}_${filterSection}`;\nconst existingSnap = await getDocs(query(collection(db, \"academic_timetable\"),\nwhere(\"sessionId\", \"==\", filterSession),\nwhere(\"semester\", \"==\", filterSemester),\nwhere(\"classSection\", \"==\", filterSection)\n));\n\nif (!existingSnap.empty) {\nconst existingData = existingSnap.docs[0].data();\nsetSchedule(existingData.schedule || {});\n} else {\nconst initial = {};\n"
+    },
+    {
+      "file": "pages\\academics\\TimetableConfig.js",
+      "context": "}\nsetConflicts([]);\nsetSaving(true);\ntry {\nconst docId = `${filterSession}_${filterDept || 'ALL'}_${filterSemester}_${filterSection}`;\nawait setDoc(doc(db, \"academic_timetable\", docId), {\nsessionId: filterSession,\nprogramme: filterProgramme,\ndepartment: filterDept,\nsemester: filterSemester,\nclassSection: filterSection,\nschedule,\nupdatedAt: serverTimestamp(),\nupdatedBy: userProfile?.uid,\ncreatedAt: serverTimestamp()\n}, { merge: true });\n"
+    },
+    {
+      "file": "pages\\academics\\ViewTimetable.js",
+      "context": "}, []);\n\nasync function handleShow() {\nif (!filterSession || !filterSemester) { toast.error(\"Session and Semester required.\"); return; }\ntry {\nconst q = query(collection(db, \"academic_timetable\"),\nwhere(\"sessionId\", \"==\", filterSession),\nwhere(\"semester\", \"==\", filterSemester),\nwhere(\"classSection\", \"==\", filterSection)\n);\nconst snap = await getDocs(q);\nif (snap.empty) { toast.error(\"No timetable found.\"); setSchedule(null); return; }\nconst data = snap.docs[0].data();\nsetSchedule(data.schedule || {});\n// Load allocations to resolve names\nconst aQ = query(collection(db, \"course_allocations\"), where(\"sessionId\", \"==\", filterSession));\n"
+    }
+  ],
+  "research_repository": [
+    {
+      "file": "pages\\academics\\lms\\ResearchRepository.js",
+      "context": "}, [userProfile, activeTab]);\n\nasync function fetchRecords() {\nsetLoading(true);\ntry {\nconst q = query(collection(db, \"research_repository\"), where(\"facultyId\", \"==\", userProfile.uid), where(\"tab\", \"==\", activeTab));\nconst snap = await getDocs(q);\nsetRecords(snap.docs.map(d => ({ id: d.id, ...d.data() })));\n} catch (err) { toast.error(\"Failed to load records.\"); }\nsetLoading(false);\n}\n\nfunction openAdd() {\nsetModalMode('add'); setEditId(null);\nsetForm({ title: '', year: new Date().getFullYear().toString(), details: '', link: '' });\nsetShowModal(true);\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\ResearchRepository.js",
+      "context": "setSaving(true);\ntry {\nconst payload = { ...form, tab: activeTab, facultyId: userProfile.uid, updatedAt: serverTimestamp() };\nif (modalMode === 'add') {\npayload.createdAt = serverTimestamp();\nawait addDoc(collection(db, \"research_repository\"), payload);\ntoast.success(\"Record added.\");\n} else {\nawait updateDoc(doc(db, \"research_repository\", editId), payload);\ntoast.success(\"Record updated.\");\n}\nsetShowModal(false);\nfetchRecords();\n} catch (err) { toast.error(\"Save failed.\"); }\nsetSaving(false);\n}\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\ResearchRepository.js",
+      "context": "if (modalMode === 'add') {\npayload.createdAt = serverTimestamp();\nawait addDoc(collection(db, \"research_repository\"), payload);\ntoast.success(\"Record added.\");\n} else {\nawait updateDoc(doc(db, \"research_repository\", editId), payload);\ntoast.success(\"Record updated.\");\n}\nsetShowModal(false);\nfetchRecords();\n} catch (err) { toast.error(\"Save failed.\"); }\nsetSaving(false);\n}\n\nasync function handleDelete(id) {\nif (!window.confirm(\"Delete this record?\")) return;\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\ResearchRepository.js",
+      "context": "}\n\nasync function handleDelete(id) {\nif (!window.confirm(\"Delete this record?\")) return;\ntry {\nawait deleteDoc(doc(db, \"research_repository\", id));\ntoast.success(\"Deleted.\");\nfetchRecords();\n} catch (err) { toast.error(\"Delete failed.\"); }\n}\n\nconst inputStyle = { width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: '#ffffff', color: 'var(--text)', fontSize: 13 };\nconst labelStyle = { fontSize: 12, color: 'var(--text-muted)', marginBottom: 4, display: 'block' };\n\nreturn (\n<div className=\"dashboard-wrapper\">\n"
+    }
+  ],
+  "self_appraisal": [
+    {
+      "file": "pages\\academics\\lms\\SelfAppraisal.js",
+      "context": "}, [userProfile]);\n\nasync function fetchAppraisal() {\nsetLoading(true);\ntry {\nconst q = query(collection(db, \"self_appraisal\"), where(\"facultyId\", \"==\", userProfile.uid));\nconst snap = await getDocs(q);\nif (!snap.empty) {\nconst data = snap.docs[0].data();\nif (data.profileData) setProfileData(data.profileData);\nif (data.pi1) setPi1(data.pi1);\nif (data.pi2) setPi2(data.pi2);\nif (data.pi3) setPi3(data.pi3);\nif (data.pi4) setPi4(data.pi4);\nif (data.pi5) setPi5(data.pi5);\n}\n"
+    },
+    {
+      "file": "pages\\academics\\lms\\SelfAppraisal.js",
+      "context": "async function handleSave() {\nsetSaving(true);\ntry {\n// Calculate total PGI\nconst pgiScore = calculatePi1Total() + Number(pi2.score) + Number(pi3.score) + Number(pi4.score) + Number(pi5.score);\nconst docRef = doc(db, \"self_appraisal\", userProfile.uid);\nawait setDoc(docRef, {\nfacultyId: userProfile.uid,\nfacultyName: userProfile.name,\nprofileData,\npi1, pi2, pi3, pi4, pi5,\npgiScore,\nupdatedAt: serverTimestamp()\n}, { merge: true });\ntoast.success(\"Self Appraisal saved!\");\n} catch (err) { toast.error(\"Save failed.\"); }\n"
+    }
+  ],
+  "cia_exam_schedules": [
+    {
+      "file": "pages\\cia\\AttendanceReport.js",
+      "context": "}, []);\n\nasync function fetchSchedules() {\ntry {\nconst q = query(\ncollection(db, \"cia_exam_schedules\"),\norderBy(\"date\", \"desc\")\n);\nconst snap = await getDocs(q);\nconst list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));\nsetSchedules(list);\n} catch (err) {\nconsole.error(err);\ntoast.error(\"Failed to load schedules\");\n}\n}\n"
+    },
+    {
+      "file": "pages\\cia\\MarkAttendance.js",
+      "context": "}, []);\n\nasync function fetchSchedules() {\ntry {\nconst q = query(\ncollection(db, \"cia_exam_schedules\"),\nwhere(\"status\", \"==\", \"Scheduled\"),\norderBy(\"date\", \"desc\")\n);\nconst snap = await getDocs(q);\nconst list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));\nsetSchedules(list);\n} catch (err) {\nconsole.error(err);\ntoast.error(\"Failed to load schedules\");\n}\n"
+    },
+    {
+      "file": "pages\\cia\\MarkEntryCIA.js",
+      "context": "\nasync function fetchSchedules() {\nsetLoading(true);\ntry {\nconst q = query(\ncollection(db, \"cia_exam_schedules\"),\norderBy(\"date\", \"desc\")\n);\nconst snap = await getDocs(q);\nconst list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));\nsetSchedules(list);\n} catch (err) {\nconsole.error(err);\ntoast.error(\"Failed to load schedules\");\n}\nsetLoading(false);\n"
+    },
+    {
+      "file": "pages\\cia\\Reports.js",
+      "context": "\n// --- REPORT 2: CIA Examination Timetable Report ---\nconst handleGenerateR2 = async () => {\nsetLoading(true);\ntry {\nlet q = collection(db, \"cia_exam_schedules\");\n// Add simple filters if selected, otherwise fetch all\nconst snap = await getDocs(query(q, orderBy(\"date\", \"desc\")));\n\nconst records = snap.docs.map(d => ({ id: d.id, ...d.data() }));\n\n// Filter locally for simplicity with all combinations\nconst filtered = records.filter(r => {\nif (filterSession && r.academicSession !== filterSession) return false;\nif (filterProgramme && r.programmeName !== filterProgramme) return false;\nif (filterSemester && r.semester !== filterSemester) return false;\n"
+    },
+    {
+      "file": "pages\\cia\\Reports.js",
+      "context": "return;\n}\nsetLoading(true);\ntry {\n// Find schedules\nconst schedQ = query(collection(db, \"cia_exam_schedules\"), where(\"academicSession\", \"==\", filterSession));\nconst schedSnap = await getDocs(schedQ);\nconst schedules = schedSnap.docs.map(d => ({ id: d.id, ...d.data() }));\n\n// Find marks\nconst marksQ = query(collection(db, \"cia_marks\"), where(\"academicSession\", \"==\", filterSession));\nconst marksSnap = await getDocs(marksQ);\n\nconst enteredMarksSet = new Set();\nmarksSnap.docs.forEach(d => {\nconst data = d.data();\n"
+    },
+    {
+      "file": "pages\\cia\\ScheduleExamination.js",
+      "context": "}\n\nasync function fetchSchedules() {\nsetLoading(true);\ntry {\nconst q = query(collection(db, \"cia_exam_schedules\"), orderBy(\"createdAt\", \"desc\"));\nconst snap = await getDocs(q);\nconst list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));\nsetSchedules(list);\n} catch (err) {\nconsole.error(err);\ntoast.error(\"Failed to load schedules\");\n}\nsetLoading(false);\n}\n\n"
+    },
+    {
+      "file": "pages\\cia\\ScheduleExamination.js",
+      "context": "const selectedExam = exams.find(ex => ex.id === formData.examId);\nif (!selectedExam) throw new Error(\"Invalid Exam Selected\");\n\n// Check for overlap / duplicates\nconst dupQuery = query(\ncollection(db, \"cia_exam_schedules\"),\nwhere(\"examId\", \"==\", formData.examId),\nwhere(\"class\", \"==\", formData.class),\nwhere(\"date\", \"==\", formData.date)\n);\nconst dupSnap = await getDocs(dupQuery);\n\nconst isOverlap = dupSnap.docs.some(d => {\nif (editId && d.id === editId) return false;\nconst dData = d.data();\n// Check if times overlap\n"
+    },
+    {
+      "file": "pages\\cia\\ScheduleExamination.js",
+      "context": "updatedAt: new Date().toISOString(),\nupdatedBy: userProfile?.name || \"System\"\n};\n\nif (editId) {\nawait updateDoc(doc(db, \"cia_exam_schedules\", editId), payload);\ntoast.success(\"Schedule updated successfully\");\n} else {\npayload.createdAt = new Date().toISOString();\npayload.createdBy = userProfile?.name || \"System\";\nawait addDoc(collection(db, \"cia_exam_schedules\"), payload);\ntoast.success(\"Exam scheduled successfully\");\n}\n\nsetShowModal(false);\nresetForm();\n"
+    },
+    {
+      "file": "pages\\cia\\ScheduleExamination.js",
+      "context": "await updateDoc(doc(db, \"cia_exam_schedules\", editId), payload);\ntoast.success(\"Schedule updated successfully\");\n} else {\npayload.createdAt = new Date().toISOString();\npayload.createdBy = userProfile?.name || \"System\";\nawait addDoc(collection(db, \"cia_exam_schedules\"), payload);\ntoast.success(\"Exam scheduled successfully\");\n}\n\nsetShowModal(false);\nresetForm();\nfetchSchedules();\n} catch (err) {\nconsole.error(err);\ntoast.error(err.message || \"Error saving schedule\");\n}\n"
+    },
+    {
+      "file": "pages\\cia\\ScheduleExamination.js",
+      "context": "};\n\nconst handleDelete = async (id) => {\nif (window.confirm(\"Are you sure you want to delete this schedule?\")) {\ntry {\nawait deleteDoc(doc(db, \"cia_exam_schedules\", id));\ntoast.success(\"Schedule deleted\");\nfetchSchedules();\n} catch (err) {\ntoast.error(\"Failed to delete schedule\");\n}\n}\n};\n\nconst resetForm = () => {\nsetFormData({\n"
+    }
+  ],
+  "cia_exam_attendance": [
+    {
+      "file": "pages\\cia\\AttendanceReport.js",
+      "context": "setLoading(true);\ntry {\nconst schedule = schedules.find(s => s.id === selectedScheduleId);\n\nconst attQ = query(\ncollection(db, \"cia_exam_attendance\"),\nwhere(\"scheduleId\", \"==\", selectedScheduleId)\n);\nconst attSnap = await getDocs(attQ);\n\nif (attSnap.empty) {\ntoast.error(\"No attendance records found for this schedule.\");\nsetReportData(null);\nsetLoading(false);\nreturn;\n}\n"
+    },
+    {
+      "file": "pages\\cia\\MarkAttendance.js",
+      "context": "studentsList.sort((a, b) => (a.name || \"\").localeCompare(b.name || \"\"));\nsetStudents(studentsList);\n\n// Fetch existing attendance if any\nconst attQ = query(\ncollection(db, \"cia_exam_attendance\"),\nwhere(\"scheduleId\", \"==\", schedule.id)\n);\nconst attSnap = await getDocs(attQ);\n\nconst newAtt = {};\nif (!attSnap.empty) {\nattSnap.docs.forEach(d => {\nconst data = d.data();\nnewAtt[data.studentId] = data.status;\n});\n"
+    },
+    {
+      "file": "pages\\cia\\MarkAttendance.js",
+      "context": "try {\nconst schedule = schedules.find(s => s.id === selectedScheduleId);\n\nconst batchPromises = students.map(student => {\nconst recordId = `${schedule.id}_${student.id}`;\nreturn setDoc(doc(db, \"cia_exam_attendance\", recordId), {\nscheduleId: schedule.id,\nexamId: schedule.examId,\ncourseId: schedule.courseCode,\nclassId: schedule.class,\nstudentId: student.id,\nstudentName: student.name || 'Unknown',\nregisterNo: student.registerNo || student.id,\nrollNo: student.rollNo || '',\nstatus: attendance[student.id] || 'Absent',\nmarkedBy: userProfile?.name || \"System\",\n"
+    },
+    {
+      "file": "pages\\cia\\MarkEntryCIA.js",
+      "context": "const handleActionClick = async (schedule) => {\nsetSelectedSchedule(schedule);\nsetLoading(true);\ntry {\n// Fetch Attendance\nconst attQ = query(collection(db, \"cia_exam_attendance\"), where(\"scheduleId\", \"==\", schedule.id));\nconst attSnap = await getDocs(attQ);\n\nconst attData = {};\nconst studentData = [];\n\nattSnap.docs.forEach(d => {\nconst data = d.data();\nattData[data.studentId] = data.status;\nstudentData.push({\nid: data.studentId,\n"
+    }
+  ],
+  "cia_examinations": [
+    {
+      "file": "pages\\cia\\ExamCreation.js",
+      "context": "}, []);\n\nasync function fetchExams() {\nsetLoading(true);\ntry {\nconst q = query(collection(db, \"cia_examinations\"), orderBy(\"createdAt\", \"desc\"));\nconst snap = await getDocs(q);\nconst list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));\nsetExams(list);\n} catch (err) {\nconsole.error(err);\ntoast.error(\"Failed to load exams\");\n}\nsetLoading(false);\n}\n\n"
+    },
+    {
+      "file": "pages\\cia\\ExamCreation.js",
+      "context": "\nsetSaving(true);\ntry {\n// Check for duplicates\nconst dupQuery = query(\ncollection(db, \"cia_examinations\"),\nwhere(\"academicSession\", \"==\", formData.academicSession),\nwhere(\"examName\", \"==\", formData.examName),\nwhere(\"programmeName\", \"==\", formData.programmeName),\nwhere(\"semester\", \"==\", formData.semester)\n);\nconst dupSnap = await getDocs(dupQuery);\n\nif (!dupSnap.empty && (!editId || dupSnap.docs[0].id !== editId)) {\ntoast.error(\"An exam with this name already exists for the selected session, programme, and semester.\");\nsetSaving(false);\n"
+    },
+    {
+      "file": "pages\\cia\\ExamCreation.js",
+      "context": "updatedAt: new Date().toISOString(),\nupdatedBy: userProfile?.name || \"System\"\n};\n\nif (editId) {\nawait updateDoc(doc(db, \"cia_examinations\", editId), payload);\ntoast.success(\"Exam updated successfully\");\n} else {\npayload.createdAt = new Date().toISOString();\npayload.createdBy = userProfile?.name || \"System\";\nawait addDoc(collection(db, \"cia_examinations\"), payload);\ntoast.success(\"Exam created successfully\");\n}\n\nsetShowModal(false);\nresetForm();\n"
+    },
+    {
+      "file": "pages\\cia\\ExamCreation.js",
+      "context": "await updateDoc(doc(db, \"cia_examinations\", editId), payload);\ntoast.success(\"Exam updated successfully\");\n} else {\npayload.createdAt = new Date().toISOString();\npayload.createdBy = userProfile?.name || \"System\";\nawait addDoc(collection(db, \"cia_examinations\"), payload);\ntoast.success(\"Exam created successfully\");\n}\n\nsetShowModal(false);\nresetForm();\nfetchExams();\n} catch (err) {\nconsole.error(err);\ntoast.error(\"Error saving exam\");\n}\n"
+    },
+    {
+      "file": "pages\\cia\\ExamCreation.js",
+      "context": "};\n\nconst handleDelete = async (id) => {\nif (window.confirm(\"Are you sure you want to delete this exam? Make sure no schedules depend on it.\")) {\ntry {\nawait deleteDoc(doc(db, \"cia_examinations\", id));\ntoast.success(\"Exam deleted\");\nfetchExams();\n} catch (err) {\ntoast.error(\"Failed to delete exam\");\n}\n}\n};\n\nconst resetForm = () => {\nsetFormData({\n"
+    },
+    {
+      "file": "pages\\cia\\ScheduleExamination.js",
+      "context": "fetchSchedules();\n}, []);\n\nasync function fetchExams() {\ntry {\nconst q = query(collection(db, \"cia_examinations\"), orderBy(\"createdAt\", \"desc\"));\nconst snap = await getDocs(q);\nconst list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));\nsetExams(list);\n} catch (err) {\nconsole.error(err);\ntoast.error(\"Failed to load exams\");\n}\n}\n\nasync function fetchSchedules() {\n"
+    }
+  ],
+  "cia_question_bank": [
+    {
+      "file": "pages\\cia\\HodQuestionPaperReview.js",
+      "context": "const handleView = async (paper) => {\nsetSelectedPaper(paper);\nsetRemarks('');\n// Load question pool for rendering\ntry {\nconst q = query(collection(db, \"cia_question_bank\"), where(\"courseCode\", \"==\", paper.courseCode));\nconst snap = await getDocs(q);\nconst qList = snap.docs.map(d => ({ id: d.id, ...d.data() }));\nsetQuestionsPool(qList);\n} catch (err) {\nconsole.error(err);\n}\n};\n\nconst handleAction = async (decision) => {\nif (decision === 'RETURNED' && !remarks.trim()) {\n"
+    },
+    {
+      "file": "pages\\cia\\PrincipalQuestionPaperReview.js",
+      "context": "\nconst handleView = async (paper) => {\nsetSelectedPaper(paper);\nsetRemarks('');\ntry {\nconst q = query(collection(db, \"cia_question_bank\"), where(\"courseCode\", \"==\", paper.courseCode));\nconst snap = await getDocs(q);\nconst qList = snap.docs.map(d => ({ id: d.id, ...d.data() }));\nsetQuestionsPool(qList);\n} catch (err) {\nconsole.error(err);\n}\n};\n\nconst handleAction = async (decision) => {\nif (decision === 'RETURNED' && !remarks.trim()) {\n"
+    },
+    {
+      "file": "pages\\cia\\QuestionBank.js",
+      "context": "}, []);\n\nasync function fetchQuestions() {\nsetLoading(true);\ntry {\nconst q = query(collection(db, \"cia_question_bank\"), orderBy(\"createdAt\", \"desc\"));\nconst snap = await getDocs(q);\nconst list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));\nsetQuestions(list);\n} catch (err) {\nconsole.error(err);\ntoast.error(\"Failed to load question bank\");\n}\nsetLoading(false);\n}\n\n"
+    },
+    {
+      "file": "pages\\cia\\QuestionBank.js",
+      "context": "try {\nconst payload = {\n...formData,\nupdatedAt: new Date().toISOString()\n};\nawait updateDoc(doc(db, \"cia_question_bank\", editId), payload);\ntoast.success(\"Question updated successfully\");\nsetShowModal(false);\nfetchQuestions();\n} catch (err) {\nconsole.error(err);\ntoast.error(\"Error saving question\");\n}\nsetSaving(false);\n};\n\n"
+    },
+    {
+      "file": "pages\\cia\\QuestionBank.js",
+      "context": "};\n\nconst handleDelete = async (id) => {\nif (window.confirm(\"Are you sure you want to delete this question?\")) {\ntry {\nawait deleteDoc(doc(db, \"cia_question_bank\", id));\ntoast.success(\"Question deleted\");\nfetchQuestions();\n} catch (err) {\ntoast.error(\"Failed to delete question\");\n}\n}\n};\n\n// --- Handlers for Bulk Add ---\nconst handleBulkChange = (e) => {\n"
+    },
+    {
+      "file": "pages\\cia\\QuestionBank.js",
+      "context": "\nconst promises = [];\n\n// Save Part A\nfor (const text of validPartA) {\npromises.push(addDoc(collection(db, \"cia_question_bank\"), {\n...basePayload, section: 'A', marks: '2', questionText: text\n}));\n}\n\n// Save Part B\nfor (const text of validPartB) {\npromises.push(addDoc(collection(db, \"cia_question_bank\"), {\n...basePayload, section: 'B', marks: '13', questionText: text\n}));\n}\n"
+    },
+    {
+      "file": "pages\\cia\\QuestionBank.js",
+      "context": "}));\n}\n\n// Save Part B\nfor (const text of validPartB) {\npromises.push(addDoc(collection(db, \"cia_question_bank\"), {\n...basePayload, section: 'B', marks: '13', questionText: text\n}));\n}\n\n// Save Part C\nfor (const text of validPartC) {\npromises.push(addDoc(collection(db, \"cia_question_bank\"), {\n...basePayload, section: 'C', marks: '14', questionText: text\n}));\n}\n"
+    },
+    {
+      "file": "pages\\cia\\QuestionBank.js",
+      "context": "}));\n}\n\n// Save Part C\nfor (const text of validPartC) {\npromises.push(addDoc(collection(db, \"cia_question_bank\"), {\n...basePayload, section: 'C', marks: '14', questionText: text\n}));\n}\n\nawait Promise.all(promises);\ntoast.success(`Successfully added ${promises.length} questions to the bank`);\n\nsetShowModal(false);\nsetBulkData({\ncourseCode: '', courseName: '', programme: '', semester: '', unit: '1', difficulty: 'Medium', partA: [''], partB: [''], partC: ['']\n"
+    },
+    {
+      "file": "pages\\cia\\QuestionPaper.js",
+      "context": "}\n}, [editId]);\n\nasync function fetchCourses() {\ntry {\nconst qBank = query(collection(db, \"cia_question_bank\"));\nconst snapBank = await getDocs(qBank);\nconst uniqueCourses = new Set();\nsnapBank.docs.forEach(d => {\nif (d.data().courseCode) uniqueCourses.add(d.data().courseCode);\n});\nsetCourses(Array.from(uniqueCourses));\n} catch (err) {\nconsole.error(err);\n}\n}\n"
+    },
+    {
+      "file": "pages\\cia\\QuestionPaper.js",
+      "context": "}\n\nasync function loadPoolByCourse(course) {\nif (!course) return;\ntry {\nconst q = query(collection(db, \"cia_question_bank\"), where(\"courseCode\", \"==\", course));\nconst snap = await getDocs(q);\nconst qList = snap.docs.map(d => ({ id: d.id, ...d.data() }));\nsetQuestionsPool(qList);\nsetPoolLoaded(true);\n} catch (err) {\nconsole.error(err);\n}\n}\n\nconst handleLoadPool = async () => {\n"
+    },
+    {
+      "file": "pages\\student\\StudentQuestionPapers.js",
+      "context": "const handleView = async (p) => {\nsetViewingPaper(p);\nsetPoolLoading(true);\ntry {\n// Fetch the question pool for this course to resolve the question IDs\nconst q = query(collection(db, \"cia_question_bank\"), where(\"courseCode\", \"==\", p.courseCode));\nconst snap = await getDocs(q);\nconst qList = snap.docs.map(d => ({ id: d.id, ...d.data() }));\nsetQuestionsPool(qList);\n} catch (err) {\nconsole.error(err);\n}\nsetPoolLoading(false);\n};\n\nconst handlePrint = () => {\n"
+    }
+  ],
+  "cia_marks": [
+    {
+      "file": "pages\\cia\\MarkEntryCIA.js",
+      "context": "rollNo: data.rollNo\n});\n});\n\n// Fetch Existing Marks\nconst marksQ = query(collection(db, \"cia_marks\"), where(\"scheduleId\", \"==\", schedule.id), where(\"entryType\", \"==\", \"CIA\"));\nconst marksSnap = await getDocs(marksQ);\nconst mData = {};\n\nmarksSnap.docs.forEach(d => {\nconst data = d.data();\nmData[data.studentId] = data.marks;\n});\n\nstudentData.sort((a, b) => (a.name || \"\").localeCompare(b.name || \"\"));\n\n"
+    },
+    {
+      "file": "pages\\cia\\MarkEntryCIA.js",
+      "context": "let finalMark = marksMap[student.id];\nlet isAbsent = attendanceMap[student.id] === 'Absent';\n\nif (isAbsent) finalMark = 0;\n\nreturn setDoc(doc(db, \"cia_marks\", recordId), {\nexamId: selectedSchedule.examId,\nscheduleId: selectedSchedule.id,\ncourseId: selectedSchedule.courseCode,\nclassId: selectedSchedule.class,\nstudentId: student.id,\nstudentName: student.name || 'Unknown',\nregisterNo: student.registerNo || student.id,\nmarks: Number(finalMark) || 0,\nmaxMarks: 50,\nisAbsent: isAbsent,\n"
+    },
+    {
+      "file": "pages\\cia\\MarkEntryESE.js",
+      "context": "}\nstudentsList.sort((a, b) => (a.name || \"\").localeCompare(b.name || \"\"));\n\n// Fetch Existing ESE Marks\nconst marksQ = query(\ncollection(db, \"cia_marks\"),\nwhere(\"academicSession\", \"==\", filterSession),\nwhere(\"courseId\", \"==\", filterCourse),\nwhere(\"entryType\", \"==\", \"ESE\")\n);\nconst marksSnap = await getDocs(marksQ);\nconst mData = {};\nconst attData = {};\n\nmarksSnap.docs.forEach(d => {\nconst data = d.data();\n"
+    },
+    {
+      "file": "pages\\cia\\MarkEntryESE.js",
+      "context": "let isAbsent = attendanceMap[student.id] === 'Absent';\n\nif (isAbsent) finalMark = 0;\nconst { grade, point } = isAbsent ? { grade: 'AB', point: 0 } : calculateGrade(finalMark);\n\nreturn setDoc(doc(db, \"cia_marks\", recordId), {\nacademicSession: filterSession,\nprogrammeName: filterProgramme,\nsemester: filterSemester,\ncourseId: filterCourse,\nstudentId: student.id,\nstudentName: student.name || 'Unknown',\nregisterNo: student.registerNo || student.id,\nmarks: Number(finalMark) || 0,\nisAbsent: isAbsent,\ngrade: grade,\n"
+    },
+    {
+      "file": "pages\\cia\\MarkEntryOther.js",
+      "context": "}\nstudentsList.sort((a, b) => (a.name || \"\").localeCompare(b.name || \"\"));\n\n// Fetch Existing Marks\nconst marksQ = query(\ncollection(db, \"cia_marks\"),\nwhere(\"academicSession\", \"==\", filterSession),\nwhere(\"courseId\", \"==\", filterCourse),\nwhere(\"classId\", \"==\", filterClass),\nwhere(\"componentType\", \"==\", filterComponent),\nwhere(\"entryType\", \"==\", \"OTHER\")\n);\nconst marksSnap = await getDocs(marksQ);\nconst mData = {};\n\nmarksSnap.docs.forEach(d => {\n"
+    },
+    {
+      "file": "pages\\cia\\MarkEntryOther.js",
+      "context": "setSaving(true);\ntry {\nconst batchPromises = students.map(student => {\nconst recordId = `${filterSession}_${filterCourse}_${filterClass}_${filterComponent}_${student.id}`.replace(/\\s+/g, '_');\n\nreturn setDoc(doc(db, \"cia_marks\", recordId), {\nacademicSession: filterSession,\nprogrammeName: filterProgramme,\nsemester: filterSemester,\ncourseId: filterCourse,\nclassId: filterClass,\ncomponentType: filterComponent,\nstudentId: student.id,\nstudentName: student.name || 'Unknown',\nregisterNo: student.registerNo || student.id,\nmarks: Number(marksMap[student.id]) || 0,\n"
+    },
+    {
+      "file": "pages\\cia\\Reports.js",
+      "context": "}\nsetLoading(true);\ntry {\nconst studentsList = await getStudentsForClass(filterProgramme, filterSemester);\n\nconst marksQ = query(collection(db, \"cia_marks\"), where(\"courseId\", \"==\", filterCourse));\nconst marksSnap = await getDocs(marksQ);\n\nconst marksByStudent = {};\nmarksSnap.docs.forEach(d => {\nconst data = d.data();\nif (!marksByStudent[data.studentId]) {\nmarksByStudent[data.studentId] = { CIA: '-', OTHER: '-', ESE: '-', GRADE: '-' };\n}\nif (data.entryType === 'CIA') marksByStudent[data.studentId].CIA = data.isAbsent ? 'AB' : data.marks;\nelse if (data.entryType === 'OTHER') marksByStudent[data.studentId].OTHER = data.marks;\n"
+    },
+    {
+      "file": "pages\\cia\\Reports.js",
+      "context": "return;\n}\nsetLoading(true);\ntry {\nconst studentsList = await getStudentsForClass(filterProgramme, filterSemester);\nconst marksQ = query(collection(db, \"cia_marks\"), where(\"classId\", \"==\", filterClass), where(\"academicSession\", \"==\", filterSession));\nconst marksSnap = await getDocs(marksQ);\n\nconst courseSummaries = {};\n\nmarksSnap.docs.forEach(d => {\nconst data = d.data();\nif (data.entryType !== 'ESE' && data.entryType !== 'CIA') return; // Analyze main ones\n\nconst cId = data.courseId;\nif (!courseSummaries[cId]) {\n"
+    },
+    {
+      "file": "pages\\cia\\Reports.js",
+      "context": "const schedQ = query(collection(db, \"cia_exam_schedules\"), where(\"academicSession\", \"==\", filterSession));\nconst schedSnap = await getDocs(schedQ);\nconst schedules = schedSnap.docs.map(d => ({ id: d.id, ...d.data() }));\n\n// Find marks\nconst marksQ = query(collection(db, \"cia_marks\"), where(\"academicSession\", \"==\", filterSession));\nconst marksSnap = await getDocs(marksQ);\n\nconst enteredMarksSet = new Set();\nmarksSnap.docs.forEach(d => {\nconst data = d.data();\nenteredMarksSet.add(`${data.scheduleId}_${data.studentId}`);\n});\n\nconst defaulters = [];\n\n"
+    },
+    {
+      "file": "pages\\cia\\ResultAnalysis.js",
+      "context": "\nsetLoading(true);\ntry {\n// Find marks for the selected course and entry type\nconst marksQ = query(\ncollection(db, \"cia_marks\"),\nwhere(\"entryType\", \"==\", filterType),\nwhere(\"courseId\", \"==\", filterCourse)\n);\n\nconst snap = await getDocs(marksQ);\n\nif (snap.empty) {\ntoast.error(\"No result data found for the selected criteria.\");\nsetResults(null);\nsetLoading(false);\n"
+    }
+  ],
+  "exam_results": [
+    {
+      "file": "pages\\hod\\Results.js",
+      "context": "if (!userProfile?.dept) return;\nsetFetching(true);\ntry {\n// Pending HOD approval\nconst q1 = query(\ncollection(db, \"exam_results\"),\nwhere(\"dept\", \"==\", userProfile.dept),\nwhere(\"status\", \"==\", \"pending_hod\")\n);\nconst snap1 = await getDocs(q1);\nconst pending = snap1.docs.map(d => ({ id: d.id, ...d.data() }));\npending.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));\nsetPendingResults(pending);\n\n// Verified\nconst q2 = query(\n"
+    },
+    {
+      "file": "pages\\hod\\Results.js",
+      "context": "pending.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));\nsetPendingResults(pending);\n\n// Verified\nconst q2 = query(\ncollection(db, \"exam_results\"),\nwhere(\"dept\", \"==\", userProfile.dept),\nwhere(\"status\", \"==\", \"verified\")\n);\nconst snap2 = await getDocs(q2);\nconst approved = snap2.docs.map(d => ({ id: d.id, ...d.data() }));\napproved.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));\nsetApprovedResults(approved);\n} catch (err) {\nshowToast(\"Failed to fetch results.\", \"error\");\n}\n"
+    },
+    {
+      "file": "pages\\hod\\Results.js",
+      "context": "useEffect(() => { fetchResults(); }, [fetchResults]);\n\nasync function handleAction(item, action) {\nsetActionLoading(item.id + action);\ntry {\nawait updateDoc(doc(db, \"exam_results\", item.id), {\nstatus: action === \"verify\" ? \"verified\" : \"rejected\",\nhodActionAt: new Date().toISOString(),\nhodName: userProfile.name\n});\nshowToast(action === \"verify\"\n? `✅ Results for ${item.subjectName} verified!`\n: `❌ Results for ${item.subjectName} rejected.`\n);\nsetPendingResults(prev => prev.filter(p => p.id !== item.id));\nfetchResults();\n"
+    },
+    {
+      "file": "pages\\staff\\Results.js",
+      "context": "mark: parseInt(marksMap[s.id].mark, 10),\nresult: marksMap[s.id].result\n};\n});\n\nawait addDoc(collection(db, \"exam_results\"), {\ndept: userProfile.dept,\nyear: selectedYear,\nexamType,\nsubjectName: subjectName.trim(),\nsubjectCode: subjectCode.trim(),\nstaffId: userProfile.uid,\nstaffName: userProfile.name,\nstatus: \"pending_hod\",\nmarks: marksData,\ntotalStudents: students.length,\n"
+    },
+    {
+      "file": "pages\\staff\\Results.js",
+      "context": "const fetchHistory = useCallback(async () => {\nif (!userProfile) return;\nsetHistoryFetching(true);\ntry {\nconst q = query(\ncollection(db, \"exam_results\"),\nwhere(\"staffId\", \"==\", userProfile.uid)\n);\nconst snap = await getDocs(q);\nconst list = snap.docs.map(d => ({ id: d.id, ...d.data() }));\nlist.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));\nsetHistory(list);\n} catch (err) {}\nsetHistoryFetching(false);\n}, [userProfile]);\n\n"
+    }
+  ],
+  "subject_allocations": [
+    {
+      "file": "pages\\hod\\SubjectAllocation.js",
+      "context": "}\n\nasync function fetchAllocations() {\nsetLoading(true);\ntry {\nlet q = query(collection(db, \"subject_allocations\"),\nwhere(\"department\", \"==\", selectedDept),\nwhere(\"year\", \"==\", selectedYear),\nwhere(\"semester\", \"==\", selectedSemester),\nwhere(\"section\", \"==\", selectedSection || \"\")\n);\n// Batch filtering handled in memory to avoid index issues if not queried\n\nconst snap = await getDocs(q);\nlet list = snap.docs.map(d => ({ id: d.id, ...d.data() }));\n\n"
+    },
+    {
+      "file": "pages\\hod\\SubjectAllocation.js",
+      "context": "setSaving(false);\nreturn;\n}\n\n// Deactivate old assignment\nawait updateDoc(doc(db, \"subject_allocations\", activeSubject.allocation.id), {\nstatus: 'Inactive',\nendDate: new Date().toISOString(),\nupdatedAt: serverTimestamp()\n});\n}\n\n// Create new assignment\nawait addDoc(collection(db, \"subject_allocations\"), {\ndepartment: selectedDept,\nyear: selectedYear,\n"
+    },
+    {
+      "file": "pages\\hod\\SubjectAllocation.js",
+      "context": "updatedAt: serverTimestamp()\n});\n}\n\n// Create new assignment\nawait addDoc(collection(db, \"subject_allocations\"), {\ndepartment: selectedDept,\nyear: selectedYear,\nsemester: selectedSemester,\nsection: selectedSection || \"\",\nbatch: selectedBatch,\nsubjectId: activeSubject.id,\nsubjectCode: activeSubject.courseCode || '',\nsubjectName: activeSubject.courseName || '',\nsubjectType: activeSubject.courseType || 'Theory',\nfacultyId: selectedFac.id,\n"
+    },
+    {
+      "file": "pages\\staff\\MySubjects.js",
+      "context": "// Reset time for date comparison\ntoday.setHours(0, 0, 0, 0);\n\n// 1. Fetch permanent assignments for this user\nconst permQ = query(\ncollection(db, \"subject_allocations\"),\nwhere(\"facultyId\", \"==\", userProfile.uid),\nwhere(\"status\", \"==\", \"Active\")\n);\nconst permSnap = await getDocs(permQ);\nlet permanentSubjects = permSnap.docs.map(d => ({ id: d.id, ...d.data(), isSubstitute: false }));\n\n// 2. Fetch substitutes WHERE this user is the substitute\nconst subQ = query(\ncollection(db, \"subject_substitutes\"),\nwhere(\"substituteFacultyId\", \"==\", userProfile.uid),\n"
+    }
+  ],
+  "subject_substitutes": [
+    {
+      "file": "pages\\hod\\SubjectAllocation.js",
+      "context": "if (activeAllocations.length > 0) {\nconst allocationIds = activeAllocations.map(a => a.id);\n\n// Firestore 'in' query supports max 10, chunk if necessary. Usually a section has ~6 subjects.\nif (allocationIds.length <= 10) {\nconst subQ = query(collection(db, \"subject_substitutes\"),\nwhere(\"allocationId\", \"in\", allocationIds),\nwhere(\"status\", \"==\", \"Active\")\n);\nconst subSnap = await getDocs(subQ);\nsetSubstitutes(subSnap.docs.map(d => ({ id: d.id, ...d.data() })));\n} else {\n// If > 10, fetch all active substitutes for department and filter in memory\nconst subQ = query(collection(db, \"subject_substitutes\"), where(\"department\", \"==\", selectedDept), where(\"status\", \"==\", \"Active\"));\nconst subSnap = await getDocs(subQ);\nconst allSubs = subSnap.docs.map(d => ({ id: d.id, ...d.data() }));\n"
+    },
+    {
+      "file": "pages\\hod\\SubjectAllocation.js",
+      "context": ");\nconst subSnap = await getDocs(subQ);\nsetSubstitutes(subSnap.docs.map(d => ({ id: d.id, ...d.data() })));\n} else {\n// If > 10, fetch all active substitutes for department and filter in memory\nconst subQ = query(collection(db, \"subject_substitutes\"), where(\"department\", \"==\", selectedDept), where(\"status\", \"==\", \"Active\"));\nconst subSnap = await getDocs(subQ);\nconst allSubs = subSnap.docs.map(d => ({ id: d.id, ...d.data() }));\nsetSubstitutes(allSubs.filter(sub => allocationIds.includes(sub.allocationId)));\n}\n} else {\nsetSubstitutes([]);\n}\n\n} catch (err) {\nconsole.error(err);\n"
+    },
+    {
+      "file": "pages\\hod\\SubjectAllocation.js",
+      "context": "\nsetSaving(true);\ntry {\nconst selectedFac = faculty.find(f => f.id === substituteForm.substituteFacultyId);\n\nawait addDoc(collection(db, \"subject_substitutes\"), {\nallocationId: activeSubject.allocation.id,\ndepartment: selectedDept,\nyear: selectedYear,\nsemester: selectedSemester,\nsection: selectedSection || \"\",\nsubjectId: activeSubject.id,\npermanentFacultyId: activeSubject.allocation.facultyId,\nsubstituteFacultyId: selectedFac.id,\nsubstituteFacultyName: selectedFac.name,\nfromDate: substituteForm.fromDate,\n"
+    },
+    {
+      "file": "pages\\staff\\MySubjects.js",
+      "context": "const permSnap = await getDocs(permQ);\nlet permanentSubjects = permSnap.docs.map(d => ({ id: d.id, ...d.data(), isSubstitute: false }));\n\n// 2. Fetch substitutes WHERE this user is the substitute\nconst subQ = query(\ncollection(db, \"subject_substitutes\"),\nwhere(\"substituteFacultyId\", \"==\", userProfile.uid),\nwhere(\"status\", \"==\", \"Active\")\n);\nconst subSnap = await getDocs(subQ);\nconst substituteAssignments = subSnap.docs.map(d => ({ id: d.id, ...d.data(), isSubstitute: true }));\n\n// 3. Filter substitutes to only those active today\nconst activeSubstituteAssignments = substituteAssignments.filter(sub => {\nconst from = new Date(sub.fromDate);\nfrom.setHours(0, 0, 0, 0);\n"
+    },
+    {
+      "file": "pages\\staff\\MySubjects.js",
+      "context": "let otherSubs = [];\nif (activePermanentIds.length > 0) {\n// Chunk if > 10, assuming <= 10 for now\nif (activePermanentIds.length <= 10) {\nconst otherSubQ = query(\ncollection(db, \"subject_substitutes\"),\nwhere(\"allocationId\", \"in\", activePermanentIds),\nwhere(\"status\", \"==\", \"Active\")\n);\nconst otherSubSnap = await getDocs(otherSubQ);\notherSubs = otherSubSnap.docs.map(d => ({ id: d.id, ...d.data() }));\n}\n}\n\nconst effectiveSubjects = [];\n\n"
+    }
+  ],
+  "timetable": [
+    {
+      "file": "pages\\hod\\Timetable.js",
+      "context": "async function fetchRegular() {\nsetFetching(true);\nsetSaved(false);\ntry {\nconst q = query(\ncollection(db, \"timetable\"),\nwhere(\"dept\", \"==\", userProfile.dept),\nwhere(\"year\", \"==\", selectedYear),\nwhere(\"type\", \"==\", \"Regular\")\n);\nconst snap = await getDocs(q);\nif (!snap.empty) setTimetable(snap.docs[0].data().schedule || {});\nelse setTimetable({});\n} catch (err) {}\nsetFetching(false);\n}\n"
+    },
+    {
+      "file": "pages\\hod\\Timetable.js",
+      "context": "\nasync function fetchExam() {\nsetExamSaved(false);\ntry {\nconst q = query(\ncollection(db, \"timetable\"),\nwhere(\"dept\", \"==\", userProfile.dept),\nwhere(\"type\", \"==\", examType),\nwhere(\"year\", \"==\", selectedYear)\n);\nconst snap = await getDocs(q);\nif (!snap.empty) {\nsetExamRows(snap.docs[0].data().examRows || [emptyExamRow(selectedYear)]);\n} else {\nsetExamRows([emptyExamRow(selectedYear)]);\n}\n"
+    },
+    {
+      "file": "pages\\hod\\Timetable.js",
+      "context": "\nasync function saveRegular() {\nsetSaving(true);\ntry {\nconst docId = `${userProfile.dept}_${selectedYear}_Regular`.replace(/\\s+/g, \"_\");\nawait setDoc(doc(db, \"timetable\", docId), {\ndept: userProfile.dept,\nyear: selectedYear,\ntype: \"Regular\",\nschedule: timetable,\nupdatedBy: userProfile.name,\nupdatedAt: new Date().toISOString(),\n});\nsetSaved(true);\n} catch (err) {}\nsetSaving(false);\n"
+    },
+    {
+      "file": "pages\\hod\\Timetable.js",
+      "context": "\nasync function saveExam() {\nsetExamSaving(true);\ntry {\nconst docId = `${userProfile.dept}_${examType}_${selectedYear}`.replace(/\\s+/g, \"_\");\nawait setDoc(doc(db, \"timetable\", docId), {\ndept: userProfile.dept,\ntype: examType,\nyear: selectedYear,\nexamRows,\nupdatedBy: userProfile.name,\nupdatedAt: new Date().toISOString(),\n});\nsetExamSaved(true);\n} catch (err) {}\nsetExamSaving(false);\n"
+    },
+    {
+      "file": "pages\\shared\\CampusMap.js",
+      "context": "\nuseEffect(() => {\nasync function fetchAll() {\ntry {\nconst snap = await getDocs(\nquery(collection(db, \"timetable\"), where(\"type\", \"==\", \"Regular\"))\n);\nconst data = {};\nsnap.docs.forEach(d => {\nconst { dept, year, schedule } = d.data();\ndata[`${dept}_${year}`] = schedule || {};\n});\nsetTimetableData(data);\n} catch (e) {\nconsole.error(\"CampusMap timetable fetch failed\", e);\n}\n"
+    },
+    {
+      "file": "pages\\staff\\Timetable.js",
+      "context": "if (!selectedYear) return;\nsetFetching(true);\nsetSaved(false);\ntry {\nconst q = query(\ncollection(db, \"timetable\"),\nwhere(\"dept\", \"==\", userProfile.dept),\nwhere(\"year\", \"==\", selectedYear),\nwhere(\"type\", \"==\", \"Regular\")\n);\nconst snap = await getDocs(q);\nif (!snap.empty) {\nsetTimetable(snap.docs[0].data().schedule || {});\n} else {\nconst initial = {};\nDAYS.forEach(day => {\n"
+    },
+    {
+      "file": "pages\\staff\\Timetable.js",
+      "context": "async function handleSaveRegular() {\nif (!selectedYear) return;\nsetSaving(true);\ntry {\nconst docId = `${userProfile.dept}_${selectedYear}_Regular`.replace(/\\s+/g, \"_\");\nawait setDoc(doc(db, \"timetable\", docId), {\ndept: userProfile.dept,\nyear: selectedYear,\ntype: \"Regular\",\nschedule: timetable,\nupdatedAt: new Date().toISOString(),\nupdatedBy: userProfile.name\n}, { merge: true });\nsetSaved(true);\nsetTimeout(() => setSaved(false), 3000);\n} catch (err) {}\n"
+    },
+    {
+      "file": "pages\\staff\\Timetable.js",
+      "context": "if (!selectedYear) return;\nsetExamFetching(true);\nsetExamSaved(false);\ntry {\nconst q = query(\ncollection(db, \"timetable\"),\nwhere(\"dept\", \"==\", userProfile.dept),\nwhere(\"year\", \"==\", selectedYear),\nwhere(\"type\", \"==\", \"Exam\"),\nwhere(\"examType\", \"==\", examType)\n);\nconst snap = await getDocs(q);\nif (!snap.empty) {\nconst rows = snap.docs[0].data().examRows || [];\nsetExamRows(rows.length > 0 ? rows : [emptyExamRow(selectedYear)]);\n} else {\n"
+    },
+    {
+      "file": "pages\\staff\\Timetable.js",
+      "context": "async function handleSaveExam() {\nif (!selectedYear) return;\nsetExamSaving(true);\ntry {\nconst docId = `${userProfile.dept}_${selectedYear}_Exam_${examType}`.replace(/\\s+/g, \"_\");\nawait setDoc(doc(db, \"timetable\", docId), {\ndept: userProfile.dept,\nyear: selectedYear,\ntype: \"Exam\",\nexamType,\nexamRows,\nupdatedAt: new Date().toISOString(),\nupdatedBy: userProfile.name\n}, { merge: true });\nsetExamSaved(true);\nsetTimeout(() => setExamSaved(false), 3000);\n"
+    },
+    {
+      "file": "pages\\student\\Timetable.js",
+      "context": "\nasync function fetchRegular() {\nsetFetching(true);\ntry {\nconst q = query(\ncollection(db, \"timetable\"),\nwhere(\"dept\", \"==\", userProfile.dept),\nwhere(\"year\", \"==\", userProfile.year),\nwhere(\"type\", \"==\", \"Regular\")\n);\nconst snap = await getDocs(q);\nif (!snap.empty) {\nconst data = snap.docs[0].data();\nsetTimetable(data.schedule || {});\nsetUpdatedBy(data.updatedBy || \"\");\nsetUpdatedAt(data.updatedAt || \"\");\n"
+    },
+    {
+      "file": "pages\\student\\Timetable.js",
+      "context": "\nasync function fetchExam() {\nsetFetching(true);\ntry {\nconst q = query(\ncollection(db, \"timetable\"),\nwhere(\"dept\", \"==\", userProfile.dept),\nwhere(\"year\", \"==\", userProfile.year),\nwhere(\"type\", \"==\", \"Exam\"),\nwhere(\"examType\", \"==\", examType)\n);\nconst snap = await getDocs(q);\nif (!snap.empty) {\nconst data = snap.docs[0].data();\nsetExamRows(data.examRows || []);\nsetUpdatedBy(data.updatedBy || \"\");\n"
+    }
+  ],
+  "timetable_entries": [
+    {
+      "file": "pages\\timetable\\TimetablePage.js",
+      "context": "setListError(\"\");\ntry {\nlet q;\nif (role === \"student\") {\nq = query(\ncollection(db, \"timetable_entries\"),\nwhere(\"dept\", \"==\", userProfile.dept),\nwhere(\"year\", \"==\", userProfile.year)\n);\n} else {\nq = query(\ncollection(db, \"timetable_entries\"),\nwhere(\"dept\", \"==\", userProfile.dept)\n);\n}\nconst snap = await getDocs(q);\n"
+    },
+    {
+      "file": "pages\\timetable\\TimetablePage.js",
+      "context": "where(\"dept\", \"==\", userProfile.dept),\nwhere(\"year\", \"==\", userProfile.year)\n);\n} else {\nq = query(\ncollection(db, \"timetable_entries\"),\nwhere(\"dept\", \"==\", userProfile.dept)\n);\n}\nconst snap = await getDocs(q);\nconst list = snap.docs.map(d => ({ id: d.id, ...d.data() }));\nlist.sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime));\nsetEntries(list);\n} catch (err) {\nsetListError(\"Failed to load timetable. Please try again.\");\n}\n"
+    },
+    {
+      "file": "pages\\timetable\\TimetablePage.js",
+      "context": "return setFormError(\"Please fill all required fields.\");\n}\n\nsetSaving(true);\ntry {\nawait addDoc(collection(db, \"timetable_entries\"), {\ndept: userProfile.dept,\nyear: form.year,\nday: form.day,\nstartTime: form.startTime,\nendTime: form.endTime,\nsubject: form.subject.trim(),\nroom: form.room.trim(),\nsection: form.section.trim(),\nstaffName: userProfile.name,\ncreatedById: currentUser.uid,\n"
+    }
+  ]
+}

@@ -9,7 +9,13 @@ export default function ProtectedRoute({ children, allowedRole }) {
   if (!currentUser) return <Navigate to="/" />;
   // Super admins can access ALL routes
   if (isSuperAdmin) return children;
-  if (allowedRole && userProfile?.role !== allowedRole && userProfile?.role !== "management") return <Navigate to="/" />;
+  if (allowedRole && userProfile?.role !== "management") {
+    if (Array.isArray(allowedRole)) {
+      if (!allowedRole.includes(userProfile?.role)) return <Navigate to="/" />;
+    } else {
+      if (userProfile?.role !== allowedRole) return <Navigate to="/" />;
+    }
+  }
 
   return children;
 }

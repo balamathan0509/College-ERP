@@ -152,7 +152,7 @@ export default function OfficeStaffDashboard() {
                   padding: "24px 16px", 
                   borderRadius: "var(--radius-md)",
                   border: "1px solid var(--border)",
-                  background: "rgba(11, 19, 43, 0.4)",
+                  background: '#ffffff',
                   cursor: "pointer", 
                   textAlign: "center", 
                   transition: "all 0.2s ease",
@@ -169,7 +169,7 @@ export default function OfficeStaffDashboard() {
                 onMouseOut={e => {
                   e.currentTarget.style.transform = "translateY(0)";
                   e.currentTarget.style.borderColor = "var(--border)";
-                  e.currentTarget.style.background = "rgba(11, 19, 43, 0.4)";
+                  e.currentTarget.style.background = "var(--secondary)";
                 }}
               >
                 {action.badge > 0 && (

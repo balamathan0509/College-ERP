@@ -312,7 +312,7 @@ export default function VerifyGatePass() {
                 {recentScans.map((pass) => (
                   <div key={pass.id} style={{
                     padding: "12px 14px", borderRadius: "var(--radius-sm)",
-                    background: "rgba(11, 19, 43, 0.4)", border: "1px solid var(--border)"
+                    background: '#ffffff', border: "1px solid var(--border)"
                   }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start" }}>
                       <div>
