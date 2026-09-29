@@ -316,6 +316,7 @@ export default function Sidebar() {
     return state;
   });
   const [reviewCount, setReviewCount] = useState(0);
+  const [isClassIncharge, setIsClassIncharge] = useState(false);
 
   const role = userProfile?.role;
 
@@ -340,32 +341,41 @@ export default function Sidebar() {
 
   useEffect(() => {
     if (!role) return;
-    import('firebase/firestore').then(({ collection, query, onSnapshot, where }) => {
-      import('../firebase/config').then(({ db }) => {
-        if (role === 'hod') {
-          const q = query(collection(db, "cia_question_papers"), where("status", "in", ["SUBMITTED_TO_HOD", "RETURNED_TO_HOD"]));
-          const unsub = onSnapshot(q, snap => setReviewCount(snap.docs.length));
-          return () => unsub();
-        }
-        if (role === 'principal') {
-          const q = query(collection(db, "cia_question_papers"), where("status", "==", "SUBMITTED_TO_PRINCIPAL"));
-          const unsub = onSnapshot(q, snap => setReviewCount(snap.docs.length));
-          return () => unsub();
-        }
-      });
+    import('../supabase/supabaseAdapter').then(({ collection, query, onSnapshot, getDocs, where, db }) => {
+      if (role === 'hod') {
+        const q = query(collection(db, "cia_question_papers"), where("status", "in", ["SUBMITTED_TO_HOD", "RETURNED_TO_HOD"]));
+        const unsub = onSnapshot(q, snap => setReviewCount(snap.docs.length));
+        return () => unsub();
+      }
+      if (role === 'principal') {
+        const q = query(collection(db, "cia_question_papers"), where("status", "==", "SUBMITTED_TO_PRINCIPAL"));
+        const unsub = onSnapshot(q, snap => setReviewCount(snap.docs.length));
+        return () => unsub();
+      }
+      if (role === 'staff' && userProfile?.uid) {
+        const q = query(collection(db, "class_incharges"), where("facultyId", "==", userProfile.uid));
+        getDocs(q).then(snap => {
+          setIsClassIncharge(!snap.empty);
+        });
+      }
     });
-  }, [role]);
+  }, [role, userProfile]);
 
-  const navItems =
+  let navItems =
     isSuperAdmin ? adminNav :
     role === "student" ? studentNav :
-    role === "staff" ? staffNav :
+    role === "staff" ? [...staffNav] :
     role === "hod" ? hodNav :
     role === "warden" ? wardenNav :
     role === "officestaff" ? officestaffNav :
     role === "security" ? securityNav :
     role === "management" ? managementNav :
     role === "principal" ? principalNav : [];
+
+  if (role === "staff" && isClassIncharge) {
+    // Insert "Student Details" right after Dashboard (index 1)
+    navItems.splice(1, 0, { icon: <Users size={18} />, label: "Student Details", path: "/staff/students" });
+  }
 
   async function handleLogout() {
     await logout();

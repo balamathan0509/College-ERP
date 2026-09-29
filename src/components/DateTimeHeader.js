@@ -37,7 +37,7 @@ export default function DateTimeHeader() {
       backdropFilter: "blur(12px)"
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <Calendar size={18} color="var(--highlight)" />
+        <Calendar size={18} color="#3b82f6" />
         <span style={{
           fontSize: 14,
           fontWeight: 600,
@@ -53,14 +53,15 @@ export default function DateTimeHeader() {
         gap: 8,
         padding: "6px 14px",
         borderRadius: "var(--radius-sm)",
-        background: "rgba(37, 99, 235, 0.12)",
-        border: "1px solid rgba(37, 99, 235, 0.3)"
+        background: "#ffffff",
+        border: "1px solid #e2e8f0",
+        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.04)"
       }}>
-        <Clock size={16} color="var(--highlight)" />
+        <Clock size={16} color="#3b82f6" />
         <span style={{
           fontSize: 14,
           fontWeight: 700,
-          color: "var(--highlight)",
+          color: "#3b82f6",
           fontFamily: "Plus Jakarta Sans, sans-serif",
           letterSpacing: "0.02em",
           fontVariantNumeric: "tabular-nums"

@@ -14,9 +14,18 @@ const EMAILJS_PUBLIC_KEY = "7jOW3OsIoEZkvOnxz";
 const FAST2SMS_API_KEY = "zNxk3HgAujCLOWYhndwSip4RfMBJ6qeZsIcGDQXbva82PUVmy7wrekxA1H6YyP7vgIJ4LfctzbZO3ijK";
 
 // =====================================================
+// ✅ EMAIL TOGGLE — set to true when ready to enable
+// =====================================================
+const EMAILS_ENABLED = false; // 🔴 OFF — change to true to re-enable all emails
+
+// =====================================================
 // CORE — SEND EMAIL
 // =====================================================
 export async function sendEmail({ toEmail, toName, subject, message }) {
+  if (!EMAILS_ENABLED) {
+    console.log(`📧 [Email disabled] Skipping mail to ${toEmail} — Subject: ${subject}`);
+    return;
+  }
   if (!toEmail || EMAILJS_SERVICE_ID === "YOUR_SERVICE_ID") {
     console.log("📧 Email skipped — not configured");
     return;

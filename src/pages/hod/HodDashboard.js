@@ -191,7 +191,7 @@ export default function HodDashboard() {
                 onMouseOut={e => {
                   e.currentTarget.style.transform = "translateY(0)";
                   e.currentTarget.style.borderColor = "var(--border)";
-                  e.currentTarget.style.background = "var(--secondary)";
+                  e.currentTarget.style.background = "#ffffff";
                 }}
               >
                 {action.badge > 0 && (

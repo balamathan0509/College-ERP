@@ -56,6 +56,7 @@ import VerifyFees from "./pages/officestaff/VerifyFees";
 import StudentFines from "./pages/student/Fines";
 import StaffFines from "./pages/staff/Fines";
 import OfficeStaffFines from "./pages/officestaff/Fines";
+import StaffStudentDetails from "./pages/staff/StudentDetails";
 
 // CIA Pages
 import ExamCreation from "./pages/cia/ExamCreation";
@@ -159,6 +160,7 @@ export default function App() {
           <Route path="/staff" element={<ProtectedRoute allowedRole="staff"><StaffDashboard /></ProtectedRoute>} />
           <Route path="/staff/gatepass" element={<ProtectedRoute allowedRole="staff"><StaffGatePass /></ProtectedRoute>} />
           <Route path="/staff/leave" element={<ProtectedRoute allowedRole="staff"><StaffLeave /></ProtectedRoute>} />
+          <Route path="/staff/students" element={<ProtectedRoute allowedRole="staff"><StaffStudentDetails /></ProtectedRoute>} />
           <Route path="/staff/attendance" element={<ProtectedRoute allowedRole="staff"><StaffAttendance /></ProtectedRoute>} />
           <Route path="/staff/my-subjects" element={<ProtectedRoute allowedRole={["staff", "hod"]}><MySubjects /></ProtectedRoute>} />
           <Route path="/staff/results" element={<ProtectedRoute allowedRole="staff"><StaffResults /></ProtectedRoute>} />

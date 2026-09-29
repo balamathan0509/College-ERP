@@ -33,6 +33,7 @@ export default function StaffDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState([]);
+  const [inchargeInfo, setInchargeInfo] = useState(null);
 
   async function fetchStats() {
     try {
@@ -47,26 +48,6 @@ export default function StaffDashboard() {
       const gpSnap = await getDocs(gpQ);
       const pendingGatePasses = gpSnap.size;
 
-      // Today attendance marked?
-      const attQ = query(
-        collection(db, "attendance"),
-        where("dept", "==", userProfile.dept),
-        where("date", "==", today)
-      );
-      const attSnap = await getDocs(attQ);
-      const todayAttendanceMarked = !attSnap.empty;
-
-      // Total students in dept
-      const studQ = query(
-        collection(db, "users"),
-        where("role", "==", "student"),
-        where("dept", "==", userProfile.dept)
-      );
-      const studSnap = await getDocs(studQ);
-      const students = studSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      const totalStudents = students.length;
-      setStudents(students);
-
       // Open complaints
       const compQ = query(
         collection(db, "complaints"),
@@ -75,6 +56,56 @@ export default function StaffDashboard() {
       );
       const compSnap = await getDocs(compQ);
       const openComplaints = compSnap.size;
+
+      // Class In-charge info
+      const incQ = query(
+        collection(db, "class_incharges"),
+        where("facultyId", "==", userProfile.uid)
+      );
+      const incSnap = await getDocs(incQ);
+      let inchargeData = null;
+      if (!incSnap.empty) {
+        inchargeData = incSnap.docs[0].data();
+        setInchargeInfo(inchargeData);
+      }
+
+      // Total students in class & Attendance Check
+      let fetchedStudents = [];
+      let todayAttendanceMarked = false;
+      if (inchargeData) {
+        const studQ = query(
+          collection(db, "users"),
+          where("role", "==", "student"),
+          where("dept", "==", inchargeData.dept)
+        );
+        const studSnap = await getDocs(studQ);
+        let tempStudents = studSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        // Filter by year
+        tempStudents = tempStudents.filter(s => s.year === inchargeData.year);
+        // Filter by section if applicable
+        if (inchargeData.section && inchargeData.section !== ".") {
+          tempStudents = tempStudents.filter(s => s.section === inchargeData.section);
+        }
+        fetchedStudents = tempStudents;
+
+        // Check if attendance is marked for this class today
+        const attQ = query(
+          collection(db, "daily_attendance"),
+          where("date", "==", today),
+          where("dept", "==", inchargeData.dept),
+          where("year", "==", inchargeData.year)
+        );
+        const attSnap = await getDocs(attQ);
+        if (inchargeData.section && inchargeData.section !== ".") {
+          const classAtt = attSnap.docs.filter(d => d.data().section === inchargeData.section || !d.data().section);
+          todayAttendanceMarked = classAtt.length > 0;
+        } else {
+          todayAttendanceMarked = !attSnap.empty;
+        }
+      }
+      setStudents(fetchedStudents);
+      const totalStudents = fetchedStudents.length;
 
       setStats({ pendingGatePasses, todayAttendanceMarked, openComplaints, totalStudents });
     } catch (err) {}
@@ -99,54 +130,96 @@ export default function StaffDashboard() {
       <Sidebar />
       <main className="main-content">
         <DateTimeHeader />
-        <div className="page-header">
-          <h1>Faculty Dashboard</h1>
-          <p>{userProfile?.dept} Department</p>
+        <div className="page-header" style={{ marginBottom: 24 }}>
+          <div>
+            <h1>Faculty Dashboard</h1>
+            <p style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text-muted)", marginTop: 6, flexWrap: "wrap" }}>
+              <span>{userProfile?.dept} Department</span>
+              {inchargeInfo && (
+                <span style={{ 
+                  fontSize: 12, 
+                  background: "rgba(37, 99, 235, 0.1)", 
+                  color: "#3b82f6", 
+                  padding: "3px 12px", 
+                  borderRadius: "50px", // Fully rounded, circle-like edges
+                  border: "1px solid rgba(37, 99, 235, 0.2)",
+                  fontWeight: 600
+                }}>
+                  Class In-Charge: {inchargeInfo.year} {inchargeInfo.section !== "." ? `(Sec ${inchargeInfo.section})` : ""}
+                </span>
+              )}
+            </p>
+          </div>
         </div>
 
-        {/* Live Stats */}
         <div className="stats-grid" style={{ marginBottom: 28 }}>
-          <div className="stat-card" style={{ cursor: "pointer" }} onClick={() => navigate("/staff/gatepass")}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <DoorOpen size={24} color="#3b82f6" />
-            </div>
-            <div className="stat-value" style={{ color: stats.pendingGatePasses > 0 ? "var(--danger)" : "var(--success)" }}>
+          <div className="stat-card" style={{ display: "block", cursor: "pointer", position: "relative", padding: "22px" }} onClick={() => navigate("/staff/gatepass")}>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, color: "var(--text-muted)", fontWeight: 500, marginBottom: 12 }}>Pending Gate Passes</div>
+            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)" }}>
               {loading ? "..." : stats.pendingGatePasses}
             </div>
-            <div className="stat-label">Pending Gate Passes</div>
+            <div style={{
+              position: "absolute", right: 20, top: 20,
+              width: 50, height: 50, borderRadius: "50%",
+              background: "#eff6ff",
+              display: "flex", alignItems: "center", justifyContent: "center"
+            }}>
+              <DoorOpen size={24} color="#2563eb" />
+            </div>
           </div>
 
-          <div className="stat-card" style={{ cursor: "pointer" }} onClick={() => navigate("/staff/attendance")}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <CheckSquare size={24} color="#10b981" />
+          {inchargeInfo && (
+            <div className="stat-card" style={{ display: "block", cursor: "pointer", position: "relative", padding: "22px" }} onClick={() => navigate("/staff/attendance")}>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, color: "var(--text-muted)", fontWeight: 500, marginBottom: 12 }}>Today's Attendance</div>
+              <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)", paddingTop: 4 }}>
+                {loading ? "..." : stats.todayAttendanceMarked ? "Done" : "Pending"}
+              </div>
+              <div style={{
+                position: "absolute", right: 20, top: 20,
+                width: 50, height: 50, borderRadius: "50%",
+                background: "#ecfdf5",
+                display: "flex", alignItems: "center", justifyContent: "center"
+              }}>
+                <CheckSquare size={24} color="#059669" />
+              </div>
             </div>
-            <div className="stat-value" style={{ color: stats.todayAttendanceMarked ? "var(--success)" : "var(--danger)" }}>
-              {loading ? "..." : stats.todayAttendanceMarked ? "Done" : "Pending"}
-            </div>
-            <div className="stat-label">Today's Attendance</div>
-          </div>
+          )}
 
-          <div className="stat-card" style={{ cursor: "pointer" }} onClick={() => navigate("/staff/complaints")}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <MessageSquareWarning size={24} color="#ec4899" />
-            </div>
-            <div className="stat-value" style={{ color: stats.openComplaints > 0 ? "var(--warning)" : "var(--success)" }}>
+          <div className="stat-card" style={{ display: "block", cursor: "pointer", position: "relative", padding: "22px" }} onClick={() => navigate("/staff/complaints")}>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, color: "var(--text-muted)", fontWeight: 500, marginBottom: 12 }}>Open Complaints</div>
+            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)" }}>
               {loading ? "..." : stats.openComplaints}
             </div>
-            <div className="stat-label">Open Complaints</div>
+            <div style={{
+              position: "absolute", right: 20, top: 20,
+              width: 50, height: 50, borderRadius: "50%",
+              background: "#fff1f2",
+              display: "flex", alignItems: "center", justifyContent: "center"
+            }}>
+              <MessageSquareWarning size={24} color="#e11d48" />
+            </div>
           </div>
 
-          <div className="stat-card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <Users size={24} color="#8b5cf6" />
+          {inchargeInfo && (
+            <div className="stat-card" style={{ display: "block", position: "relative", padding: "22px" }}>
+              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, color: "var(--text-muted)", fontWeight: 500, marginBottom: 12 }}>Total Students</div>
+              <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)" }}>
+                {loading ? "..." : stats.totalStudents}
+              </div>
+              <div style={{
+                position: "absolute", right: 20, top: 20,
+                width: 50, height: 50, borderRadius: "50%",
+                background: "#f3e8ff",
+                display: "flex", alignItems: "center", justifyContent: "center"
+              }}>
+                <Users size={24} color="#9333ea" />
+              </div>
             </div>
-            <div className="stat-value">{loading ? "..." : stats.totalStudents}</div>
-            <div className="stat-label">Total Students</div>
-          </div>
+          )}
         </div>
 
         {/* Attendance reminder */}
-        {!loading && !stats.todayAttendanceMarked && (
+        {!loading && inchargeInfo && !stats.todayAttendanceMarked && (
           <div style={{ padding: "14px 20px", borderRadius: "var(--radius-md)", marginBottom: 24, background: "rgba(245, 158, 11, 0.1)", border: "1px solid rgba(245, 158, 11, 0.3)", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <AlertTriangle size={20} color="var(--warning)" />
@@ -157,45 +230,6 @@ export default function StaffDashboard() {
             </button>
           </div>
         )}
-
-        {/* Student Directory */}
-        <div className="card" style={{ marginBottom: 24 }}>
-          <h3 style={{ marginBottom: 20, fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, fontWeight: 700 }}>Student Directory - {userProfile?.dept} Department</h3>
-          {YEARS.map(year => {
-            const yearStudents = students.filter(s => s.year === year);
-            if (yearStudents.length === 0) return null;
-            return (
-              <div key={year} style={{ marginBottom: 24 }}>
-                <h4 style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>{year} ({yearStudents.length} Students)</h4>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {yearStudents.map(student => (
-                    <div key={student.id} style={{
-                      padding: 14,
-                      borderRadius: "var(--radius-md)",
-                      background: "var(--bg-color)",
-                      border: "1px solid var(--border)",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: 12
-                    }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: "var(--text)" }}>{student.name}</div>
-                        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{student.email}</div>
-                      </div>
-                      <div style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{student.year} • {student.registerNo || "N/A"}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-          {students.length === 0 && !loading && (
-            <div style={{ textAlign: "center", padding: 30, color: "var(--text-muted)" }}>
-              No students found in this department.
-            </div>
-          )}
-        </div>
 
         {/* Quick Actions */}
         <div className="card">

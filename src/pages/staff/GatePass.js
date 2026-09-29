@@ -15,15 +15,29 @@ export default function StaffGatePass() {
   async function fetchPasses() {
     setFetching(true);
     try {
+      // Only fetch gate passes for this staff's class (classInchargeId)
       const q = query(
+        collection(db, "gate_pass"),
+        where("classInchargeId", "==", userProfile.uid),
+        where("status", "==", "pending_staff")
+      );
+      const snap = await getDocs(q);
+      let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Fallback: also show old requests that have no classInchargeId but match dept
+      const fallbackQ = query(
         collection(db, "gate_pass"),
         where("dept", "==", userProfile.dept),
         where("status", "==", "pending_staff")
       );
-      const snap = await getDocs(q);
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      setPasses(list);
+      const fallbackSnap = await getDocs(fallbackQ);
+      const fallbackList = fallbackSnap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(p => !p.classInchargeId); // only unassigned ones
+      
+      const merged = [...list, ...fallbackList];
+      merged.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setPasses(merged);
     } catch (err) {}
     setFetching(false);
   }
@@ -106,7 +120,7 @@ College Portal`
       <main className="main-content">
         <div className="page-header">
           <h1>🚪 Gate Pass Approvals</h1>
-          <p>Pending requests from {userProfile?.dept} students</p>
+          <p>Pending gate pass requests from your class students</p>
         </div>
 
         {fetching ? (
