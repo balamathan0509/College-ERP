@@ -391,12 +391,21 @@ export async function createUserWithEmailAndPassword(authObj, email, password) {
       password: password,
       email_confirm: true
     });
-    if (!error && data?.user) {
+    if (error) {
+      // If admin API returns a explicit user already exists error, throw it
+      if (error.status === 422 || error.message?.toLowerCase().includes("already")) {
+        throw error;
+      }
+      console.warn("dbClient admin createUser returned error, falling back to signUp:", error.message);
+    } else if (data?.user) {
       const user = data.user;
       user.uid = user.id;
       return { user };
     }
   } catch (adminErr) {
+    if (adminErr.message?.toLowerCase().includes("already")) {
+      throw adminErr;
+    }
     console.warn("dbClient admin createUser failed, falling back to signUp:", adminErr);
   }
 

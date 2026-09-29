@@ -7,7 +7,7 @@ import {
   signOut,
   onAuthStateChanged
 } from "../supabase/supabaseAdapter";
-import { doc, setDoc, getDoc, updateDoc } from "../supabase/supabaseAdapter";
+import { doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs } from "../supabase/supabaseAdapter";
 
 const AuthContext = createContext();
 
@@ -24,6 +24,7 @@ export function AuthProvider({ children }) {
     const result = await createUserWithEmailAndPassword(auth, email, password);
     await setDoc(doc(db, "users", result.user.uid), {
       uid: result.user.uid,
+      id: result.user.uid,
       email,
       ...profileData,
       createdAt: new Date().toISOString()
@@ -43,10 +44,32 @@ export function AuthProvider({ children }) {
   async function fetchUserProfile(uid) {
     try {
       const docRef = doc(db, "users", uid);
-      const docSnap = await getDoc(docRef);
+      let docSnap = await getDoc(docRef);
+      let data = null;
+
       if (docSnap.exists()) {
-        let data = docSnap.data();
-        
+        data = docSnap.data();
+      } else {
+        // Fallback: If profile isn't found by UID, search by user's email
+        const user = currentUser || auth.currentUser;
+        const email = user?.email || "";
+        if (email) {
+          try {
+            const q = query(collection(db, "users"), where("email", "==", email));
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+              const existingDoc = snap.docs[0];
+              data = { ...existingDoc.data(), uid: uid, id: uid };
+              // Link this profile to the current Auth UID in Supabase table
+              await setDoc(docRef, data);
+            }
+          } catch (emailLookupErr) {
+            console.warn("Failed email lookup fallback for user profile:", emailLookupErr);
+          }
+        }
+      }
+
+      if (data) {
         // HOD Role Normalization: 
         // If designation is HOD or the role itself ends with HOD (e.g. CSEHOD), normalize role to "hod"
         const isHodDesignation = data.designation && data.designation.toLowerCase().includes("hod");
@@ -60,19 +83,38 @@ export function AuthProvider({ children }) {
             console.error("Failed to permanently normalize HOD role in DB:", updateErr);
           }
         }
-        
+
+        // Ensure super admin flag is preserved
+        const user = currentUser || auth.currentUser;
+        if (user?.email === SUPER_ADMIN_EMAIL) {
+          data.isSuperAdmin = true;
+          data.role = "admin";
+        }
+
         setUserProfile(data);
       } else {
-        // Doc doesn't exist in users table yet — auto-create profile
+        // Doc doesn't exist in users table at all — auto-create profile
         const user = currentUser || auth.currentUser;
         const email = user?.email || "";
         const isSuper = email === SUPER_ADMIN_EMAIL;
+
+        // Try to infer role if email contains hints
+        let inferredRole = isSuper ? "admin" : "student";
+        if (!isSuper && email) {
+          const lowerEmail = email.toLowerCase();
+          if (lowerEmail.includes("hod")) inferredRole = "hod";
+          else if (lowerEmail.includes("staff")) inferredRole = "staff";
+          else if (lowerEmail.includes("office") || lowerEmail.includes("fees")) inferredRole = "officestaff";
+          else if (lowerEmail.includes("principal")) inferredRole = "principal";
+          else if (lowerEmail.includes("warden")) inferredRole = "warden";
+        }
+
         const newProfile = {
           uid: uid,
           id: uid,
           email: email,
           name: email.split("@")[0] || "User",
-          role: isSuper ? "admin" : "student",
+          role: inferredRole,
           isSuperAdmin: isSuper,
           createdAt: new Date().toISOString()
         };

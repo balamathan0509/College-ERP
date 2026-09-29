@@ -142,14 +142,12 @@ export default function AdminDashboard() {
         }
       }
 
-      // Save the current user's auth state
-      const currentAuthUser = auth.currentUser;
-
       const result = await createUserWithEmailAndPassword(auth, addForm.email, addForm.password);
       const newUid = result.user.uid;
 
       const userData = {
         uid: newUid,
+        id: newUid,
         email: addForm.email,
         name: addForm.name,
         role: addForm.role,
@@ -165,16 +163,10 @@ export default function AdminDashboard() {
 
       await setDoc(doc(db, "users", newUid), userData);
 
-      showToast(`✅ User "${addForm.name}" created successfully!`);
+      showToast(`✅ User "${addForm.name}" created successfully as ${addForm.role.toUpperCase()}!`);
       setAddForm({ name: "", email: "", password: "", role: "student", dept: "", registerNo: "", year: "", phone: "" });
       setShowAddModal(false);
       fetchUsers();
-
-      // Note: Creating a user with Firebase Auth client SDK signs in as that user.
-      // The admin will need to re-login. We show a notice.
-      if (currentAuthUser && currentAuthUser.uid !== newUid) {
-        showToast("⚠️ You may need to re-login as admin since Firebase Auth switched to the new user.", "warning");
-      }
     } catch (err) {
       const msg = err.code === "auth/email-already-in-use"
         ? "Email already exists in Firebase Auth."
