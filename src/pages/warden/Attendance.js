@@ -2,10 +2,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
+import { db } from "../../supabase/supabaseAdapter";
 import {
   collection, query, where, getDocs, doc, setDoc, getDoc
-} from "firebase/firestore";
+} from "../../supabase/supabaseAdapter";
 
 // Generate room numbers
 const ROOMS = Array.from({ length: 20 }, (_, i) => `${101 + i}`);

@@ -295,7 +295,7 @@ const adminNav = [
 ];
 
 export default function Sidebar() {
-  const { userProfile, logout, isSuperAdmin } = useAuth();
+  const { currentUser, userProfile, logout, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -340,19 +340,17 @@ export default function Sidebar() {
 
   useEffect(() => {
     if (!role) return;
-    import('firebase/firestore').then(({ collection, query, onSnapshot, where }) => {
-      import('../firebase/config').then(({ db }) => {
-        if (role === 'hod') {
-          const q = query(collection(db, "cia_question_papers"), where("status", "in", ["SUBMITTED_TO_HOD", "RETURNED_TO_HOD"]));
-          const unsub = onSnapshot(q, snap => setReviewCount(snap.docs.length));
-          return () => unsub();
-        }
-        if (role === 'principal') {
-          const q = query(collection(db, "cia_question_papers"), where("status", "==", "SUBMITTED_TO_PRINCIPAL"));
-          const unsub = onSnapshot(q, snap => setReviewCount(snap.docs.length));
-          return () => unsub();
-        }
-      });
+    import('../supabase/supabaseAdapter').then(({ collection, query, onSnapshot, where, db }) => {
+      if (role === 'hod') {
+        const q = query(collection(db, "cia_question_papers"), where("status", "in", ["SUBMITTED_TO_HOD", "RETURNED_TO_HOD"]));
+        const unsub = onSnapshot(q, snap => setReviewCount(snap.docs.length));
+        return () => unsub();
+      }
+      if (role === 'principal') {
+        const q = query(collection(db, "cia_question_papers"), where("status", "==", "SUBMITTED_TO_PRINCIPAL"));
+        const unsub = onSnapshot(q, snap => setReviewCount(snap.docs.length));
+        return () => unsub();
+      }
     });
   }, [role]);
 
@@ -517,12 +515,22 @@ export default function Sidebar() {
             onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
             style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
           >
-            <div className="header-user-avatar">
-              {userProfile?.name ? userProfile.name.charAt(0).toUpperCase() : <User size={16} />}
+            <div className="header-user-avatar" style={{ overflow: "hidden", borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {userProfile?.photoURL ? (
+                <img src={userProfile.photoURL} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              ) : userProfile?.name ? (
+                userProfile.name.charAt(0).toUpperCase()
+              ) : (
+                <User size={16} />
+              )}
             </div>
             <div className="header-user-info">
-              <span className="name">RVCE</span>
-              <span className="role">{userProfile?.name || role?.toUpperCase()}</span>
+              <span className="name" style={{ fontWeight: 600, fontSize: '13px' }}>
+                {userProfile?.name || currentUser?.email || "User"}
+              </span>
+              <span className="role" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                {isSuperAdmin ? "SUPER ADMIN" : (role ? role.toUpperCase() : "USER")}
+              </span>
             </div>
           </div>
           

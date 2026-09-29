@@ -6,8 +6,8 @@ import { sendEmail } from "../utils/notifications";
 import StudentSignup from "./signup/StudentSignup";
 import OtpVerification from "./signup/OtpVerification";
 import CreatingAccount from "./signup/CreatingAccount";
-import { db } from "../firebase/config";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "../supabase/supabaseAdapter";
+import { collection, query, where, getDocs } from "../supabase/supabaseAdapter";
 
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();

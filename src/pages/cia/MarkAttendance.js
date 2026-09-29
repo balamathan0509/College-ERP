@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
-import { db } from '../../firebase/config';
-import { collection, query, getDocs, setDoc, doc, where, orderBy } from 'firebase/firestore';
+import { db } from "../../supabase/supabaseAdapter";
+import { collection, query, getDocs, setDoc, doc, where, orderBy } from "../../supabase/supabaseAdapter";
 import { Save, Search, Users, CheckCircle, XCircle } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar';
-import { db } from '../../firebase/config';
-import { collection, query, getDocs, where, addDoc, serverTimestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db } from "../../supabase/supabaseAdapter";
+import { collection, query, getDocs, where, addDoc, serverTimestamp, doc, getDoc, updateDoc } from "../../supabase/supabaseAdapter";
 import { Search, Printer, CheckCircle, Save, Plus, Trash2, Send, Download } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import toast, { Toaster } from 'react-hot-toast';

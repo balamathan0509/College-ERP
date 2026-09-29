@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/Sidebar';
-import { db } from '../../firebase/config';
-import { collection, query, getDocs, addDoc, deleteDoc, doc, where, serverTimestamp, orderBy } from 'firebase/firestore';
+import { db } from "../../supabase/supabaseAdapter";
+import { collection, query, getDocs, addDoc, deleteDoc, doc, where, serverTimestamp, orderBy } from "../../supabase/supabaseAdapter";
 import { useAuth } from '../../context/AuthContext';
 import { Search, Users, UserPlus, X, CheckCircle } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';

@@ -1,13 +1,13 @@
 // src/context/AuthContext.js
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { auth, db } from "../firebase/config";
+import { auth, db } from "../supabase/supabaseAdapter";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged
-} from "firebase/auth";
-import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
+} from "../supabase/supabaseAdapter";
+import { doc, setDoc, getDoc, updateDoc } from "../supabase/supabaseAdapter";
 
 const AuthContext = createContext();
 
@@ -62,17 +62,35 @@ export function AuthProvider({ children }) {
         }
         
         setUserProfile(data);
+      } else {
+        // Doc doesn't exist in users table yet — auto-create profile
+        const user = currentUser || auth.currentUser;
+        const email = user?.email || "";
+        const isSuper = email === SUPER_ADMIN_EMAIL;
+        const newProfile = {
+          uid: uid,
+          id: uid,
+          email: email,
+          name: email.split("@")[0] || "User",
+          role: isSuper ? "admin" : "student",
+          isSuperAdmin: isSuper,
+          createdAt: new Date().toISOString()
+        };
+        try {
+          await setDoc(docRef, newProfile);
+        } catch (e) {
+          console.error("Failed to auto-create missing user profile:", e);
+        }
+        setUserProfile(newProfile);
       }
     } catch (err) {
-      console.error("Failed to fetch user profile (Firestore rules issue?):", err);
-      // Fallback: build a minimal profile from auth so the app doesn't crash
-      const user = auth.currentUser;
+      console.error("Failed to fetch user profile:", err);
+      const user = currentUser || auth.currentUser;
       if (user) {
-        const SUPER_ADMIN_EMAIL = "balamathan0509@gmail.com";
         setUserProfile({
           uid: user.uid,
           email: user.email,
-          name: user.displayName || user.email,
+          name: user.email?.split("@")[0] || user.email,
           role: user.email === SUPER_ADMIN_EMAIL ? "admin" : "student",
           isSuperAdmin: user.email === SUPER_ADMIN_EMAIL
         });

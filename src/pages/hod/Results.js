@@ -2,8 +2,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
-import { collection, query, where, getDocs, doc, updateDoc } from "firebase/firestore";
+import { db } from "../../supabase/supabaseAdapter";
+import { collection, query, where, getDocs, doc, updateDoc } from "../../supabase/supabaseAdapter";
 
 export default function HodResults() {
   const { userProfile } = useAuth();

@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
-import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import { db } from "../../supabase/supabaseAdapter";
+import { collection, query, where, getDocs, orderBy } from "../../supabase/supabaseAdapter";
 
 export default function WardenAlerts() {
   const { userProfile } = useAuth();

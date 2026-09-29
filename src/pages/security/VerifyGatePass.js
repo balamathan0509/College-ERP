@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
-import { collection, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
+import { db } from "../../supabase/supabaseAdapter";
+import { collection, getDocs, query, where, doc, updateDoc } from "../../supabase/supabaseAdapter";
 import { Scanner } from "@yudiel/react-qr-scanner";
 import { toast, Toaster } from "react-hot-toast";
 import {

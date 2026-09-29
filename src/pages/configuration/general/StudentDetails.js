@@ -1,8 +1,8 @@
 import Sidebar from '../../../components/Sidebar';
 import { useAuth } from '../../../context/AuthContext';
 import React, { useState, useEffect } from 'react';
-import { db } from '../../../firebase/config';
-import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, where } from 'firebase/firestore';
+import { db } from "../../../supabase/supabaseAdapter";
+import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, where } from "../../../supabase/supabaseAdapter";
 import toast, { Toaster } from 'react-hot-toast';
 import { Download, Upload, Plus, Edit2 } from 'lucide-react';
 import DataTable from '../../../components/common/DataTable';

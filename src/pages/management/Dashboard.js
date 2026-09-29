@@ -3,8 +3,8 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import DateTimeHeader from "../../components/DateTimeHeader";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "../../supabase/supabaseAdapter";
+import { collection, query, where, getDocs } from "../../supabase/supabaseAdapter";
 import { useNavigate } from "react-router-dom";
 import {
   Users,

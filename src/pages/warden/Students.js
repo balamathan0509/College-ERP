@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "../../supabase/supabaseAdapter";
+import { collection, query, where, getDocs } from "../../supabase/supabaseAdapter";
 
 const YEARS = ["All Years", "1st Year", "2nd Year", "3rd Year", "4th Year"];
 

@@ -1,7 +1,7 @@
 import Sidebar from '../../../components/Sidebar';
 import React, { useState, useEffect } from 'react';
-import { db } from '../../../firebase/config';
-import { collection, getDocs, updateDoc, doc, addDoc, serverTimestamp, query, where } from 'firebase/firestore';
+import { db } from "../../../supabase/supabaseAdapter";
+import { collection, getDocs, updateDoc, doc, addDoc, serverTimestamp, query, where } from "../../../supabase/supabaseAdapter";
 import toast from 'react-hot-toast';
 import { ArrowRight, CheckSquare } from 'lucide-react';
 import FilterCard from '../../../components/common/FilterCard';

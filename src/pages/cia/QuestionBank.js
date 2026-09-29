@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
-import { db } from '../../firebase/config';
-import { collection, query, getDocs, addDoc, deleteDoc, doc, updateDoc, orderBy, where } from 'firebase/firestore';
+import { db } from "../../supabase/supabaseAdapter";
+import { collection, query, getDocs, addDoc, deleteDoc, doc, updateDoc, orderBy, where } from "../../supabase/supabaseAdapter";
 import { Plus, Trash2, Search, FileText, Edit2, Printer, ArrowLeft, Download } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import toast, { Toaster } from 'react-hot-toast';

@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
-import { collection, query, where, getDocs, addDoc } from "firebase/firestore";
+import { db } from "../../supabase/supabaseAdapter";
+import { collection, query, where, getDocs, addDoc } from "../../supabase/supabaseAdapter";
 import { notifyStudentFeesPending } from "../../utils/notifications";
 
 const DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "AIDS", "AIML"];

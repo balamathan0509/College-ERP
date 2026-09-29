@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../../../components/Sidebar';
-import { db } from '../../../firebase/config';
-import { collection, query, getDocs, setDoc, doc, where, serverTimestamp } from 'firebase/firestore';
+import { db } from "../../../supabase/supabaseAdapter";
+import { collection, query, getDocs, setDoc, doc, where, serverTimestamp } from "../../../supabase/supabaseAdapter";
 import { useAuth } from '../../../context/AuthContext';
 import { UserCheck, Save } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
-import { collection, addDoc, query, where, onSnapshot, orderBy, serverTimestamp } from "firebase/firestore";
+import { db } from "../../supabase/supabaseAdapter";
+import { collection, addDoc, query, where, onSnapshot, orderBy, serverTimestamp } from "../../supabase/supabaseAdapter";
 import {
   BookOpen,
   HelpCircle,

@@ -1,7 +1,7 @@
 import Sidebar from '../../../components/Sidebar';
 import React, { useState, useEffect } from 'react';
-import { db } from '../../../firebase/config';
-import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { db } from "../../../supabase/supabaseAdapter";
+import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc, serverTimestamp, query, orderBy } from "../../../supabase/supabaseAdapter";
 import toast from 'react-hot-toast';
 import { Plus, Trash2, Edit2 } from 'lucide-react';
 import DataTable from '../../../components/common/DataTable';

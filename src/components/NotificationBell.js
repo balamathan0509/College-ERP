@@ -1,8 +1,8 @@
 // src/components/NotificationBell.js
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../firebase/config";
+import { collection, getDocs } from "../supabase/supabaseAdapter";
+import { db } from "../supabase/supabaseAdapter";
 import { useAuth } from "../context/AuthContext";
 
 function isVisibleToUser(alert, userProfile) {
