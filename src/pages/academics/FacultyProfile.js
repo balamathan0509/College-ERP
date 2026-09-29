@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
-import { db } from '../../firebase/config';
-import { collection, query, getDocs, where } from 'firebase/firestore';
+import { db } from "../../supabase/supabaseAdapter";
+import { collection, query, getDocs, where } from "../../supabase/supabaseAdapter";
 import { Search, User, Download } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import * as XLSX from 'xlsx';

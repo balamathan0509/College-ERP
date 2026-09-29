@@ -1,7 +1,7 @@
 import Sidebar from '../../../components/Sidebar';
 import React, { useState, useEffect } from 'react';
-import { db } from '../../../firebase/config';
-import { collection, getDocs, query, orderBy, where } from 'firebase/firestore';
+import { db } from "../../../supabase/supabaseAdapter";
+import { collection, getDocs, query, orderBy, where } from "../../../supabase/supabaseAdapter";
 import toast from 'react-hot-toast';
 import DataTable from '../../../components/common/DataTable';
 import { useAuth } from '../../../context/AuthContext';

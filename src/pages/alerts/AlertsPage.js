@@ -2,8 +2,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
-import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
+import { db } from "../../supabase/supabaseAdapter";
+import { addDoc, collection, getDocs, query, where } from "../../supabase/supabaseAdapter";
 import { notifyStudentAlert } from "../../utils/notifications";
 import {
   Bell,

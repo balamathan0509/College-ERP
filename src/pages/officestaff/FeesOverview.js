@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
-import { collection, getDocs, query, where, addDoc } from "firebase/firestore";
+import { db } from "../../supabase/supabaseAdapter";
+import { collection, getDocs, query, where, addDoc } from "../../supabase/supabaseAdapter";
 import * as XLSX from "xlsx";
 
 const DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "AIDS", "AIML"];

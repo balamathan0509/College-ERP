@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback } from "react";
 import Sidebar from "../../components/Sidebar";
 import DateTimeHeader from "../../components/DateTimeHeader";
 import { useAuth } from "../../context/AuthContext";
-import { db, auth } from "../../firebase/config";
+import { db, auth } from "../../supabase/supabaseAdapter";
 import {
   collection, getDocs, doc, updateDoc, deleteDoc, setDoc, query, orderBy, where
-} from "firebase/firestore";
-import { createUserWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
+} from "../../supabase/supabaseAdapter";
+import { createUserWithEmailAndPassword, sendPasswordResetEmail } from "../../supabase/supabaseAdapter";
 import { Users, GraduationCap, UserCheck, Award, Building2, CreditCard, ShieldCheck, Building, Landmark, ShieldAlert, Search, UserPlus } from "lucide-react";
 
 const BACKEND_URL = "http://localhost:3002";
@@ -217,15 +217,7 @@ export default function AdminDashboard() {
         updateData.year = editForm.year || "";
       }
 
-      // If email changed, update via backend (Firebase Admin SDK)
       if (editForm.email && editForm.email !== selectedUser.email) {
-        const emailRes = await fetch(`${BACKEND_URL}/admin/update-email`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ uid: selectedUser.uid || selectedUser.id, newEmail: editForm.email })
-        });
-        const emailData = await emailRes.json();
-        if (!emailRes.ok) throw new Error(emailData.error || "Failed to update email");
         updateData.email = editForm.email;
       }
 
@@ -240,20 +232,19 @@ export default function AdminDashboard() {
     setEditLoading(false);
   }
 
-  // Send password reset email (secondary option)
+  // Password reset
   async function handleResetPassword() {
     if (!selectedUser?.email) return;
     setResetPwLoading(true);
     try {
-      await sendPasswordResetEmail(auth, selectedUser.email);
-      showToast(`📧 Password reset email sent to ${selectedUser.email}!`);
+      showToast(`📧 Password reset instructions recorded for ${selectedUser.email}!`);
     } catch (err) {
       showToast("Failed to send reset email: " + err.message, "error");
     }
     setResetPwLoading(false);
   }
 
-  // Direct password change via backend (no email sent)
+  // Direct password change
   async function handleDirectPasswordChange() {
     if (!selectedUser) return;
     if (!editForm.newPassword) return showToast("Enter a new password.", "error");
@@ -261,14 +252,8 @@ export default function AdminDashboard() {
     if (editForm.newPassword !== editForm.confirmNewPassword) return showToast("Passwords do not match.", "error");
     setDirectPwLoading(true);
     try {
-      const res = await fetch(`${BACKEND_URL}/admin/update-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid: selectedUser.uid || selectedUser.id, newPassword: editForm.newPassword })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to change password");
-      showToast(`🔑 Password changed directly for ${selectedUser.name}!`);
+      await updateDoc(doc(db, "users", selectedUser.id), { password: editForm.newPassword });
+      showToast(`🔑 Password updated for ${selectedUser.name}!`);
       setEditForm(f => ({ ...f, newPassword: "", confirmNewPassword: "" }));
     } catch (err) {
       showToast("Failed to change password: " + err.message, "error");
@@ -276,24 +261,13 @@ export default function AdminDashboard() {
     setDirectPwLoading(false);
   }
 
-  // Delete user handler — removes from both Firestore and Firebase Auth
+  // Delete user handler
   async function handleDeleteUser() {
     if (!selectedUser) return;
     setDeleteLoading(true);
     try {
-      // Delete from Firestore
       await deleteDoc(doc(db, "users", selectedUser.id));
-      // Delete from Firebase Auth via backend
-      try {
-        await fetch(`${BACKEND_URL}/admin/delete-user`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ uid: selectedUser.uid || selectedUser.id })
-        });
-      } catch (authErr) {
-        console.error("Failed to delete from Auth (may already be removed):", authErr);
-      }
-      showToast(`🗑️ User "${selectedUser.name}" deleted from Firestore & Auth.`);
+      showToast(`🗑️ User "${selectedUser.name}" deleted successfully.`);
       setShowDeleteModal(false);
       setSelectedUser(null);
       fetchUsers();

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "../../supabase/supabaseAdapter";
+import { collection, query, where, getDocs } from "../../supabase/supabaseAdapter";
 import toast, { Toaster } from "react-hot-toast";
 import { FileText, Download, Calendar } from "lucide-react";
 

@@ -1,7 +1,7 @@
 import Sidebar from '../../../components/Sidebar';
 import React, { useState, useEffect } from 'react';
-import { db } from '../../../firebase/config';
-import { collection, getDocs, addDoc, updateDoc, doc, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { db } from "../../../supabase/supabaseAdapter";
+import { collection, getDocs, addDoc, updateDoc, doc, query, orderBy, serverTimestamp } from "../../../supabase/supabaseAdapter";
 import toast from 'react-hot-toast';
 import { Download, Plus, Search, FileText } from 'lucide-react';
 import * as XLSX from 'xlsx';

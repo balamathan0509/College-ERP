@@ -2,10 +2,10 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
+import { db } from "../../supabase/supabaseAdapter";
 import {
   collection, query, where, getDocs, doc, setDoc, getDoc
-} from "firebase/firestore";
+} from "../../supabase/supabaseAdapter";
 import * as XLSX from "xlsx";
 
 const FEES_TYPES = ["College Fees", "Bus Fees", "Mess Fees", "Exam Fees", "Library Fees", "Other"];

@@ -2,14 +2,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
+import { db } from "../../supabase/supabaseAdapter";
 import {
   addDoc,
   collection,
   getDocs,
   query,
   where
-} from "firebase/firestore";
+} from "../../supabase/supabaseAdapter";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];

@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
-import { collection, getDocs } from "firebase/firestore";
+import { db } from "../../supabase/supabaseAdapter";
+import { collection, getDocs } from "../../supabase/supabaseAdapter";
 
 const statusInfo = {
   pending_staff: { label: "Waiting for Staff", color: "#f6ad55" },
