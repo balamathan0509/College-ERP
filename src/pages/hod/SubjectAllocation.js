@@ -57,10 +57,8 @@ export default function SubjectAllocation() {
       const courseSnap = await getDocs(collection(db, "courses"));
       setCourses(courseSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       
-      let facQ = query(collection(db, "users"), where("role", "in", ["staff", "hod"]));
-      if (userProfile?.role === "hod") {
-        facQ = query(collection(db, "users"), where("role", "in", ["staff", "hod"]), where("dept", "==", userProfile.dept));
-      }
+      // Fetch ALL active staff and HODs across all departments for cross-department subject allocation
+      const facQ = query(collection(db, "users"), where("role", "in", ["staff", "hod"]));
       const facSnap = await getDocs(facQ);
       setFaculty(facSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (err) {

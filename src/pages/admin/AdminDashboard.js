@@ -26,15 +26,15 @@ const DEPT_NAMES = {
 };
 
 const ROLE_COLORS = {
-  student: "#2563eb",
-  staff: "#059669",
-  hod: "#7c3aed",
-  warden: "#0891b2",
-  officestaff: "#db2777",
-  security: "#d97706",
-  management: "#0d9488",
-  principal: "#4f46e5",
-  admin: "#dc2626"
+  student: "#38bdf8",
+  staff: "#10b981",
+  hod: "#a855f7",
+  warden: "#06b6d4",
+  officestaff: "#ec4899",
+  security: "#f59e0b",
+  management: "#14b8a6",
+  principal: "#6366f1",
+  admin: "#ef4444"
 };
 
 export default function AdminDashboard() {
@@ -307,22 +307,22 @@ export default function AdminDashboard() {
     admins: users.filter(u => u.isSuperAdmin || u.role === "admin").length
   };
 
-  // Clean Enterprise Modal Overlay & Box
+  // Clean Slate Modal Overlay & Box
   const modalOverlay = {
     position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-    background: "rgba(15, 23, 42, 0.65)", display: "flex", alignItems: "center", justifyContent: "center",
+    background: "rgba(15, 23, 42, 0.6)", display: "flex", alignItems: "center", justifyContent: "center",
     zIndex: 2000, padding: 20
   };
   const modalBox = {
     background: "#ffffff", borderRadius: 12, padding: 28, maxWidth: 540, width: "100%",
-    border: "1px solid #cbd5e1", boxShadow: "0 10px 30px rgba(0, 0, 0, 0.2)",
+    border: "1px solid #e2e8f0", boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
     maxHeight: "90vh", overflowY: "auto", color: "#0f172a"
   };
 
   return (
-    <div className="dashboard-wrapper">
+    <div className="dashboard-wrapper" style={{ background: "#f8fafc", minHeight: "100vh", color: "#0f172a" }}>
       <Sidebar />
-      <main className="main-content">
+      <main className="main-content" style={{ padding: "28px 36px", background: "#f8fafc" }}>
         
         {/* Toast Notification */}
         {toast && (
@@ -339,148 +339,151 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        <DateTimeHeader />
-        
-        {/* High-Contrast Visible Page Title Header */}
-        <div className="page-header" style={{ marginBottom: 24 }}>
+        {/* Page Top Header Bar (Enterprise Style) */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16, marginBottom: 24 }}>
           <div>
-            <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text-dark, #0f172a)", margin: 0, textTransform: "none" }}>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", margin: 0, letterSpacing: "-0.3px" }}>
               Super Admin Management Console
             </h1>
-            <p style={{ color: "var(--text-muted, #64748b)", fontSize: 14, margin: "4px 0 0 0" }}>
-              Department & User Role Hierarchy Management
+            <p style={{ color: "#64748b", fontSize: 13, margin: "3px 0 0 0" }}>
+              Enterprise Department & User Role Hierarchy Directory
             </p>
           </div>
-          <button 
-            onClick={() => openAddModalFor("staff", selectedDept)} 
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 18px",
-              borderRadius: 8, border: "none",
-              background: "#2563eb",
-              color: "white", fontWeight: 600, fontSize: 14, cursor: "pointer"
-            }}
-          >
-            <UserPlus size={16} /> Add New User
-          </button>
+          
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <DateTimeHeader />
+            <button 
+              onClick={() => openAddModalFor("staff", selectedDept)} 
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 18px",
+                borderRadius: 8, border: "none",
+                background: "#2563eb",
+                color: "white", fontWeight: 700, fontSize: 13, cursor: "pointer",
+                boxShadow: "0 1px 2px rgba(37,99,235,0.2)"
+              }}
+            >
+              <UserPlus size={16} /> Add New User
+            </button>
+          </div>
         </div>
 
-        {/* Global Summary Metrics (Clean Cards) */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 28 }}>
+        {/* Global Summary Metric Cards (Clean Enterprise Design) */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 24 }}>
           {[
-            { icon: <Users size={20} color="#2563eb" />, value: stats.total, label: "Total System Accounts", border: "#2563eb" },
-            { icon: <Award size={20} color="#7c3aed" />, value: stats.hods, label: "Department HODs", border: "#7c3aed" },
-            { icon: <UserCheck size={20} color="#059669" />, value: stats.staff, label: "Faculty Members", border: "#059669" },
-            { icon: <GraduationCap size={20} color="#0284c7" />, value: stats.students, label: "Enrolled Students", border: "#0284c7" },
-            { icon: <ShieldAlert size={20} color="#dc2626" />, value: stats.admins, label: "Super Administrators", border: "#dc2626" }
+            { icon: <Users size={18} color="#0284c7" />, value: stats.total, label: "Total Accounts", desc: "System wide" },
+            { icon: <Award size={18} color="#7c3aed" />, value: stats.hods, label: "Department HODs", desc: "6 Departments" },
+            { icon: <UserCheck size={18} color="#059669" />, value: stats.staff, label: "Faculty Members", desc: "Active staff" },
+            { icon: <GraduationCap size={18} color="#2563eb" />, value: stats.students, label: "Enrolled Students", desc: "All batches" },
+            { icon: <ShieldAlert size={18} color="#dc2626" />, value: stats.admins, label: "Super Admins", desc: "Full access" }
           ].map((s, i) => (
             <div key={i} style={{
-              background: "var(--card-bg, #ffffff)",
-              border: "1px solid var(--border, #e2e8f0)",
-              borderTop: `3px solid ${s.border}`,
-              borderRadius: 10, padding: "16px 20px"
+              background: "#ffffff",
+              border: "1px solid #e2e8f0",
+              borderRadius: 10, padding: "16px 18px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <span style={{ fontSize: 11, color: "var(--text-muted, #64748b)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>{s.label}</span>
-                {s.icon}
+                <span style={{ fontSize: 11, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" }}>{s.label}</span>
+                <div style={{ width: 32, height: 32, borderRadius: 6, background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #f1f5f9" }}>
+                  {s.icon}
+                </div>
               </div>
-              <div style={{ color: "var(--text-dark, #0f172a)", fontSize: 26, fontWeight: 700, lineHeight: 1 }}>{s.value}</div>
+              <div style={{ color: "#0f172a", fontSize: 26, fontWeight: 800, lineHeight: 1 }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>{s.desc}</div>
             </div>
           ))}
         </div>
 
-        {/* DEPARTMENT SELECTION CARDS HEADER */}
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted, #64748b)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-              Select Department to Manage:
-            </div>
-            <div style={{ fontSize: 13, color: "var(--text-dark, #0f172a)", fontWeight: 600 }}>
-              Active: <strong>{selectedDept}</strong> ({DEPT_NAMES[selectedDept]})
-            </div>
+        {/* DEPARTMENT SELECTION TAB BAR */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#475569", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 10 }}>
+            Select Department:
           </div>
 
-          {/* Department Cards Grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 12 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {DEPARTMENTS.map(d => {
               const dUsers = users.filter(u => u.dept === d);
               const isSelected = selectedDept === d;
-              const staffCount = dUsers.filter(u => u.role === "staff" || u.role === "hod").length;
-              const studCount = dUsers.filter(u => u.role === "student").length;
+              const totalCount = dUsers.length;
 
               return (
-                <div
+                <button
                   key={d}
                   onClick={() => handleSelectDept(d)}
                   style={{
-                    padding: "14px 16px", borderRadius: 10, cursor: "pointer",
-                    background: isSelected ? "#eff6ff" : "var(--card-bg, #ffffff)",
-                    border: isSelected ? "2px solid #2563eb" : "1px solid var(--border, #e2e8f0)",
+                    padding: "10px 18px", borderRadius: 8, cursor: "pointer",
+                    background: isSelected ? "#1e40af" : "#ffffff",
+                    color: isSelected ? "#ffffff" : "#334155",
+                    border: isSelected ? "1px solid #1e40af" : "1px solid #cbd5e1",
+                    fontWeight: 700, fontSize: 13,
+                    display: "inline-flex", alignItems: "center", gap: 8,
+                    boxShadow: isSelected ? "0 2px 4px rgba(30,58,138,0.2)" : "0 1px 2px rgba(0,0,0,0.02)",
                     transition: "all 0.15s ease"
                   }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <span style={{ fontWeight: 700, fontSize: 17, color: isSelected ? "#1d4ed8" : "var(--text-dark, #0f172a)" }}>{d}</span>
-                    <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted, #64748b)" }}>{staffCount + studCount} Total</span>
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--text-muted, #64748b)", fontWeight: 500, marginBottom: 6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {DEPT_NAMES[d]}
-                  </div>
-                  <div style={{ fontSize: 11, display: "flex", gap: 8, color: isSelected ? "#1e40af" : "var(--text-dark, #334155)" }}>
-                    <span>Faculty: <strong>{staffCount}</strong></span>
-                    <span>•</span>
-                    <span>Students: <strong>{studCount}</strong></span>
-                  </div>
-                </div>
+                  <span>{d}</span>
+                  <span style={{
+                    padding: "2px 7px", borderRadius: 10, fontSize: 11, fontWeight: 800,
+                    background: isSelected ? "rgba(255,255,255,0.2)" : "#f1f5f9",
+                    color: isSelected ? "#ffffff" : "#64748b"
+                  }}>
+                    {totalCount}
+                  </span>
+                </button>
               );
             })}
           </div>
         </div>
 
-        {/* SELECTED DEPARTMENT HIERARCHY CONTENT CONTAINER */}
-        <div className="card" style={{ padding: 24, marginBottom: 32 }}>
-          
-          {/* Department Header Banner */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16, marginBottom: 24, paddingBottom: 16, borderBottom: "1px solid var(--border, #e2e8f0)" }}>
+        {/* SELECTED DEPARTMENT MAIN CONTAINER */}
+        <div style={{
+          background: "#ffffff",
+          border: "1px solid #e2e8f0",
+          borderRadius: 12, padding: 24, marginBottom: 32,
+          boxShadow: "0 1px 3px rgba(0,0,0,0.03)"
+        }}>
+          {/* Department Title & Quick Actions */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16, marginBottom: 24, paddingBottom: 16, borderBottom: "1px solid #f1f5f9" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div style={{
                 width: 44, height: 44, borderRadius: 10,
-                background: "#2563eb",
+                background: "#1e40af",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontWeight: 700, fontSize: 16, color: "white"
+                fontWeight: 800, fontSize: 16, color: "white"
               }}>
                 {selectedDept}
               </div>
               <div>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-dark, #0f172a)", margin: 0 }}>
+                <h2 style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", margin: 0 }}>
                   Department of {DEPT_NAMES[selectedDept]} ({selectedDept})
                 </h2>
-                <div style={{ display: "flex", gap: 12, marginTop: 4, fontSize: 13, color: "var(--text-muted, #64748b)" }}>
-                  <span>Faculty Staff: <strong>{currentDeptStaff.length}</strong></span>
+                <div style={{ display: "flex", gap: 12, marginTop: 4, fontSize: 13, color: "#64748b" }}>
+                  <span>Faculty Staff: <strong style={{ color: "#0f172a" }}>{currentDeptStaff.length}</strong></span>
                   <span>•</span>
-                  <span>Enrolled Students: <strong>{currentDeptStudents.length}</strong></span>
+                  <span>Enrolled Students: <strong style={{ color: "#0f172a" }}>{currentDeptStudents.length}</strong></span>
                 </div>
               </div>
             </div>
 
-            {/* Action Buttons */}
+            {/* Quick Action Buttons */}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button onClick={() => openAddModalFor("hod", selectedDept)} style={{
-                padding: "8px 14px", borderRadius: 6, border: "1px solid #7c3aed",
-                background: "transparent", color: "#7c3aed", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                padding: "8px 14px", borderRadius: 6, border: "1px solid #c084fc",
+                background: "#f3e8ff", color: "#7e22ce", fontSize: 12, fontWeight: 700, cursor: "pointer",
                 display: "inline-flex", alignItems: "center", gap: 6
               }}>
                 <Plus size={14} /> Add HOD
               </button>
               <button onClick={() => openAddModalFor("staff", selectedDept)} style={{
-                padding: "8px 14px", borderRadius: 6, border: "1px solid #059669",
-                background: "transparent", color: "#059669", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                padding: "8px 14px", borderRadius: 6, border: "1px solid #6ee7b7",
+                background: "#ecfdf5", color: "#047857", fontSize: 12, fontWeight: 700, cursor: "pointer",
                 display: "inline-flex", alignItems: "center", gap: 6
               }}>
                 <Plus size={14} /> Add Staff
               </button>
               <button onClick={() => openAddModalFor("student", selectedDept)} style={{
-                padding: "8px 14px", borderRadius: 6, border: "1px solid #2563eb",
-                background: "#2563eb", color: "white", fontSize: 12, fontWeight: 600, cursor: "pointer",
+                padding: "8px 14px", borderRadius: 6, border: "none",
+                background: "#2563eb", color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer",
                 display: "inline-flex", alignItems: "center", gap: 6
               }}>
                 <Plus size={14} /> Add Student
@@ -488,9 +491,9 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* 1. HOD & FACULTY STAFF SECTION */}
-          <div style={{ marginBottom: 32 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted, #64748b)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
+          {/* 1. HOD & FACULTY MEMBERS DIRECTORY */}
+          <div style={{ marginBottom: 28 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#1e40af", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
               <Award size={15} color="#7c3aed" /> Head of Department (HOD) & Faculty Members
             </div>
 
@@ -499,62 +502,62 @@ export default function AdminDashboard() {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12, marginBottom: 16 }}>
                 {currentDeptHods.map(hod => (
                   <div key={hod.id} style={{
-                    background: "var(--card-bg, #ffffff)",
-                    border: "1px solid var(--border, #e2e8f0)", borderLeft: "4px solid #7c3aed",
-                    borderRadius: 8, padding: 16,
+                    background: "#faf5ff",
+                    border: "1px solid #e9d5ff", borderLeft: "4px solid #7c3aed",
+                    borderRadius: 8, padding: 14,
                     display: "flex", justifyContent: "space-between", alignItems: "center"
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       <div style={{
-                        width: 38, height: 38, borderRadius: 8, background: "#f3e8ff",
-                        display: "flex", alignItems: "center", justifyContent: "center", color: "#7c3aed"
+                        width: 36, height: 36, borderRadius: 8, background: "#f3e8ff",
+                        display: "flex", alignItems: "center", justifyContent: "center", color: "#7e22ce"
                       }}>
                         <Award size={18} />
                       </div>
                       <div>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-dark, #0f172a)" }}>{hod.name || "HOD"}</div>
-                        <div style={{ fontSize: 12, color: "#7c3aed", fontWeight: 600 }}>Head of Department ({selectedDept})</div>
-                        <div style={{ fontSize: 12, color: "var(--text-muted, #64748b)", marginTop: 2 }}>{hod.email}</div>
-                        {hod.phone && <div style={{ fontSize: 11, color: "var(--text-muted, #64748b)" }}>Phone: {hod.phone}</div>}
+                        <div style={{ fontWeight: 800, fontSize: 14, color: "#0f172a" }}>{hod.name || "HOD"}</div>
+                        <div style={{ fontSize: 12, color: "#7e22ce", fontWeight: 700 }}>Head of Department ({selectedDept})</div>
+                        <div style={{ fontSize: 12, color: "#64748b", marginTop: 1 }}>{hod.email}</div>
+                        {hod.phone && <div style={{ fontSize: 11, color: "#64748b" }}>Phone: {hod.phone}</div>}
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={() => openEditModal(hod)} style={{ padding: "6px 10px", borderRadius: 6, background: "var(--border, #e2e8f0)", border: "none", color: "var(--text-dark, #0f172a)", cursor: "pointer" }}><Edit2 size={14} /></button>
-                      <button onClick={() => openDeleteModal(hod)} style={{ padding: "6px 10px", borderRadius: 6, background: "#fef2f2", border: "none", color: "#dc2626", cursor: "pointer" }}><Trash2 size={14} /></button>
+                      <button onClick={() => openEditModal(hod)} style={{ padding: "5px 8px", borderRadius: 6, background: "#ffffff", border: "1px solid #cbd5e1", color: "#334155", cursor: "pointer" }}><Edit2 size={13} /></button>
+                      <button onClick={() => openDeleteModal(hod)} style={{ padding: "5px 8px", borderRadius: 6, background: "#fef2f2", border: "1px solid #fca5a5", color: "#dc2626", cursor: "pointer" }}><Trash2 size={13} /></button>
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
               <div style={{
-                background: "var(--card-bg, #ffffff)", border: "1px dashed var(--border, #cbd5e1)",
-                borderRadius: 8, padding: 14, textAlign: "center", marginBottom: 16, color: "var(--text-muted, #64748b)", fontSize: 13
+                background: "#f8fafc", border: "1px dashed #cbd5e1",
+                borderRadius: 8, padding: 12, textAlign: "center", marginBottom: 16, color: "#64748b", fontSize: 13
               }}>
-                No HOD currently assigned to {selectedDept}. <span style={{ color: "#7c3aed", cursor: "pointer", fontWeight: 600 }} onClick={() => openAddModalFor("hod", selectedDept)}>Assign HOD</span>
+                No HOD currently assigned to {selectedDept}. <span style={{ color: "#7e22ce", cursor: "pointer", fontWeight: 700 }} onClick={() => openAddModalFor("hod", selectedDept)}>Assign HOD</span>
               </div>
             )}
 
             {/* Faculty Members List Grid */}
-            <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted, #64748b)", marginBottom: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 8 }}>
               Faculty Members ({currentDeptStaff.length}):
             </div>
             {currentDeptStaff.length === 0 ? (
-              <div style={{ color: "var(--text-muted, #64748b)", fontSize: 13, padding: "8px 0" }}>No faculty staff added for {selectedDept}.</div>
+              <div style={{ color: "#64748b", fontSize: 13, padding: "6px 0" }}>No faculty staff added for {selectedDept}.</div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 10 }}>
                 {currentDeptStaff.map(st => (
                   <div key={st.id} style={{
-                    background: "var(--card-bg, #ffffff)", border: "1px solid var(--border, #e2e8f0)",
+                    background: "#f8fafc", border: "1px solid #e2e8f0",
                     borderRadius: 8, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center"
                   }}>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-dark, #0f172a)" }}>{st.name}</div>
-                      <div style={{ fontSize: 12, color: "var(--text-muted, #64748b)" }}>{st.email}</div>
-                      {st.phone && <div style={{ fontSize: 11, color: "var(--text-muted, #64748b)", marginTop: 2 }}>Phone: {st.phone}</div>}
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{st.name}</div>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>{st.email}</div>
+                      {st.phone && <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Phone: {st.phone}</div>}
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={() => openEditModal(st)} style={{ padding: "5px 8px", borderRadius: 6, background: "var(--border, #e2e8f0)", border: "none", color: "var(--text-dark, #0f172a)", cursor: "pointer" }}><Edit2 size={13} /></button>
-                      <button onClick={() => openDeleteModal(st)} style={{ padding: "5px 8px", borderRadius: 6, background: "#fef2f2", border: "none", color: "#dc2626", cursor: "pointer" }}><Trash2 size={13} /></button>
+                      <button onClick={() => openEditModal(st)} style={{ padding: "5px 8px", borderRadius: 6, background: "#ffffff", border: "1px solid #cbd5e1", color: "#334155", cursor: "pointer" }}><Edit2 size={13} /></button>
+                      <button onClick={() => openDeleteModal(st)} style={{ padding: "5px 8px", borderRadius: 6, background: "#fef2f2", border: "1px solid #fca5a5", color: "#dc2626", cursor: "pointer" }}><Trash2 size={13} /></button>
                     </div>
                   </div>
                 ))}
@@ -562,14 +565,14 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          {/* 2. STUDENTS BREAKDOWN BY ACADEMIC YEAR */}
+          {/* 2. STUDENTS DIRECTORY & ACADEMIC YEAR BREAKDOWN */}
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted, #64748b)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
-              <GraduationCap size={15} color="#0284c7" /> Academic Year Breakdown ({selectedDept})
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#1e40af", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
+              <GraduationCap size={15} color="#2563eb" /> Academic Year Breakdown ({selectedDept})
             </div>
 
-            {/* 4 Year Cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, marginBottom: 16 }}>
+            {/* Year Cards Row */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 10, marginBottom: 16 }}>
               {YEARS.map(yr => {
                 const count = getYearCount(yr);
                 const isYearActive = selectedYear === yr;
@@ -579,21 +582,21 @@ export default function AdminDashboard() {
                     key={yr}
                     onClick={() => setSelectedYear(isYearActive ? "all" : yr)}
                     style={{
-                      background: isYearActive ? "#eff6ff" : "var(--card-bg, #ffffff)",
-                      border: isYearActive ? "2px solid #2563eb" : "1px solid var(--border, #e2e8f0)",
-                      borderRadius: 8, padding: 14, cursor: "pointer",
+                      background: isYearActive ? "#eff6ff" : "#f8fafc",
+                      border: isYearActive ? "2px solid #2563eb" : "1px solid #e2e8f0",
+                      borderRadius: 8, padding: 12, cursor: "pointer",
                       transition: "all 0.15s ease"
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: isYearActive ? "#1d4ed8" : "var(--text-dark, #0f172a)" }}>{yr}</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: isYearActive ? "#1d4ed8" : "#0f172a" }}>{yr}</span>
                       <span style={{
-                        padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 700,
+                        padding: "2px 8px", borderRadius: 6, fontSize: 11, fontWeight: 800,
                         background: isYearActive ? "#2563eb" : "#e0f2fe",
-                        color: isYearActive ? "white" : "#0369a1"
+                        color: isYearActive ? "#ffffff" : "#0284c7"
                       }}>{count} Students</span>
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--text-muted, #64748b)", display: "flex", alignItems: "center", gap: 4 }}>
+                    <div style={{ fontSize: 11, color: isYearActive ? "#1d4ed8" : "#64748b", display: "flex", alignItems: "center", gap: 4, fontWeight: 600 }}>
                       {isYearActive ? "Filtered view active" : "Click to view list"} <ChevronRight size={12} />
                     </div>
                   </div>
@@ -601,22 +604,22 @@ export default function AdminDashboard() {
               })}
             </div>
 
-            {/* SEARCH & YEAR FILTER BAR FOR STUDENTS */}
+            {/* SEARCH & FILTER BAR */}
             <div style={{
               display: "flex", justifyContent: "space-between", alignItems: "center",
-              marginBottom: 14, flexWrap: "wrap", gap: 12,
-              background: "var(--card-bg, #ffffff)", padding: "10px 14px", borderRadius: 8,
-              border: "1px solid var(--border, #e2e8f0)"
+              marginBottom: 12, flexWrap: "wrap", gap: 12,
+              background: "#f8fafc", padding: "10px 14px", borderRadius: 8,
+              border: "1px solid #e2e8f0"
             }}>
-              {/* Year Filter Buttons */}
+              {/* Year Filter Pills */}
               <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                <span style={{ fontSize: 12, color: "var(--text-muted, #64748b)", fontWeight: 600 }}>Filter:</span>
+                <span style={{ fontSize: 12, color: "#64748b", fontWeight: 700 }}>Filter:</span>
                 <button
                   onClick={() => setSelectedYear("all")}
                   style={{
-                    padding: "5px 10px", borderRadius: 6, border: "none",
-                    background: selectedYear === "all" ? "#2563eb" : "var(--border, #e2e8f0)",
-                    color: selectedYear === "all" ? "white" : "var(--text-dark, #0f172a)", fontSize: 12, fontWeight: 600, cursor: "pointer"
+                    padding: "4px 12px", borderRadius: 6, border: "none",
+                    background: selectedYear === "all" ? "#2563eb" : "#e2e8f0",
+                    color: selectedYear === "all" ? "white" : "#334155", fontSize: 12, fontWeight: 700, cursor: "pointer"
                   }}
                 >
                   All ({currentDeptStudents.length})
@@ -626,9 +629,9 @@ export default function AdminDashboard() {
                     key={yr}
                     onClick={() => setSelectedYear(yr)}
                     style={{
-                      padding: "5px 10px", borderRadius: 6, border: "none",
-                      background: selectedYear === yr ? "#2563eb" : "var(--border, #e2e8f0)",
-                      color: selectedYear === yr ? "white" : "var(--text-dark, #0f172a)", fontSize: 12, fontWeight: 600, cursor: "pointer"
+                      padding: "4px 12px", borderRadius: 6, border: "none",
+                      background: selectedYear === yr ? "#2563eb" : "#e2e8f0",
+                      color: selectedYear === yr ? "white" : "#334155", fontSize: 12, fontWeight: 700, cursor: "pointer"
                     }}
                   >
                     {yr} ({getYearCount(yr)})
@@ -636,9 +639,9 @@ export default function AdminDashboard() {
                 ))}
               </div>
 
-              {/* Department Student Search */}
+              {/* Search Field */}
               <div style={{ position: "relative", minWidth: 220 }}>
-                <Search size={14} color="var(--text-muted, #64748b)" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }} />
+                <Search size={14} color="#64748b" style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)" }} />
                 <input
                   type="text"
                   placeholder="Search students..."
@@ -646,23 +649,23 @@ export default function AdminDashboard() {
                   onChange={e => setSearch(e.target.value)}
                   style={{
                     width: "100%", padding: "6px 10px 6px 30px",
-                    background: "var(--card-bg, #ffffff)", border: "1px solid var(--border, #e2e8f0)",
-                    borderRadius: 6, color: "var(--text-dark, #0f172a)", fontSize: 13, outline: "none"
+                    background: "#ffffff", border: "1px solid #cbd5e1",
+                    borderRadius: 6, color: "#0f172a", fontSize: 13, outline: "none"
                   }}
                 />
               </div>
             </div>
 
-            {/* STUDENTS DATA TABLE */}
-            <div style={{ background: "var(--card-bg, #ffffff)", borderRadius: 8, border: "1px solid var(--border, #e2e8f0)", overflow: "hidden" }}>
+            {/* ENTERPRISE DATA TABLE */}
+            <div style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e2e8f0", overflow: "hidden" }}>
               <div style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 700 }}>
                   <thead>
-                    <tr style={{ borderBottom: "1px solid var(--border, #e2e8f0)", background: "#f8fafc" }}>
+                    <tr style={{ borderBottom: "1px solid #e2e8f0", background: "#f8fafc" }}>
                       {["Student Name", "Register No", "Email", "Year", "Dept", "Phone", "Actions"].map(h => (
                         <th key={h} style={{
                           padding: "12px 14px", textAlign: "left", fontSize: 11,
-                          color: "var(--text-muted, #64748b)", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 700
+                          color: "#475569", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 800
                         }}>{h}</th>
                       ))}
                     </tr>
@@ -670,30 +673,30 @@ export default function AdminDashboard() {
                   <tbody>
                     {displayedStudents.length === 0 ? (
                       <tr>
-                        <td colSpan={7} style={{ textAlign: "center", padding: 32, color: "var(--text-muted, #64748b)", fontSize: 13 }}>
+                        <td colSpan={7} style={{ textAlign: "center", padding: 32, color: "#64748b", fontSize: 13 }}>
                           No student records found for {selectedDept} {selectedYear !== "all" ? `(${selectedYear})` : ""}.
                         </td>
                       </tr>
                     ) : displayedStudents.map(stud => (
-                      <tr key={stud.id} style={{ borderBottom: "1px solid var(--border, #e2e8f0)" }}>
-                        <td style={{ padding: "12px 14px", fontWeight: 600, color: "var(--text-dark, #0f172a)", fontSize: 13 }}>
+                      <tr key={stud.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                        <td style={{ padding: "12px 14px", fontWeight: 700, color: "#0f172a", fontSize: 14 }}>
                           {stud.name || stud.studentName || "—"}
                         </td>
-                        <td style={{ padding: "12px 14px", fontSize: 13, color: "#2563eb", fontWeight: 600, fontFamily: "monospace" }}>
+                        <td style={{ padding: "12px 14px", fontSize: 13, color: "#1e40af", fontWeight: 700, fontFamily: "monospace" }}>
                           {stud.registerNo || stud.registerNumber || "—"}
                         </td>
-                        <td style={{ padding: "12px 14px", fontSize: 13, color: "var(--text-dark, #334155)" }}>{stud.email}</td>
+                        <td style={{ padding: "12px 14px", fontSize: 13, color: "#334155" }}>{stud.email}</td>
                         <td style={{ padding: "12px 14px" }}>
-                          <span style={{ padding: "2px 8px", borderRadius: 4, background: "#e0f2fe", color: "#0369a1", fontSize: 11, fontWeight: 600 }}>
+                          <span style={{ padding: "3px 8px", borderRadius: 4, background: "#eff6ff", color: "#1e40af", fontSize: 11, fontWeight: 700, border: "1px solid #dbeafe" }}>
                             {stud.year || "—"}
                           </span>
                         </td>
-                        <td style={{ padding: "12px 14px", fontSize: 13, color: "var(--text-dark, #334155)" }}>{stud.dept || selectedDept}</td>
-                        <td style={{ padding: "12px 14px", fontSize: 13, color: "var(--text-muted, #64748b)" }}>{stud.phone || "—"}</td>
+                        <td style={{ padding: "12px 14px", fontSize: 13, color: "#334155" }}>{stud.dept || selectedDept}</td>
+                        <td style={{ padding: "12px 14px", fontSize: 13, color: "#64748b" }}>{stud.phone || "—"}</td>
                         <td style={{ padding: "12px 14px" }}>
                           <div style={{ display: "flex", gap: 6 }}>
-                            <button onClick={() => openEditModal(stud)} style={{ padding: "4px 8px", borderRadius: 4, background: "var(--border, #e2e8f0)", border: "none", color: "var(--text-dark, #0f172a)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Edit</button>
-                            <button onClick={() => openDeleteModal(stud)} style={{ padding: "4px 8px", borderRadius: 4, background: "#fef2f2", border: "none", color: "#dc2626", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Delete</button>
+                            <button onClick={() => openEditModal(stud)} style={{ padding: "4px 10px", borderRadius: 4, background: "#ffffff", border: "1px solid #cbd5e1", color: "#334155", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Edit</button>
+                            <button onClick={() => openDeleteModal(stud)} style={{ padding: "4px 10px", borderRadius: 4, background: "#ffffff", border: "1px solid #fca5a5", color: "#dc2626", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Delete</button>
                           </div>
                         </td>
                       </tr>
@@ -709,9 +712,9 @@ export default function AdminDashboard() {
         {showAddModal && (
           <div style={modalOverlay} onClick={() => setShowAddModal(false)}>
             <div style={modalBox} onClick={e => e.stopPropagation()}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 12, borderBottom: "1px solid #e2e8f0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 12, borderBottom: "1px solid #f1f5f9" }}>
                 <div>
-                  <h3 style={{ fontWeight: 700, fontSize: 18, color: "#0f172a", margin: 0 }}>Add New User Account</h3>
+                  <h3 style={{ fontWeight: 800, fontSize: 18, color: "#0f172a", margin: 0 }}>Add New User Account</h3>
                   <p style={{ color: "#64748b", fontSize: 13, margin: "2px 0 0 0" }}>Create user credentials with role & department</p>
                 </div>
                 <button onClick={() => setShowAddModal(false)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer" }}><X size={20} /></button>
@@ -767,7 +770,7 @@ export default function AdminDashboard() {
                 <div style={{ display: "flex", gap: 12, marginTop: 20 }}>
                   <button type="button" onClick={() => setShowAddModal(false)} style={{
                     flex: 1, padding: "9px 16px", borderRadius: 6, border: "1px solid #cbd5e1",
-                    background: "#ffffff", color: "#0f172a", fontWeight: 600, cursor: "pointer"
+                    background: "#ffffff", color: "#334155", fontWeight: 600, cursor: "pointer"
                   }}>Cancel</button>
                   <button type="submit" disabled={addLoading} style={{
                     flex: 1, padding: "9px 16px", borderRadius: 6, border: "none",
@@ -784,9 +787,9 @@ export default function AdminDashboard() {
         {showEditModal && selectedUser && (
           <div style={modalOverlay} onClick={() => setShowEditModal(false)}>
             <div style={{ ...modalBox, maxWidth: 540 }} onClick={e => e.stopPropagation()}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 12, borderBottom: "1px solid #e2e8f0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 12, borderBottom: "1px solid #f1f5f9" }}>
                 <div>
-                  <h3 style={{ fontWeight: 700, fontSize: 18, color: "#0f172a", margin: 0 }}>Edit User Details</h3>
+                  <h3 style={{ fontWeight: 800, fontSize: 18, color: "#0f172a", margin: 0 }}>Edit User Details</h3>
                   <p style={{ color: "#64748b", fontSize: 13, margin: "2px 0 0 0" }}>{selectedUser.name} ({selectedUser.email})</p>
                 </div>
                 <button onClick={() => setShowEditModal(false)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer" }}><X size={20} /></button>
@@ -842,26 +845,26 @@ export default function AdminDashboard() {
 
                 {/* Instant Password Change */}
                 <div style={{
-                  background: "#f8fafc", border: "1px solid #cbd5e1",
+                  background: "#f8fafc", border: "1px solid #e2e8f0",
                   borderRadius: 8, padding: 14, marginBottom: 16
                 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: "#2563eb", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: "#2563eb", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
                     <Key size={14} /> Update Account Password
                   </div>
                   <div className="form-row">
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label style={{ fontSize: 11, color: "#64748b" }}>New Password</label>
+                      <label style={{ fontSize: 11, color: "#475569" }}>New Password</label>
                       <input type="password" placeholder="Min 6 chars" value={editForm.newPassword} onChange={e => setEditForm({ ...editForm, newPassword: e.target.value })} style={{ background: "#ffffff", border: "1px solid #cbd5e1", color: "#0f172a", borderRadius: 6, padding: 6 }} />
                     </div>
                     <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label style={{ fontSize: 11, color: "#64748b" }}>Confirm Password</label>
+                      <label style={{ fontSize: 11, color: "#475569" }}>Confirm Password</label>
                       <input type="password" placeholder="Re-enter password" value={editForm.confirmNewPassword} onChange={e => setEditForm({ ...editForm, confirmNewPassword: e.target.value })} style={{ background: "#ffffff", border: "1px solid #cbd5e1", color: "#0f172a", borderRadius: 6, padding: 6 }} />
                     </div>
                   </div>
                   <button type="button" onClick={handleDirectPasswordChange} disabled={directPwLoading || !editForm.newPassword} style={{
                     marginTop: 10, padding: "8px 12px", borderRadius: 6, border: "none",
                     background: editForm.newPassword ? "#059669" : "#cbd5e1",
-                    color: "white", fontWeight: 600, cursor: editForm.newPassword ? "pointer" : "default",
+                    color: "white", fontWeight: 700, cursor: editForm.newPassword ? "pointer" : "default",
                     fontSize: 12, width: "100%"
                   }}>{directPwLoading ? "Updating..." : "Update Password Now"}</button>
                 </div>
@@ -869,12 +872,12 @@ export default function AdminDashboard() {
                 <div style={{ display: "flex", gap: 12 }}>
                   <button type="button" onClick={() => setShowEditModal(false)} style={{
                     flex: 1, padding: "9px 16px", borderRadius: 6, border: "1px solid #cbd5e1",
-                    background: "#ffffff", color: "#0f172a", fontWeight: 600, cursor: "pointer"
+                    background: "#ffffff", color: "#334155", fontWeight: 600, cursor: "pointer"
                   }}>Cancel</button>
                   <button type="submit" disabled={editLoading} style={{
                     flex: 1, padding: "9px 16px", borderRadius: 6, border: "none",
                     background: "#2563eb", color: "white",
-                    fontWeight: 600, cursor: "pointer", opacity: editLoading ? 0.6 : 1
+                    fontWeight: 700, cursor: "pointer", opacity: editLoading ? 0.6 : 1
                   }}>{editLoading ? "Saving..." : "Save Changes"}</button>
                 </div>
               </form>
@@ -887,7 +890,7 @@ export default function AdminDashboard() {
           <div style={modalOverlay} onClick={() => setShowDeleteModal(false)}>
             <div style={{ ...modalBox, maxWidth: 420 }} onClick={e => e.stopPropagation()}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                <h3 style={{ fontWeight: 700, fontSize: 18, color: "#0f172a", margin: 0 }}>Delete User Account</h3>
+                <h3 style={{ fontWeight: 800, fontSize: 18, color: "#0f172a", margin: 0 }}>Delete User Account</h3>
                 <button onClick={() => setShowDeleteModal(false)} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer" }}><X size={18} /></button>
               </div>
 
@@ -898,12 +901,12 @@ export default function AdminDashboard() {
               <div style={{ display: "flex", gap: 12 }}>
                 <button onClick={() => setShowDeleteModal(false)} style={{
                   flex: 1, padding: "9px 16px", borderRadius: 6, border: "1px solid #cbd5e1",
-                  background: "#ffffff", color: "#0f172a", fontWeight: 600, cursor: "pointer"
+                  background: "#ffffff", color: "#334155", fontWeight: 600, cursor: "pointer"
                 }}>Cancel</button>
                 <button onClick={handleDeleteUser} disabled={deleteLoading} style={{
                   flex: 1, padding: "9px 16px", borderRadius: 6, border: "none",
                   background: "#dc2626", color: "white",
-                  fontWeight: 600, cursor: "pointer", opacity: deleteLoading ? 0.6 : 1
+                  fontWeight: 700, cursor: deleteLoading ? 0.6 : 1
                 }}>{deleteLoading ? "Deleting..." : "Delete Account"}</button>
               </div>
             </div>

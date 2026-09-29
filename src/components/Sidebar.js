@@ -487,7 +487,12 @@ export default function Sidebar() {
   return (
     <>
       {/* Top Header */}
-      <div className="top-header">
+      {/* Top Header */}
+      <div className="top-header" style={{
+        background: "#ffffff",
+        borderBottom: "1px solid #e2e8f0",
+        color: "#0f172a"
+      }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <button
             onClick={() => setMobileOpen(true)}
@@ -495,16 +500,16 @@ export default function Sidebar() {
               display: "none",
               background: "transparent",
               border: "none",
-              color: "var(--text)",
+              color: "#0f172a",
               cursor: "pointer",
               padding: 4,
               marginRight: 15
             }}
             className="hamburger-btn-header"
           >
-            <div style={{ width: 20, height: 2, background: "var(--text-dark)", margin: "4px 0" }}></div>
-            <div style={{ width: 20, height: 2, background: "var(--text-dark)", margin: "4px 0" }}></div>
-            <div style={{ width: 20, height: 2, background: "var(--text-dark)", margin: "4px 0" }}></div>
+            <div style={{ width: 20, height: 2, background: "#0f172a", margin: "4px 0" }}></div>
+            <div style={{ width: 20, height: 2, background: "#0f172a", margin: "4px 0" }}></div>
+            <div style={{ width: 20, height: 2, background: "#0f172a", margin: "4px 0" }}></div>
           </button>
         </div>
         
@@ -515,7 +520,7 @@ export default function Sidebar() {
             onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
             style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
           >
-            <div className="header-user-avatar" style={{ overflow: "hidden", borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div className="header-user-avatar" style={{ overflow: "hidden", borderRadius: "50%", width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", background: "#2563eb", color: "#ffffff", fontWeight: 700 }}>
               {userProfile?.photoURL ? (
                 <img src={userProfile.photoURL} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : userProfile?.name ? (
@@ -525,10 +530,10 @@ export default function Sidebar() {
               )}
             </div>
             <div className="header-user-info">
-              <span className="name" style={{ fontWeight: 600, fontSize: '13px' }}>
+              <span className="name" style={{ fontWeight: 700, fontSize: '13px', color: '#0f172a', display: 'block' }}>
                 {userProfile?.name || currentUser?.email || "User"}
               </span>
-              <span className="role" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+              <span className="role" style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, display: 'block' }}>
                 {isSuperAdmin ? "SUPER ADMIN" : (role ? role.toUpperCase() : "USER")}
               </span>
             </div>
@@ -545,42 +550,42 @@ export default function Sidebar() {
                 top: '100%',
                 right: 0,
                 marginTop: '10px',
-                background: '#fff',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                background: '#ffffff',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
                 borderRadius: '8px',
                 width: '220px',
                 padding: '8px 0',
                 zIndex: 1000,
-                color: '#333',
-                border: '1px solid #eaeaea',
+                color: '#0f172a',
+                border: '1px solid #e2e8f0',
                 fontFamily: 'sans-serif'
               }}>
-                <div style={{ padding: '12px 20px', borderBottom: '1px solid #f0f0f0', fontSize: '13px', color: '#666', marginBottom: '4px' }}>
-                  Welcome {userProfile?.name?.toUpperCase() || role?.toUpperCase()}!
+                <div style={{ padding: '12px 20px', borderBottom: '1px solid #f1f5f9', fontSize: '13px', color: '#64748b', marginBottom: '4px' }}>
+                  Welcome <strong style={{ color: "#0f172a" }}>{userProfile?.name?.toUpperCase() || role?.toUpperCase()}</strong>!
                 </div>
                 <div 
                   onClick={() => { setProfileDropdownOpen(false); handleNavClick(isSuperAdmin ? "/admin/profile" : `/${role}/profile`); }}
-                  style={{ padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', color: '#444' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9f9f9'}
+                  style={{ padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', color: '#334155' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                 >
-                  <User size={16} color="#6b7280" /> Profile
+                  <User size={16} color="#2563eb" /> Profile
                 </div>
                 <div 
                   onClick={() => { setProfileDropdownOpen(false); handleNavClick(isSuperAdmin ? "/admin/help" : `/${role}/help`); }}
-                  style={{ padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', color: '#444', borderBottom: '1px solid #f0f0f0', paddingBottom: '12px', marginBottom: '4px' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9f9f9'}
+                  style={{ padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', color: '#334155', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px', marginBottom: '4px' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                 >
-                  <HelpCircle size={16} color="#6b7280" /> Help
+                  <HelpCircle size={16} color="#2563eb" /> Help
                 </div>
                 <div 
                   onClick={() => { setProfileDropdownOpen(false); handleLogout(); }}
-                  style={{ padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', color: '#444' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9f9f9'}
+                  style={{ padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', color: '#dc2626' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                 >
-                  <LogOut size={16} color="#6b7280" /> Logout
+                  <LogOut size={16} color="#dc2626" /> Logout
                 </div>
               </div>
             </>

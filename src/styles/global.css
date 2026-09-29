@@ -285,7 +285,7 @@ select option {
 .dashboard-wrapper {
   min-height: 100vh;
   display: flex;
-  background: var(--primary);
+  background: #f8fafc;
   flex-direction: column;
 }
 
@@ -297,7 +297,7 @@ select option {
   right: 0;
   height: var(--header-height);
   background: #ffffff;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid #e2e8f0;
   z-index: 99; /* Below sidebar */
   display: flex;
   align-items: center;
@@ -309,7 +309,7 @@ select option {
 /* Sidebar */
 .sidebar {
   width: var(--sidebar-width);
-  background: var(--secondary);
+  background: #111c43;
   border-right: none;
   padding: 0; /* Removing padding to allow full banner */
   display: flex;
@@ -320,7 +320,7 @@ select option {
   height: 100vh;
   overflow-y: auto;
   z-index: 100;
-  box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+  box-shadow: 1px 0 3px rgba(0,0,0,0.05);
 }
 
 /* Scrollbar for sidebar */
@@ -422,7 +422,7 @@ select option {
   flex: 1;
   padding: 24px;
   min-height: calc(100vh - var(--header-height));
-  background: var(--primary);
+  background: #f8fafc;
 }
 
 .page-header {

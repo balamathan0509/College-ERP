@@ -29,19 +29,19 @@ export default function DateTimeHeader() {
       display: "flex",
       justifyContent: "space-between",
       alignItems: "center",
-      padding: "12px 20px",
+      padding: "14px 22px",
       marginBottom: 24,
-      borderRadius: "var(--radius-md)",
-      background: "var(--bg-color)",
-      border: "1px solid var(--border)",
-      backdropFilter: "blur(12px)"
+      borderRadius: 10,
+      background: "#ffffff",
+      border: "1px solid #e2e8f0",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <Calendar size={18} color="var(--highlight)" />
+        <Calendar size={18} color="#2563eb" />
         <span style={{
           fontSize: 14,
           fontWeight: 600,
-          color: "var(--text)",
+          color: "#0f172a",
           fontFamily: "Inter, sans-serif"
         }}>
           {dateStr}
@@ -52,16 +52,16 @@ export default function DateTimeHeader() {
         alignItems: "center",
         gap: 8,
         padding: "6px 14px",
-        borderRadius: "var(--radius-sm)",
-        background: "rgba(37, 99, 235, 0.12)",
-        border: "1px solid rgba(37, 99, 235, 0.3)"
+        borderRadius: 6,
+        background: "#eff6ff",
+        border: "1px solid #bfdbfe"
       }}>
-        <Clock size={16} color="var(--highlight)" />
+        <Clock size={16} color="#1d4ed8" />
         <span style={{
           fontSize: 14,
           fontWeight: 700,
-          color: "var(--highlight)",
-          fontFamily: "Plus Jakarta Sans, sans-serif",
+          color: "#1d4ed8",
+          fontFamily: "Inter, sans-serif",
           letterSpacing: "0.02em",
           fontVariantNumeric: "tabular-nums"
         }}>
