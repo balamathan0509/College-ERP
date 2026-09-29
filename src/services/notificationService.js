@@ -4,11 +4,11 @@
 //  Roles: student | staff | hod | officestaff | security | warden | mess | placements
 // ─────────────────────────────────────────────────────────────
 
-import { db } from "../firebase/config";
+import { db } from "../supabase/supabaseAdapter";
 import {
   collection, query, where, getDocs,
   doc, setDoc, addDoc, serverTimestamp,
-} from "firebase/firestore";
+} from "../supabase/supabaseAdapter";
 
 const FCM_SERVER_KEY = process.env.REACT_APP_FCM_SERVER_KEY;
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || "http://localhost:3002";

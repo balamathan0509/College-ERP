@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
-import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { db } from "../../supabase/supabaseAdapter";
+import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from "../../supabase/supabaseAdapter";
 import { sendEmail } from "../../utils/notifications";
 import QRCode from "react-qr-code";
 
