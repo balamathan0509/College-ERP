@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { doc, getDoc } from "firebase/firestore";
-import { db, auth } from "../firebase/config";
-import { sendPasswordResetEmail } from "firebase/auth";
+import { doc, getDoc } from "../supabase/supabaseAdapter";
+import { db, auth } from "../supabase/supabaseAdapter";
+import { sendPasswordResetEmail } from "../supabase/supabaseAdapter";
 import { GraduationCap, ArrowRight, CheckCircle2 } from "lucide-react";
 
 export default function Login({ onSwitch }) {
@@ -46,7 +46,8 @@ export default function Login({ onSwitch }) {
       else if (role === "principal") navigate("/principal");
       else navigate("/");
     } catch (err) {
-      setError("Invalid email or password. Try again.");
+      console.error("Login error detail:", err);
+      setError(err.message || "Invalid email or password. Try again.");
     }
     setLoading(false);
   }

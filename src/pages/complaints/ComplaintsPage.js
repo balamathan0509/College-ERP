@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
+import { db } from "../../supabase/supabaseAdapter";
 import {
   addDoc,
   collection,
@@ -11,7 +11,7 @@ import {
   query,
   updateDoc,
   where
-} from "firebase/firestore";
+} from "../../supabase/supabaseAdapter";
 import {
   MessageSquareWarning,
   PlusCircle,

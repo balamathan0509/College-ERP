@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
-import { db } from "../../firebase/config";
+import { db } from "../../supabase/supabaseAdapter";
 import {
   collection,
   addDoc,
@@ -11,7 +11,7 @@ import {
   updateDoc,
   query,
   where
-} from "firebase/firestore";
+} from "../../supabase/supabaseAdapter";
 import {
   AlertOctagon,
   BookOpen,

@@ -2,9 +2,8 @@
 import React, { useState, useRef } from "react";
 import Sidebar from "../components/Sidebar";
 import { useAuth } from "../context/AuthContext";
-import { db } from "../firebase/config";
-import { doc, updateDoc } from "firebase/firestore";
-import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "firebase/auth";
+import { db, doc, updateDoc, uploadFileToSupabase } from "../supabase/supabaseAdapter";
+import { updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "../supabase/supabaseAdapter";
 import {
   User,
   Camera,
@@ -20,7 +19,7 @@ const CLOUD_NAME = "dpz8bbusa";
 const UPLOAD_PRESET = "college_portal";
 
 export default function Profile() {
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, refreshProfile } = useAuth();
   const [tab, setTab] = useState("profile");
   const fileInputRef = useRef();
 
@@ -39,6 +38,14 @@ export default function Profile() {
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
+  React.useEffect(() => {
+    if (userProfile) {
+      if (userProfile.name) setName(userProfile.name);
+      if (userProfile.phone) setPhone(userProfile.phone);
+      if (userProfile.photoURL) setPhotoURL(userProfile.photoURL);
+    }
+  }, [userProfile]);
+
   async function handlePhotoUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -47,22 +54,33 @@ export default function Profile() {
     setUploading(true);
     setUploadError("");
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", UPLOAD_PRESET);
-      formData.append("folder", "college_portal_profiles");
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
-        method: "POST", body: formData
-      });
-      const data = await res.json();
-      if (data.secure_url) {
-        setPhotoURL(data.secure_url);
-        await updateDoc(doc(db, "users", currentUser.uid), { photoURL: data.secure_url });
-      } else {
-        setUploadError("Photo upload failed. Try again.");
+      const targetUid = currentUser?.uid || currentUser?.id || userProfile?.uid || userProfile?.id;
+      if (!targetUid) throw new Error("User ID not found.");
+      
+      const ext = file.name.split(".").pop();
+      const filePath = `profile_${targetUid}_${Date.now()}.${ext}`;
+      
+      let publicUrl = "";
+      try {
+        publicUrl = await uploadFileToSupabase("profiles", filePath, file);
+      } catch (storageErr) {
+        console.warn("Storage upload fallback to base64 data URL:", storageErr);
+        const reader = new FileReader();
+        publicUrl = await new Promise((resolve) => {
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(file);
+        });
       }
-    } catch {
-      setUploadError("Photo upload failed. Try again.");
+
+      setPhotoURL(publicUrl);
+      
+      const userRef = doc(db, "users", targetUid);
+      await updateDoc(userRef, { photoURL: publicUrl });
+
+      if (refreshProfile) await refreshProfile();
+    } catch (err) {
+      console.error("Photo upload error:", err);
+      setUploadError("Photo upload failed: " + (err.message || "Try again"));
     }
     setUploading(false);
   }
@@ -72,11 +90,18 @@ export default function Profile() {
     if (!name.trim()) return setProfileError("Name cannot be empty.");
     setProfileSaving(true);
     try {
-      await updateDoc(doc(db, "users", currentUser.uid), { name, phone });
+      const targetUid = currentUser?.uid || currentUser?.id || userProfile?.uid || userProfile?.id;
+      if (!targetUid) throw new Error("User ID not found.");
+      
+      const userRef = doc(db, "users", targetUid);
+      await updateDoc(userRef, { name, phone, photoURL });
+
+      if (refreshProfile) await refreshProfile();
       setProfileSaved(true);
       setTimeout(() => setProfileSaved(false), 3000);
-    } catch {
-      setProfileError("Failed to update profile.");
+    } catch (err) {
+      console.error("Failed to save profile:", err);
+      setProfileError(err.message || "Failed to update profile.");
     }
     setProfileSaving(false);
   }
