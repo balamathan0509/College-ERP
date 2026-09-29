@@ -172,7 +172,7 @@ export default function StaffDashboard() {
                     <div key={student.id} style={{
                       padding: 14,
                       borderRadius: "var(--radius-md)",
-                      background: "rgba(11, 19, 43, 0.4)",
+                      background: "var(--bg-color)",
                       border: "1px solid var(--border)",
                       display: "flex",
                       justifyContent: "space-between",
@@ -206,7 +206,7 @@ export default function StaffDashboard() {
                 padding: "20px 14px", 
                 borderRadius: "var(--radius-md)",
                 border: "1px solid var(--border)",
-                background: "rgba(11, 19, 43, 0.4)",
+                background: "var(--bg-color)",
                 cursor: "pointer", 
                 textAlign: "center", 
                 transition: "all 0.2s ease",
@@ -220,7 +220,7 @@ export default function StaffDashboard() {
                 onMouseOut={e => {
                   e.currentTarget.style.transform = "translateY(0)";
                   e.currentTarget.style.borderColor = "var(--border)";
-                  e.currentTarget.style.background = "rgba(11, 19, 43, 0.4)";
+                  e.currentTarget.style.background = "var(--bg-color)";
                 }}
               >
                 {action.label === "Gate Pass Approvals" && stats.pendingGatePasses > 0 && (

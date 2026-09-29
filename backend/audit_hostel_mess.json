@@ -1,0 +1,361 @@
+{
+  "gate_pass": [
+    {
+      "file": "pages\\hod\\GatePass.js",
+      "operation": "collection_ref",
+      "context": "try { const q1 = query( collection(db, \"gate_pass\"), where(\"dept\", \"==\", userProfile.dept), where(\"status\", \"==\", \"pending_hod\") "
+    },
+    {
+      "file": "pages\\hod\\GatePass.js",
+      "operation": "collection_ref",
+      "context": " const q2 = query( collection(db, \"gate_pass\"), where(\"dept\", \"==\", userProfile.dept), where(\"status\", \"==\", \"approved\") "
+    },
+    {
+      "file": "pages\\hod\\GatePass.js",
+      "operation": "update/delete/ref",
+      "context": "if (action === \"forward\") { // Forward to Principal await updateDoc(doc(db, \"gate_pass\", pass.id), { status: \"pending_principal\", hodActionAt: new Date().toISOString(), "
+    },
+    {
+      "file": "pages\\hod\\GatePass.js",
+      "operation": "update/delete/ref",
+      "context": "} } else { await updateDoc(doc(db, \"gate_pass\", pass.id), { status: action === \"approve\" ? \"approved\" : \"rejected\", token, "
+    },
+    {
+      "file": "pages\\hod\\GatePass.js",
+      "operation": "delete",
+      "context": "try { for (const pass of approvedByYear) { await deleteDoc(doc(db, \"gate_pass\", pass.id)); } setApproved(prev => prev.filter(p => p.year !== selectedYear)); "
+    },
+    {
+      "file": "pages\\hod\\HodDashboard.js",
+      "operation": "collection_ref",
+      "context": "// Pending gate passes for HOD approval const gpQ = query( collection(db, \"gate_pass\"), where(\"dept\", \"==\", userProfile.dept), where(\"status\", \"==\", \"pending_hod\") "
+    },
+    {
+      "file": "pages\\management\\Dashboard.js",
+      "operation": "query_where",
+      "context": " // Pending gate passes (all depts) const gpSnap = await getDocs(query(collection(db, \"gate_pass\"), where(\"status\", \"in\", [\"pending_staff\", \"pending_hod\"]))); const pendingGatePasses = gpSnap.size;  "
+    },
+    {
+      "file": "pages\\principal\\Dashboard.js",
+      "operation": "query_where",
+      "context": "const snapAlerts = await getDocs(qAlerts);  const qGatePasses = query(collection(db, \"gate_pass\"), where(\"status\", \"==\", \"pending_principal\")); const snapGatePasses = await getDocs(qGatePasses);  "
+    },
+    {
+      "file": "pages\\principal\\GatePass.js",
+      "operation": "collection_ref",
+      "context": "// Fetch pending_principal requests (forwarded by HOD) const q1 = query( collection(db, \"gate_pass\"), where(\"status\", \"==\", \"pending_principal\") ); "
+    },
+    {
+      "file": "pages\\principal\\GatePass.js",
+      "operation": "collection_ref",
+      "context": "// Fetch approved by principal const q2 = query( collection(db, \"gate_pass\"), where(\"status\", \"==\", \"approved\"), where(\"approvedByPrincipal\", \"==\", true) "
+    },
+    {
+      "file": "pages\\principal\\GatePass.js",
+      "operation": "update/delete/ref",
+      "context": "if (action === \"approve\") { const token = generateToken(); await updateDoc(doc(db, \"gate_pass\", pass.id), { status: \"approved\", token, "
+    },
+    {
+      "file": "pages\\principal\\GatePass.js",
+      "operation": "update/delete/ref",
+      "context": "} else { // Reject await updateDoc(doc(db, \"gate_pass\", pass.id), { status: \"rejected\", principalActionAt: new Date().toISOString(), "
+    },
+    {
+      "file": "pages\\security\\VerifyGatePass.js",
+      "operation": "collection_ref",
+      "context": "try { const q = query( collection(db, \"gate_pass\"), where(\"status\", \"==\", \"verified_by_security\") ); "
+    },
+    {
+      "file": "pages\\security\\VerifyGatePass.js",
+      "operation": "query_where",
+      "context": " try { const q = query(collection(db, \"gate_pass\"), where(\"token\", \"==\", tokenToUse)); const snap = await getDocs(q);  "
+    },
+    {
+      "file": "pages\\security\\VerifyGatePass.js",
+      "operation": "update/delete/ref",
+      "context": "try { const now = new Date().toISOString(); await updateDoc(doc(db, \"gate_pass\", verifyResult.pass.id), { status: \"verified_by_security\", verifiedBySecurityAt: now, "
+    },
+    {
+      "file": "pages\\staff\\GatePass.js",
+      "operation": "collection_ref",
+      "context": "try { const q = query( collection(db, \"gate_pass\"), where(\"dept\", \"==\", userProfile.dept), where(\"status\", \"==\", \"pending_staff\") "
+    },
+    {
+      "file": "pages\\staff\\GatePass.js",
+      "operation": "update/delete/ref",
+      "context": "setActionLoading(pass.id + action); try { await updateDoc(doc(db, \"gate_pass\", pass.id), { status: action === \"approve\" ? \"pending_hod\" : \"rejected\", staffActionAt: new Date().toISOString(), "
+    },
+    {
+      "file": "pages\\staff\\StaffDashboard.js",
+      "operation": "collection_ref",
+      "context": "// Pending gate passes for this dept const gpQ = query( collection(db, \"gate_pass\"), where(\"dept\", \"==\", userProfile.dept), where(\"status\", \"==\", \"pending_staff\") "
+    },
+    {
+      "file": "pages\\student\\GatePass.js",
+      "operation": "create",
+      "context": "const reasonText = form.reason === \"Other\" ? form.otherReason : form.reason;  await addDoc(collection(db, \"gate_pass\"), { studentId: currentUser.uid, studentName: userProfile.name, "
+    },
+    {
+      "file": "pages\\student\\GatePass.js",
+      "operation": "collection_ref",
+      "context": "try { const q = query( collection(db, \"gate_pass\"), where(\"studentId\", \"==\", currentUser.uid) ); "
+    },
+    {
+      "file": "pages\\student\\StudentDashboard.js",
+      "operation": "collection_ref",
+      "context": "// Gate Pass const gpQ = query( collection(db, \"gate_pass\"), where(\"studentId\", \"==\", currentUser.uid) ); "
+    },
+    {
+      "file": "pages\\warden\\GatePass.js",
+      "operation": "collection_ref",
+      "context": "try { // All departments — warden pakkuvan const snap = await getDocs(collection(db, \"gate_pass\")); const list = snap.docs.map(d => ({ id: d.id, ...d.data() })); list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); "
+    }
+  ],
+  "hostel_attendance": [
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "create",
+      "context": "try { await Promise.all(activeStudents.map(s => addDoc(collection(db, \"hostel_attendance\"), { studentId: s.studentId, studentName: s.studentName, registerNo: s.registerNo || \"\", dept: s.dept, blockName: s.blockName, roomNo: s.roomNo, "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "query_where",
+      "context": ": collection(db, \"hostel_visitors\")), getDocs(isStudent ? query(collection(db, \"hostel_attendance\"), where(\"studentId\", \"==\", currentUser.uid)) : collection(db, \"hostel_attendance\")), getDocs(collection(db, \"hostel_mess\")), "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "collection_ref",
+      "context": "getDocs(isStudent ? query(collection(db, \"hostel_attendance\"), where(\"studentId\", \"==\", currentUser.uid)) : collection(db, \"hostel_attendance\")), getDocs(collection(db, \"hostel_mess\")), getDocs(collection(db, \"hostel_notices\")) "
+    },
+    {
+      "file": "pages\\warden\\Attendance.js",
+      "operation": "UNKNOWN",
+      "context": "// Fetch existing attendance for this room + date const docId = `hostel_${selectedDate}_room_${roomNo}`; const attDoc = await getDoc(doc(db, \"hostel_attendance\", docId)); if (attDoc.exists()) { const records = attDoc.data().records || {}; "
+    },
+    {
+      "file": "pages\\warden\\Attendance.js",
+      "operation": "collection_ref",
+      "context": "try { const q = query( collection(db, \"hostel_attendance\"), where(\"date\", \"==\", selectedDate), where(\"type\", \"==\", \"room\") "
+    },
+    {
+      "file": "pages\\warden\\Attendance.js",
+      "operation": "create/update",
+      "context": "const leaveCount = Object.values(records).filter(s => s === \"Leave\").length;  await setDoc(doc(db, \"hostel_attendance\", docId), { date: selectedDate, roomNo, "
+    }
+  ],
+  "hostel_mess": [
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "update/delete/ref",
+      "context": "const existing = messmenu.find(m => m.day === menuForm.day && m.meal === menuForm.meal); if (existing) { await updateDoc(doc(db, \"hostel_mess\", existing.id), { items: menuForm.items.trim(), updatedAt: new Date().toISOString() }); } else { await addDoc(collection(db, \"hostel_mess\"), { ...menuForm, items: menuForm.items.trim(), createdAt: new Date().toISOString() }); "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "create",
+      "context": "await updateDoc(doc(db, \"hostel_mess\", existing.id), { items: menuForm.items.trim(), updatedAt: new Date().toISOString() }); } else { await addDoc(collection(db, \"hostel_mess\"), { ...menuForm, items: menuForm.items.trim(), createdAt: new Date().toISOString() }); } setSuc(\"Menu saved.\"); setMenuForm(p => ({ ...p, items: \"\" })); refresh(); "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "collection_ref",
+      "context": "? query(collection(db, \"hostel_attendance\"), where(\"studentId\", \"==\", currentUser.uid)) : collection(db, \"hostel_attendance\")), getDocs(collection(db, \"hostel_mess\")), getDocs(collection(db, \"hostel_notices\")) ]); "
+    }
+  ],
+  "hostel_mess_feedback": [
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "create",
+      "context": "setFbSaving(true); try { await addDoc(collection(db, \"hostel_mess_feedback\"), { ...fbForm, rating: Number(fbForm.rating), studentId: currentUser.uid, studentName: userProfile.name, "
+    }
+  ],
+  "hostel_notices": [
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "create",
+      "context": "setSaving(true); try { await addDoc(collection(db, \"hostel_notices\"), { ...form, postedById: currentUser.uid, postedByName: userProfile.name, postedByRole: userProfile.role, createdAt: new Date().toISOString() "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "delete",
+      "context": " async function deleteNotice(id) { try { await deleteDoc(doc(db, \"hostel_notices\", id)); refresh(); } catch { setErr(\"Failed to delete.\"); } } "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "collection_ref",
+      "context": ": collection(db, \"hostel_attendance\")), getDocs(collection(db, \"hostel_mess\")), getDocs(collection(db, \"hostel_notices\")) ]); const s = snap => snap.docs.map(d => ({ id: d.id, ...d.data() })); "
+    }
+  ],
+  "hostel_complaints": [
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "create",
+      "context": "setSaving(true); try { await addDoc(collection(db, \"hostel_complaints\"), { ...form, studentId: currentUser.uid, studentName: userProfile.name, registerNo: userProfile.registerNo || \"\", dept: userProfile.dept, "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "update/delete/ref",
+      "context": "const a = actionState[id] || {}; try { await updateDoc(doc(db, \"hostel_complaints\", id), { status: a.status, actionNote: a.note || \"\", resolvedAt: a.status === \"resolved\" ? new Date().toISOString() : \"\", resolvedByName: userProfile.name "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "query_where",
+      "context": ": collection(db, \"hostel_fees\")), getDocs(isStudent ? query(collection(db, \"hostel_complaints\"), where(\"studentId\", \"==\", currentUser.uid)) : isWarden ? query(collection(db, \"hostel_complaints\"), where(\"assignedBlock\", \"==\", userProfile.blockAssigned || \"__none__\")) "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "query_where",
+      "context": "? query(collection(db, \"hostel_complaints\"), where(\"studentId\", \"==\", currentUser.uid)) : isWarden ? query(collection(db, \"hostel_complaints\"), where(\"assignedBlock\", \"==\", userProfile.blockAssigned || \"__none__\")) : collection(db, \"hostel_complaints\")), getDocs(isStudent "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "collection_ref",
+      "context": ": isWarden ? query(collection(db, \"hostel_complaints\"), where(\"assignedBlock\", \"==\", userProfile.blockAssigned || \"__none__\")) : collection(db, \"hostel_complaints\")), getDocs(isStudent ? query(collection(db, \"hostel_gatepasses\"), where(\"studentId\", \"==\", currentUser.uid)) "
+    }
+  ],
+  "hostel_gatepasses": [
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "create",
+      "context": "setSaving(true); try { await addDoc(collection(db, \"hostel_gatepasses\"), { ...form, studentId: currentUser.uid, studentName: userProfile.name, registerNo: userProfile.registerNo || \"\", dept: userProfile.dept, "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "update/delete/ref",
+      "context": "async function updatePass(id, status, note = \"\") { try { await updateDoc(doc(db, \"hostel_gatepasses\", id), { status, actionNote: note, actionByName: userProfile.name, actionAt: new Date().toISOString() }); "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "query_where",
+      "context": ": collection(db, \"hostel_complaints\")), getDocs(isStudent ? query(collection(db, \"hostel_gatepasses\"), where(\"studentId\", \"==\", currentUser.uid)) : isWarden ? query(collection(db, \"hostel_gatepasses\"), where(\"blockId\", \"==\", userProfile.blockAssigned || \"__none__\")) "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "query_where",
+      "context": "? query(collection(db, \"hostel_gatepasses\"), where(\"studentId\", \"==\", currentUser.uid)) : isWarden ? query(collection(db, \"hostel_gatepasses\"), where(\"blockId\", \"==\", userProfile.blockAssigned || \"__none__\")) : collection(db, \"hostel_gatepasses\")), getDocs(isStudent "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "collection_ref",
+      "context": ": isWarden ? query(collection(db, \"hostel_gatepasses\"), where(\"blockId\", \"==\", userProfile.blockAssigned || \"__none__\")) : collection(db, \"hostel_gatepasses\")), getDocs(isStudent ? query(collection(db, \"hostel_visitors\"), where(\"studentId\", \"==\", currentUser.uid)) "
+    }
+  ],
+  "hostel_visitors": [
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "create",
+      "context": "setSaving(true); try { await addDoc(collection(db, \"hostel_visitors\"), { ...form, loggedById: currentUser.uid, loggedByName: userProfile.name, visitedAt: new Date().toISOString(), exitedAt: \"\" "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "update/delete/ref",
+      "context": " async function logExit(id) { try { await updateDoc(doc(db, \"hostel_visitors\", id), { exitedAt: new Date().toISOString() }); refresh(); } catch { setErr(\"Failed to log exit.\"); } } "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "query_where",
+      "context": ": collection(db, \"hostel_gatepasses\")), getDocs(isStudent ? query(collection(db, \"hostel_visitors\"), where(\"studentId\", \"==\", currentUser.uid)) : collection(db, \"hostel_visitors\")), getDocs(isStudent "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "collection_ref",
+      "context": "getDocs(isStudent ? query(collection(db, \"hostel_visitors\"), where(\"studentId\", \"==\", currentUser.uid)) : collection(db, \"hostel_visitors\")), getDocs(isStudent ? query(collection(db, \"hostel_attendance\"), where(\"studentId\", \"==\", currentUser.uid)) "
+    }
+  ],
+  "hostel_allotments": [
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "create",
+      "context": "setSaving(true); try { await addDoc(collection(db, \"hostel_allotments\"), { ...form, blockName: block?.blockName || \"\", status: \"active\", allottedAt: new Date().toISOString(), "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "update/delete/ref",
+      "context": " async function vacate(id) { try { await updateDoc(doc(db, \"hostel_allotments\", id), { status: \"vacated\", vacatedAt: new Date().toISOString() }); refresh(); } catch { setErr(\"Failed to vacate.\"); } } "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "create",
+      "context": "setReqSaving(true); try { await addDoc(collection(db, \"hostel_allotments\"), { studentId: currentUser.uid, studentName: userProfile.name, registerNo: userProfile.registerNo || \"\", dept: userProfile.dept, "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "update/delete/ref",
+      "context": "<span style={{ padding: \"3px 10px\", borderRadius: 20, fontSize: 12, fontWeight: 700, background: a.status === \"active\" ? \"rgba(72,187,120,0.2)\" : a.status === \"requested\" ? \"rgba(246,173,85,0.2)\" : \"rgba(160,174,192,0.2)\", color: a.status === \"active\" ? \"#48bb78\" : a.status === \"requested\" ? \"#f6ad55\" : \"#a0aec0\" }}>{a.status}</span> {a.status === \"active\" && <button onClick={() => vacate(a.id)} style={btnRed}>Vacate</button>} {a.status === \"requested\" && <button onClick={async () => { await updateDoc(doc(db, \"hostel_allotments\", a.id), { status: \"active\", allottedAt: new Date().toISOString(), allottedById: currentUser.uid }); refresh(); }} style={btnGreen}>Approve</button>} </div> </div> "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "collection_ref",
+      "context": "const [bSnap, alSnap, fSnap, cSnap, gpSnap, vSnap, attSnap, mSnap, nSnap] = await Promise.all([ getDocs(collection(db, \"hostel_blocks\")), getDocs(collection(db, \"hostel_allotments\")), getDocs(isStudent ? query(collection(db, \"hostel_fees\"), where(\"studentId\", \"==\", currentUser.uid)) "
+    }
+  ],
+  "hostel_fees": [
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "create",
+      "context": "setSaving(true); try { await addDoc(collection(db, \"hostel_fees\"), { ...form, amount: Number(form.amount), status: \"pending\", createdAt: new Date().toISOString(), createdById: currentUser.uid "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "update/delete/ref",
+      "context": " async function markPaid(id) { try { await updateDoc(doc(db, \"hostel_fees\", id), { status: \"paid\", paidAt: new Date().toISOString() }); refresh(); } catch { setErr(\"Failed to update.\"); } } "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "update/delete/ref",
+      "context": " async function markOverdue(id) { try { await updateDoc(doc(db, \"hostel_fees\", id), { status: \"overdue\" }); refresh(); } catch { setErr(\"Failed to update.\"); } } "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "query_where",
+      "context": "getDocs(collection(db, \"hostel_allotments\")), getDocs(isStudent ? query(collection(db, \"hostel_fees\"), where(\"studentId\", \"==\", currentUser.uid)) : isWarden ? query(collection(db, \"hostel_fees\"), where(\"dept\", \"==\", userProfile.dept)) "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "query_where",
+      "context": "? query(collection(db, \"hostel_fees\"), where(\"studentId\", \"==\", currentUser.uid)) : isWarden ? query(collection(db, \"hostel_fees\"), where(\"dept\", \"==\", userProfile.dept)) : collection(db, \"hostel_fees\")), getDocs(isStudent "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "collection_ref",
+      "context": ": isWarden ? query(collection(db, \"hostel_fees\"), where(\"dept\", \"==\", userProfile.dept)) : collection(db, \"hostel_fees\")), getDocs(isStudent ? query(collection(db, \"hostel_complaints\"), where(\"studentId\", \"==\", currentUser.uid)) "
+    }
+  ],
+  "hostel_blocks": [
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "collection_ref",
+      "context": "try { const [bSnap, alSnap, fSnap, cSnap, gpSnap, vSnap, attSnap, mSnap, nSnap] = await Promise.all([ getDocs(collection(db, \"hostel_blocks\")), getDocs(collection(db, \"hostel_allotments\")), getDocs(isStudent "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "create",
+      "context": "setSaving(true); try { await addDoc(collection(db, \"hostel_blocks\"), { ...form, totalRooms: Number(form.totalRooms) || 0, capacity: Number(form.capacity) || 0, "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "update/delete/ref",
+      "context": "e.preventDefault(); setErr(\"\"); try { await updateDoc(doc(db, \"hostel_blocks\", editId), { ...editForm, totalRooms: Number(editForm.totalRooms) || 0, capacity: Number(editForm.capacity) || 0 }); "
+    },
+    {
+      "file": "pages\\hostel\\HostelPage.js",
+      "operation": "delete",
+      "context": " async function handleDelete(id) { try { await deleteDoc(doc(db, \"hostel_blocks\", id)); refresh(); } catch { setErr(\"Failed to delete.\"); } } "
+    }
+  ],
+  "mess_menu": [
+    {
+      "file": "pages\\mess\\MessPage.js",
+      "operation": "query_where",
+      "context": "setMenuError(\"\"); try { const q = query(collection(db, \"mess_menu\"), where(\"dept\", \"==\", userProfile?.dept || \"\")); const snap = await getDocs(q); const list = snap.docs.map(d => ({ id: d.id, ...d.data() })); "
+    },
+    {
+      "file": "pages\\mess\\MessPage.js",
+      "operation": "create",
+      "context": "setMenuSaving(true); try { await addDoc(collection(db, \"mess_menu\"), { dept: userProfile?.dept || \"\", day: menuForm.day, "
+    },
+    {
+      "file": "services\\notificationService.js",
+      "operation": "UNKNOWN",
+      "context": "export async function notifyMessMenuUpdate({ dept, menuDate, specialItem }) { const tokens = await getAllStudentTokens(dept); await sendNotification({ tokens, title: \"🍽️ Mess Menu Updated\", body: `Menu for ${menuDate} is available${specialItem ? ` — Special: ${specialItem}` : \"\"}`, data: { type: \"mess_menu\", screen: \"Mess\" } }); }  "
+    }
+  ]
+}

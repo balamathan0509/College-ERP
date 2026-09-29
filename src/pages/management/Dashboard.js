@@ -231,7 +231,7 @@ export default function ManagementDashboard() {
                   padding: "20px 14px", 
                   borderRadius: "var(--radius-md)",
                   border: "1px solid var(--border)",
-                  background: "rgba(11, 19, 43, 0.4)",
+                  background: '#ffffff',
                   cursor: "pointer", 
                   textAlign: "center", 
                   transition: "all 0.2s ease"
@@ -244,7 +244,7 @@ export default function ManagementDashboard() {
                 onMouseOut={e => {
                   e.currentTarget.style.transform = "translateY(0)";
                   e.currentTarget.style.borderColor = "var(--border)";
-                  e.currentTarget.style.background = "rgba(11, 19, 43, 0.4)";
+                  e.currentTarget.style.background = "var(--secondary)";
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>{action.icon}</div>

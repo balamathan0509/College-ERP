@@ -7,7 +7,7 @@ import {
   signOut,
   onAuthStateChanged
 } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
 
 const AuthContext = createContext();
 
@@ -45,7 +45,23 @@ export function AuthProvider({ children }) {
       const docRef = doc(db, "users", uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        setUserProfile(docSnap.data());
+        let data = docSnap.data();
+        
+        // HOD Role Normalization: 
+        // If designation is HOD or the role itself ends with HOD (e.g. CSEHOD), normalize role to "hod"
+        const isHodDesignation = data.designation && data.designation.toLowerCase().includes("hod");
+        const isHodRoleVariant = data.role && data.role.toLowerCase().endsWith("hod");
+        
+        if (data.role !== "hod" && (isHodDesignation || isHodRoleVariant)) {
+          data.role = "hod";
+          try {
+            await updateDoc(docRef, { role: "hod" });
+          } catch (updateErr) {
+            console.error("Failed to permanently normalize HOD role in DB:", updateErr);
+          }
+        }
+        
+        setUserProfile(data);
       }
     } catch (err) {
       console.error("Failed to fetch user profile (Firestore rules issue?):", err);

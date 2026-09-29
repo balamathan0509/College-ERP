@@ -350,7 +350,7 @@ export default function MessPage() {
                           {menuByDay[day].map(entry => (
                             <div key={entry.id} style={{
                               padding: "12px 16px", borderRadius: "var(--radius-md)",
-                              border: "1px solid var(--border)", background: "rgba(11, 19, 43, 0.4)",
+                              border: "1px solid var(--border)", background: '#ffffff',
                               display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10
                             }}>
                               <div>

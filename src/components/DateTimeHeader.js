@@ -32,7 +32,7 @@ export default function DateTimeHeader() {
       padding: "12px 20px",
       marginBottom: 24,
       borderRadius: "var(--radius-md)",
-      background: "rgba(11, 19, 43, 0.5)",
+      background: "var(--bg-color)",
       border: "1px solid var(--border)",
       backdropFilter: "blur(12px)"
     }}>

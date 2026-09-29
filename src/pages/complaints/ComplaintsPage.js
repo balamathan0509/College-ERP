@@ -369,7 +369,7 @@ export default function ComplaintsPage() {
                         </div>
 
                         {canManage && (
-                          <div style={{ minWidth: 220, background: "rgba(11, 19, 43, 0.4)", padding: 14, borderRadius: "var(--radius-sm)", border: "1px solid var(--border)" }}>
+                          <div style={{ minWidth: 220, background: '#ffffff', padding: 14, borderRadius: "var(--radius-sm)", border: "1px solid var(--border)" }}>
                             <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", marginBottom: 8 }}>Update Status</div>
                             <select
                               value={updateStatus}
