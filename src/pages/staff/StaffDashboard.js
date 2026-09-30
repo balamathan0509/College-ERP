@@ -23,12 +23,15 @@ import {
   Send,
   FileCheck
 } from "lucide-react";
+import { getCalendarEventForDate, getUpcomingExamReminder } from "../../utils/academicCalendarUtils";
 
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 
 export default function StaffDashboard() {
   const { userProfile } = useAuth();
   const navigate = useNavigate();
+  const [todayEvent, setTodayEvent] = useState(null);
+  const [upcomingReminder, setUpcomingReminder] = useState(null);
   const [stats, setStats] = useState({
     pendingGatePasses: 0,
     todayAttendanceMarked: false,
@@ -44,6 +47,20 @@ export default function StaffDashboard() {
   async function fetchStats() {
     try {
       const today = new Date().toISOString().split("T")[0];
+
+      // Check Today's Academic Event & Upcoming Exam Reminder
+      if (userProfile?.dept) {
+        const calEv = await getCalendarEventForDate(userProfile.dept, today);
+        setTodayEvent(calEv);
+
+        const reminder = await getUpcomingExamReminder(userProfile.dept, 3);
+        if (reminder) {
+          const isDismissed = localStorage.getItem(`dismissed_exam_${reminder.id}_${today}`);
+          if (!isDismissed) {
+            setUpcomingReminder(reminder);
+          }
+        }
+      }
 
       // Pending gate passes for this dept
       const gpQ = query(
@@ -114,6 +131,7 @@ export default function StaffDashboard() {
   useEffect(() => { if (userProfile) fetchStats(); }, [userProfile]);
 
   const quickActions = [
+    { icon: <Calendar size={24} color="#2563eb" />, label: "Academic Calendar", path: "/academics/academic-calendar" },
     { icon: <BookOpen size={24} color="#2563eb" />, label: "Log Class & Topic", onClick: () => setIsLogModalOpen(true) },
     { icon: <Award size={24} color="#7c3aed" />, label: "5-Internal Marks", path: "/cia/mark-entry" },
     { icon: <DoorOpen size={24} color="#3b82f6" />, label: "Gate Pass Approvals", path: "/staff/gatepass" },
@@ -123,6 +141,14 @@ export default function StaffDashboard() {
     { icon: <Bell size={24} color="#f59e0b" />, label: "Send Alert", path: "/staff/alerts" },
     { icon: <MessageSquareWarning size={24} color="#ec4899" />, label: "View Complaints", path: "/staff/complaints" }
   ];
+
+  const handleClearReminder = () => {
+    const today = new Date().toISOString().split("T")[0];
+    if (upcomingReminder?.id) {
+      localStorage.setItem(`dismissed_exam_${upcomingReminder.id}_${today}`, "true");
+    }
+    setUpcomingReminder(null);
+  };
 
   return (
     <div className="dashboard-wrapper">
@@ -149,6 +175,73 @@ export default function StaffDashboard() {
             <Plus size={16} /> Log Completed Class & Topic
           </button>
         </div>
+
+        {/* Upcoming Exam Reminder Alert Card */}
+        {upcomingReminder && (
+          <div style={{
+            padding: "16px 20px", borderRadius: "var(--radius-md)", marginBottom: 24,
+            background: "linear-gradient(135deg, #fffbebfb, #fef3c7)", border: "1px solid #f59e0b",
+            display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <Bell size={24} color="#d97706" style={{ flexShrink: 0 }} />
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "#92400e" }}>
+                  🔔 Upcoming Exam Alert ({upcomingReminder.daysRemaining} Day{upcomingReminder.daysRemaining > 1 ? "s" : ""} Away)
+                </div>
+                <div style={{ fontSize: 13, color: "#b45309", marginTop: 2 }}>
+                  <strong>{upcomingReminder.title}</strong> is scheduled on <strong>{upcomingReminder.startDate}</strong> according to the {userProfile?.dept} Department Academic Calendar.
+                </div>
+              </div>
+            </div>
+            <button
+              className="btn-secondary"
+              onClick={handleClearReminder}
+              style={{ width: "auto", padding: "6px 14px", fontSize: 12, background: "#ffffff", borderColor: "#f59e0b", color: "#92400e", fontWeight: 700 }}
+            >
+              Clear / Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Academic Calendar Today Status Banner */}
+        {todayEvent ? (
+          <div style={{
+            padding: "16px 20px", borderRadius: "var(--radius-md)", marginBottom: 24,
+            background: todayEvent.type === "holiday" ? "rgba(239, 68, 68, 0.1)" : "rgba(245, 158, 11, 0.1)",
+            border: todayEvent.type === "holiday" ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid rgba(245, 158, 11, 0.3)",
+            display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <Calendar size={24} color={todayEvent.type === "holiday" ? "#ef4444" : "#f59e0b"} />
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: todayEvent.type === "holiday" ? "#dc2626" : "#b45309" }}>
+                  Academic Calendar Event Today: {todayEvent.title} ({todayEvent.type.toUpperCase()})
+                </div>
+                <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
+                  {todayEvent.type === "holiday" ? "College/Department holiday. Attendance & Syllabus log entry are blocked." : "Exam/Special Event Day. Regular attendance & class syllabus logging are blocked as per Academic Calendar."}
+                </div>
+              </div>
+            </div>
+            <button className="btn-secondary" onClick={() => navigate("/academics/academic-calendar")} style={{ width: "auto", padding: "6px 14px", fontSize: 13 }}>
+              View Calendar
+            </button>
+          </div>
+        ) : (
+          <div style={{
+            padding: "12px 18px", borderRadius: "var(--radius-md)", marginBottom: 24,
+            background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)",
+            display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "#047857", fontWeight: 600 }}>
+              <Calendar size={18} color="#10b981" />
+              Academic Calendar: Regular Working Day ({userProfile?.dept} Dept)
+            </div>
+            <button className="btn-secondary" onClick={() => navigate("/academics/academic-calendar")} style={{ width: "auto", padding: "4px 12px", fontSize: 12 }}>
+              Calendar
+            </button>
+          </div>
+        )}
 
         {/* Live Stats */}
         <div className="stats-grid" style={{ marginBottom: 28 }}>

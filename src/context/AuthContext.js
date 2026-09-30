@@ -144,7 +144,20 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
-        await fetchUserProfile(user.uid);
+        try {
+          await fetchUserProfile(user.uid);
+        } catch (err) {
+          console.error("Auth state user profile fetch error:", err);
+          setUserProfile({
+            uid: user.uid,
+            email: user.email,
+            name: user.email?.split("@")[0] || user.email,
+            role: user.email === SUPER_ADMIN_EMAIL ? "admin" : "student",
+            isSuperAdmin: user.email === SUPER_ADMIN_EMAIL
+          });
+        }
+      } else {
+        setUserProfile(null);
       }
       setLoading(false);
     });
@@ -163,7 +176,23 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {loading ? (
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100vh",
+          width: "100vw",
+          background: "#f8fafc"
+        }}>
+          <div style={{ width: 44, height: 44, border: "4px solid #e2e8f0", borderTop: "4px solid #2563eb", borderRadius: "50%", animation: "spin 0.8s linear infinite" }}></div>
+          <p style={{ marginTop: 16, color: "#64748b", fontWeight: 600, fontSize: 14, fontFamily: "system-ui, -apple-system, sans-serif" }}>Loading RVCE College ERP Portal...</p>
+          <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        </div>
+      ) : (
+        children
+      )}
     </AuthContext.Provider>
   );
 }

@@ -19,10 +19,12 @@ import {
   AlertTriangle,
   ArrowRight
 } from "lucide-react";
+import { getCalendarEventForDate } from "../../utils/academicCalendarUtils";
 
 export default function StudentDashboard() {
   const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
+  const [todayEvent, setTodayEvent] = useState(null);
   const [stats, setStats] = useState({
     attendancePercent: null,
     totalDays: 0,
@@ -38,6 +40,12 @@ export default function StudentDashboard() {
 
   async function fetchStats() {
     try {
+      const today = new Date().toISOString().split("T")[0];
+      if (userProfile?.dept) {
+        const calEv = await getCalendarEventForDate(userProfile.dept, today, userProfile.year);
+        setTodayEvent(calEv);
+      }
+
       // Attendance
       const attQ = query(
         collection(db, "attendance"),
@@ -139,6 +147,35 @@ export default function StudentDashboard() {
             )}
           </p>
         </div>
+
+        {/* Academic Calendar Today Status Banner */}
+        {todayEvent ? (
+          <div style={{
+            padding: "16px 20px", borderRadius: "var(--radius-md)", marginBottom: 24,
+            background: todayEvent.type === "holiday" ? "rgba(239, 68, 68, 0.1)" : "rgba(245, 158, 11, 0.1)",
+            border: todayEvent.type === "holiday" ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid rgba(245, 158, 11, 0.3)",
+            display: "flex", alignItems: "center", gap: 14
+          }}>
+            <Calendar size={24} color={todayEvent.type === "holiday" ? "#ef4444" : "#f59e0b"} />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: todayEvent.type === "holiday" ? "#dc2626" : "#b45309" }}>
+                Academic Calendar Today: {todayEvent.title} ({todayEvent.type.toUpperCase()})
+              </div>
+              <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
+                {todayEvent.type === "holiday" ? "Department Holiday. Regular classes suspended." : "Exam/Special Event Day per Department Academic Calendar."}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            padding: "12px 18px", borderRadius: "var(--radius-md)", marginBottom: 24,
+            background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)",
+            display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "#047857", fontWeight: 600
+          }}>
+            <Calendar size={18} color="#10b981" />
+            Academic Calendar Today: Regular Working Day ({userProfile?.dept} Dept)
+          </div>
+        )}
 
         {/* Approaching/Expired Fines Alert banner */}
         {!loading && upcomingFines.length > 0 && (

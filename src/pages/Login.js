@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { doc, getDoc } from "../supabase/supabaseAdapter";
+import { doc, getDoc, collection, query, where, getDocs } from "../supabase/supabaseAdapter";
 import { db, auth } from "../supabase/supabaseAdapter";
 import { sendPasswordResetEmail } from "../supabase/supabaseAdapter";
 import { GraduationCap, ArrowRight, CheckCircle2 } from "lucide-react";
@@ -23,31 +23,71 @@ export default function Login({ onSwitch }) {
     try {
       const result = await login(email, password);
       const SUPER_ADMIN_EMAIL = "balamathan0509@gmail.com";
+      const userUid = result?.user?.uid;
+      const userEmail = result?.user?.email || email;
       
       let userData = null;
-      let role = null;
       try {
-        const userDoc = await getDoc(doc(db, "users", result.user.uid));
-        userData = userDoc.data();
-        role = userData?.role;
+        if (userUid) {
+          const userDoc = await getDoc(doc(db, "users", userUid));
+          if (userDoc.exists()) {
+            userData = userDoc.data();
+          }
+        }
+        if (!userData && userEmail) {
+          const q = query(collection(db, "users"), where("email", "==", userEmail));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            userData = snap.docs[0].data();
+          }
+        }
       } catch (firestoreErr) {
-        console.error("Firestore read failed (rules issue):", firestoreErr);
+        console.error("Firestore read failed:", firestoreErr);
       }
 
-      if (userData?.isSuperAdmin === true || result.user.email === SUPER_ADMIN_EMAIL) {
+      let rawRole = (userData?.role || "").toLowerCase().trim();
+      const designation = (userData?.designation || "").toLowerCase().trim();
+
+      // Normalize role
+      if (rawRole.endsWith("hod") || rawRole.includes("hod") || designation.includes("hod")) {
+        rawRole = "hod";
+      } else if (rawRole === "faculty" || rawRole === "teacher") {
+        rawRole = "staff";
+      }
+
+      if (userData?.isSuperAdmin === true || userEmail === SUPER_ADMIN_EMAIL) {
         navigate("/admin");
-      } else if (role === "student") navigate("/student");
-      else if (role === "staff") navigate("/staff");
-      else if (role === "hod") navigate("/hod");
-      else if (role === "warden") navigate("/warden");
-      else if (role === "security") navigate("/security/verify");
-      else if (role === "officestaff") navigate("/officestaff");
-      else if (role === "management") navigate("/management");
-      else if (role === "principal") navigate("/principal");
-      else navigate("/");
+      } else if (rawRole === "student" || rawRole.includes("student")) {
+        navigate("/student");
+      } else if (rawRole === "staff" || rawRole.includes("staff") || rawRole.includes("faculty")) {
+        navigate("/staff");
+      } else if (rawRole === "hod" || rawRole.includes("hod")) {
+        navigate("/hod");
+      } else if (rawRole === "warden" || rawRole.includes("warden")) {
+        navigate("/warden");
+      } else if (rawRole === "security" || rawRole.includes("security")) {
+        navigate("/security/verify");
+      } else if (rawRole === "officestaff" || rawRole.includes("office")) {
+        navigate("/officestaff");
+      } else if (rawRole === "management" || rawRole.includes("management")) {
+        navigate("/management");
+      } else if (rawRole === "principal" || rawRole.includes("principal")) {
+        navigate("/principal");
+      } else if (userData) {
+        // Default to student if profile exists but role wasn't explicitly matched
+        navigate("/student");
+      } else {
+        setError("Login successful, but user profile was not found. Please contact Administrator.");
+      }
     } catch (err) {
       console.error("Login error detail:", err);
-      setError(err.message || "Invalid email or password. Try again.");
+      let errMsg = "Invalid email or password. Please try again.";
+      if (err?.code === "auth/user-not-found" || err?.code === "auth/wrong-password" || err?.code === "auth/invalid-credential") {
+        errMsg = "Invalid email or password. Please check your credentials.";
+      } else if (err?.message) {
+        errMsg = err.message;
+      }
+      setError(errMsg);
     }
     setLoading(false);
   }

@@ -83,6 +83,7 @@ const staffNav = [
     label: "Academics", 
     isSubmenu: true,
     children: [
+      { label: "Academic Calendar", path: "/academics/academic-calendar" },
       { label: "Course Allocation", path: "/academics/course-allocation" },
       { label: "My Subjects", path: "/staff/my-subjects" },
       { label: "Course Enrollment", path: "/academics/course-enrollment" },
@@ -123,6 +124,7 @@ const hodNav = [
     label: "Department", 
     isSubmenu: true,
     children: [
+      { label: "Academic Calendar", path: "/academics/academic-calendar" },
       { label: "Student Details", path: "/config/general/student" },
       { label: "Staff Details", path: "/config/general/faculty" },
       { label: "Subject Allocation", path: "/hod/subject-allocation" },
