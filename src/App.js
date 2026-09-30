@@ -25,6 +25,7 @@ import VerifyGatePass from "./pages/security/VerifyGatePass";
 import MessPage from "./pages/mess/MessPage";
 import HostelPage from "./pages/hostel/HostelPage";
 import Profile from "./pages/Profile";
+import ExamCellDashboard from "./pages/exam_cell/ExamCellDashboard";
 import HelpCenter from "./pages/shared/HelpCenter";
 import StaffAttendance from "./pages/staff/Attendance";
 import StudentAttendance from "./pages/student/Attendance";
@@ -177,13 +178,15 @@ export default function App() {
           <Route path="/staff/fines" element={<ProtectedRoute allowedRole="staff"><StaffFines /></ProtectedRoute>} />
           <Route path="/staff/help" element={<ProtectedRoute allowedRole="staff"><HelpCenter /></ProtectedRoute>} />
           
+          {/* Exam Cell CIA Routes */}
+          <Route path="/cia/exam-creation" element={<ProtectedRoute allowedRole="exam_cell"><ExamCreation /></ProtectedRoute>} />
+          <Route path="/cia/schedule" element={<ProtectedRoute allowedRole="exam_cell"><ScheduleExamination /></ProtectedRoute>} />
+          <Route path="/cia/attendance" element={<ProtectedRoute allowedRole="exam_cell"><MarkAttendance /></ProtectedRoute>} />
+
           {/* Staff CIA Routes */}
-          <Route path="/cia/exam-creation" element={<ProtectedRoute allowedRole="staff"><ExamCreation /></ProtectedRoute>} />
-          <Route path="/cia/schedule" element={<ProtectedRoute allowedRole="staff"><ScheduleExamination /></ProtectedRoute>} />
           <Route path="/cia/question-bank" element={<ProtectedRoute allowedRole="staff"><QuestionBank /></ProtectedRoute>} />
           <Route path="/cia/my-papers" element={<ProtectedRoute allowedRole="staff"><MyQuestionPapers /></ProtectedRoute>} />
           <Route path="/cia/question-paper" element={<ProtectedRoute allowedRole="staff"><QuestionPaper /></ProtectedRoute>} />
-          <Route path="/cia/attendance" element={<ProtectedRoute allowedRole="staff"><MarkAttendance /></ProtectedRoute>} />
           <Route path="/cia/mark-entry" element={<ProtectedRoute allowedRole="staff"><MarkEntryCIA /></ProtectedRoute>} />
           <Route path="/cia/other-mark-entry" element={<ProtectedRoute allowedRole="staff"><MarkEntryOther /></ProtectedRoute>} />
           <Route path="/cia/ese-mark-entry" element={<ProtectedRoute allowedRole="staff"><MarkEntryESE /></ProtectedRoute>} />
@@ -212,6 +215,11 @@ export default function App() {
           <Route path="/staff/manage-timetable" element={<ProtectedRoute allowedRole="dept_admin"><TimetableEditor /></ProtectedRoute>} />
           <Route path="/dept_admin/profile" element={<ProtectedRoute allowedRole="dept_admin"><Profile /></ProtectedRoute>} />
           <Route path="/dept_admin/help" element={<ProtectedRoute allowedRole="dept_admin"><HelpCenter /></ProtectedRoute>} />
+
+          {/* Exam Cell Routes */}
+          <Route path="/exam_cell" element={<ProtectedRoute allowedRole="exam_cell"><ExamCellDashboard /></ProtectedRoute>} />
+          <Route path="/exam_cell/profile" element={<ProtectedRoute allowedRole="exam_cell"><Profile /></ProtectedRoute>} />
+          <Route path="/exam_cell/help" element={<ProtectedRoute allowedRole="exam_cell"><HelpCenter /></ProtectedRoute>} />
 
           {/* HOD Routes */}
           <Route path="/hod" element={<ProtectedRoute allowedRole="hod"><HodDashboard /></ProtectedRoute>} />

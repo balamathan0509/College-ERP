@@ -201,7 +201,18 @@ useEffect(() => {
   // --- Handlers for Bulk Add ---
   const handleBulkChange = (e) => {
     const { name, value } = e.target;
-    setBulkData(prev => ({ ...prev, [name]: value }));
+    setBulkData(prev => {
+      const newData = { ...prev, [name]: value };
+      if (name === 'courseCode') {
+        const alloc = allocations.find(a => a.courseCode === value);
+        if (alloc) {
+          newData.courseName = alloc.courseName || '';
+        } else {
+          newData.courseName = '';
+        }
+      }
+      return newData;
+    });
   };
 
   const handleBulkArrayChange = (section, index, value) => {
@@ -271,9 +282,6 @@ try {
       const basePayload = {
         courseCode: bulkData.courseCode,
         courseName: bulkData.courseName,
-        programme: bulkData.programme,
-        semester: bulkData.semester,
-        unit: bulkData.unit,
         difficulty: bulkData.difficulty,
         topic: '',
         createdAt: new Date().toISOString(),
@@ -621,25 +629,11 @@ try {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 20 }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Course Code *</label>
-                      <input type="text" name="courseCode" value={formData.courseCode} onChange={handleInputChange} required style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }} />
+                      <input type="text" name="courseCode" value={formData.courseCode} readOnly style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: '#f1f5f9', color: 'var(--text-muted)' }} />
                     </div>
                     <div>
                       <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Course Name</label>
-                      <input type="text" name="courseName" value={formData.courseName} onChange={handleInputChange} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Programme</label>
-                      <select name="programme" value={formData.programme} onChange={handleInputChange} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}>
-                        <option value="">Select</option>
-                        {PROGRAMMES.map(p => <option key={p} value={p}>{p}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Semester</label>
-                      <select name="semester" value={formData.semester} onChange={handleInputChange} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}>
-                        <option value="">Select</option>
-                        {SEMESTERS.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
+                      <input type="text" name="courseName" value={formData.courseName} readOnly style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: '#f1f5f9', color: 'var(--text-muted)' }} />
                     </div>
                     <div>
                       <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Section *</label>
@@ -652,12 +646,6 @@ try {
                     <div>
                       <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Marks</label>
                       <input type="text" value={formData.marks} readOnly style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.1)', color: 'var(--text)' }} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Unit</label>
-                      <select name="unit" value={formData.unit} onChange={handleInputChange} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}>
-                        {[1, 2, 3, 4, 5].map(u => <option key={u} value={u}>Unit {u}</option>)}
-                      </select>
                     </div>
                     <div>
                       <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Difficulty</label>
@@ -692,31 +680,16 @@ try {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 15, marginBottom: 30, padding: 15, background: 'rgba(255,255,255,0.02)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
                     <div>
                       <label style={{ display: 'block', marginBottom: 6, fontSize: 12, color: 'var(--text-muted)' }}>Course Code *</label>
-                      <input type="text" name="courseCode" value={bulkData.courseCode} onChange={handleBulkChange} placeholder="CS101" required style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', fontSize: 13 }} />
+                      <select name="courseCode" value={bulkData.courseCode} onChange={handleBulkChange} required style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', fontSize: 13 }}>
+                        <option value="">Select Course</option>
+                        {Array.from(new Set(allocations.map(a => a.courseCode))).map(code => (
+                          <option key={code} value={code}>{code}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label style={{ display: 'block', marginBottom: 6, fontSize: 12, color: 'var(--text-muted)' }}>Course Name</label>
-                      <input type="text" name="courseName" value={bulkData.courseName} onChange={handleBulkChange} style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', fontSize: 13 }} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: 6, fontSize: 12, color: 'var(--text-muted)' }}>Programme</label>
-                      <select name="programme" value={bulkData.programme} onChange={handleBulkChange} style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', fontSize: 13 }}>
-                        <option value="">Select</option>
-                        {PROGRAMMES.map(p => <option key={p} value={p}>{p}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: 6, fontSize: 12, color: 'var(--text-muted)' }}>Semester</label>
-                      <select name="semester" value={bulkData.semester} onChange={handleBulkChange} style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', fontSize: 13 }}>
-                        <option value="">Select</option>
-                        {SEMESTERS.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: 6, fontSize: 12, color: 'var(--text-muted)' }}>Unit</label>
-                      <select name="unit" value={bulkData.unit} onChange={handleBulkChange} style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', fontSize: 13 }}>
-                        {[1, 2, 3, 4, 5].map(u => <option key={u} value={u}>Unit {u}</option>)}
-                      </select>
+                      <input type="text" name="courseName" value={bulkData.courseName} onChange={handleBulkChange} readOnly style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--border-color)', background: '#f1f5f9', color: 'var(--text-muted)', fontSize: 13, cursor: 'not-allowed' }} />
                     </div>
                     <div>
                       <label style={{ display: 'block', marginBottom: 6, fontSize: 12, color: 'var(--text-muted)' }}>Difficulty</label>

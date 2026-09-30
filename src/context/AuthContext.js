@@ -107,6 +107,7 @@ export function AuthProvider({ children }) {
           else if (lowerEmail.includes("office") || lowerEmail.includes("fees")) inferredRole = "officestaff";
           else if (lowerEmail.includes("principal")) inferredRole = "principal";
           else if (lowerEmail.includes("warden")) inferredRole = "warden";
+          else if (lowerEmail.includes("examcell") || lowerEmail.includes("exmacell")) inferredRole = "exam_cell";
         }
 
         const newProfile = {

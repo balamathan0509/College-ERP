@@ -64,12 +64,9 @@ const staffNav = [
     label: "CIA", 
     isSubmenu: true,
     children: [
-      { label: "Exam Creation", path: "/cia/exam-creation" },
-      { label: "Schedule Examination", path: "/cia/schedule" },
       { label: "Question Bank", path: "/cia/question-bank" },
       { label: "My Question Papers", path: "/cia/my-papers" },
       { label: "Question Paper", path: "/cia/question-paper" },
-      { label: "CIA Mark Attendance", path: "/cia/attendance" },
       { label: "Mark Entry Process", path: "/cia/mark-entry" },
       { label: "Other Mark Entry Process", path: "/cia/other-mark-entry" },
       { label: "ESE Mark Entry Process", path: "/cia/ese-mark-entry" },
@@ -105,6 +102,20 @@ const staffNav = [
           { label: "Faculty Participation", path: "/academics/lms/faculty-participation" }
         ]
       }
+    ]
+  }
+];
+
+const examCellNav = [
+  { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/exam_cell" },
+  { 
+    icon: <FileText size={18} />, 
+    label: "CIA", 
+    isSubmenu: true,
+    children: [
+      { label: "Exam Creation", path: "/cia/exam-creation" },
+      { label: "Schedule Examination", path: "/cia/schedule" },
+      { label: "CIA Mark Attendance", path: "/cia/attendance" }
     ]
   }
 ];
@@ -368,6 +379,7 @@ export default function Sidebar() {
   let navItems =
     isSuperAdmin ? adminNav :
     role === "student" ? studentNav :
+    role === "exam_cell" ? examCellNav :
     role === "staff" ? [...staffNav] :
     role === "hod" ? hodNav :
     role === "dept_admin" ? [...staffNav, { icon: <Calendar size={18} />, label: "Manage Timetables", path: "/staff/manage-timetable" }] :

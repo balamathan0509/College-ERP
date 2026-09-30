@@ -10,6 +10,7 @@ export default function ScheduleExamination() {
   const { userProfile } = useAuth();
   const [schedules, setSchedules] = useState([]);
   const [exams, setExams] = useState([]);
+  const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
@@ -40,7 +41,18 @@ export default function ScheduleExamination() {
   useEffect(() => {
     fetchExams();
     fetchSchedules();
+    fetchCourses();
   }, []);
+
+  async function fetchCourses() {
+    try {
+      const snap = await getDocs(collection(db, "courses"));
+      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setCourses(list);
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   async function fetchExams() {
     try {
@@ -70,7 +82,18 @@ export default function ScheduleExamination() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => {
+      const newData = { ...prev, [name]: value };
+      if (name === 'courseCode') {
+        const selectedCourse = courses.find(c => c.courseCode === value);
+        if (selectedCourse) {
+          newData.courseName = selectedCourse.courseName;
+        } else {
+          newData.courseName = '';
+        }
+      }
+      return newData;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -131,6 +154,25 @@ export default function ScheduleExamination() {
         payload.createdBy = userProfile?.name || "System";
         await addDoc(collection(db, "cia_exam_schedules"), payload);
         toast.success("Exam scheduled successfully");
+      }
+
+      // Notify the staff assigned to this course
+      try {
+        const allocQ = query(collection(db, "subject_allocations"), where("courseCode", "==", formData.courseCode));
+        const allocSnap = await getDocs(allocQ);
+        allocSnap.docs.forEach(async (d) => {
+          const allocData = d.data();
+          await addDoc(collection(db, "alerts"), {
+            title: "CIA Exam Scheduled",
+            message: `An exam for your course ${formData.courseCode} (${formData.courseName}) has been scheduled on ${formData.date} at ${formData.startTime}.`,
+            date: new Date().toISOString(),
+            targetRole: "staff",
+            targetUid: allocData.facultyId,
+            isRead: false
+          });
+        });
+      } catch (notifErr) {
+        console.error("Notification Error:", notifErr);
       }
       
       setShowModal(false);
@@ -295,11 +337,14 @@ export default function ScheduleExamination() {
                 
                 <div>
                   <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Course Code *</label>
-                  <input type="text" name="courseCode" value={formData.courseCode} onChange={handleInputChange} placeholder="e.g. CS101" required style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }} />
+                  <select name="courseCode" value={formData.courseCode} onChange={handleInputChange} required style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}>
+                    <option value="">Select Course</option>
+                    {courses.map(c => <option key={c.id} value={c.courseCode}>{c.courseCode} - {c.courseName}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Course Name *</label>
-                  <input type="text" name="courseName" value={formData.courseName} onChange={handleInputChange} placeholder="e.g. Data Structures" required style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }} />
+                  <input type="text" name="courseName" value={formData.courseName} onChange={handleInputChange} placeholder="Course Name" required readOnly style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: '#f1f5f9', color: 'var(--text-muted)', cursor: 'not-allowed' }} />
                 </div>
                 
                 <div>
