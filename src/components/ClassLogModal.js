@@ -3,8 +3,9 @@ import React, { useState, useEffect } from "react";
 import { db } from "../supabase/supabaseAdapter";
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from "../supabase/supabaseAdapter";
 import { useAuth } from "../context/AuthContext";
-import { X, CheckSquare, BookOpen, Clock, Users, Send } from "lucide-react";
+import { X, BookOpen, Send, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
+import { getDepartmentCalendar, getCalendarEventForDate } from "../utils/academicCalendarUtils";
 
 const PERIODS = [
   "Period 1 (09:00 AM - 10:00 AM)",
@@ -33,6 +34,7 @@ export default function ClassLogModal({ isOpen, onClose, onSuccess }) {
   // Students & attendance
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState({}); // { studentId: true/false }
+  const [calendarBlockedEvent, setCalendarBlockedEvent] = useState(null);
 
   useEffect(() => {
     if (isOpen && userProfile?.uid) {
@@ -66,7 +68,7 @@ export default function ClassLogModal({ isOpen, onClose, onSuccess }) {
 
       if (combined.length > 0) {
         setSelectedAllocId(combined[0].id);
-        fetchStudentsForAlloc(combined[0]);
+        fetchStudentsForAlloc(combined[0], date);
       }
     } catch (err) {
       console.error(err);
@@ -80,15 +82,34 @@ export default function ClassLogModal({ isOpen, onClose, onSuccess }) {
     setSelectedAllocId(allocId);
     const alloc = myAllocations.find(a => a.id === allocId);
     if (alloc) {
-      fetchStudentsForAlloc(alloc);
+      fetchStudentsForAlloc(alloc, date);
     }
   };
 
-  async function fetchStudentsForAlloc(alloc) {
+  const handleDateChange = (e) => {
+    const newDate = e.target.value;
+    setDate(newDate);
+    const alloc = myAllocations.find(a => a.id === selectedAllocId);
+    if (alloc) {
+      fetchStudentsForAlloc(alloc, newDate);
+    }
+  };
+
+  async function fetchStudentsForAlloc(alloc, selectedDateStr) {
+    setCalendarBlockedEvent(null);
     try {
-      const dept = alloc.department || alloc.targetDept || alloc.dept;
+      const dept = alloc.department || alloc.targetDept || alloc.dept || userProfile.dept;
       const year = alloc.year ? `${alloc.year}${alloc.year.includes("Year") ? "" : "st Year"}` : "";
       
+      // Check Academic Calendar for date restriction
+      const calData = await getDepartmentCalendar(dept);
+      if (calData) {
+        const activeEvent = await getCalendarEventForDate(calData, selectedDateStr, year);
+        if (activeEvent && activeEvent.suspendClasses !== false) {
+          setCalendarBlockedEvent(activeEvent);
+        }
+      }
+
       let studQ = query(
         collection(db, "users"),
         where("role", "==", "student"),
@@ -114,10 +135,12 @@ export default function ClassLogModal({ isOpen, onClose, onSuccess }) {
   }
 
   const toggleAttendance = (id) => {
+    if (calendarBlockedEvent) return;
     setAttendance(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   const handleSelectAll = (status) => {
+    if (calendarBlockedEvent) return;
     const updated = {};
     students.forEach(s => { updated[s.id] = status; });
     setAttendance(updated);
@@ -127,6 +150,10 @@ export default function ClassLogModal({ isOpen, onClose, onSuccess }) {
     e.preventDefault();
     if (!selectedAllocId) {
       toast.error("Please select a subject.");
+      return;
+    }
+    if (calendarBlockedEvent) {
+      toast.error(`Class log cannot be submitted on "${calendarBlockedEvent.title}" dates according to the Academic Calendar.`);
       return;
     }
     if (!topicCovered.trim()) {
@@ -221,6 +248,19 @@ export default function ClassLogModal({ isOpen, onClose, onSuccess }) {
           <button onClick={onClose} style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer" }}><X size={20} /></button>
         </div>
 
+        {/* Academic Calendar Block Warning */}
+        {calendarBlockedEvent && (
+          <div style={{
+            padding: 14, borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca",
+            marginBottom: 16, display: "flex", alignItems: "center", gap: 10, color: "#991b1b"
+          }}>
+            <AlertTriangle size={20} color="#dc2626" style={{ flexShrink: 0 }} />
+            <div style={{ fontSize: 12 }}>
+              <strong>⛔ Class Logging Suspended ({calendarBlockedEvent.title}):</strong> Date {date} is marked in the Academic Calendar. Regular classes were suspended on this date.
+            </div>
+          </div>
+        )}
+
         {loading ? (
           <div style={{ textAlign: "center", padding: 30, color: "#64748b" }}>Loading assigned subjects...</div>
         ) : myAllocations.length === 0 ? (
@@ -248,7 +288,7 @@ export default function ClassLogModal({ isOpen, onClose, onSuccess }) {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
               <div>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "#334155", marginBottom: 4 }}>Class Date *</label>
-                <input type="date" value={date} onChange={e => setDate(e.target.value)} required style={{
+                <input type="date" value={date} onChange={handleDateChange} required style={{
                   width: "100%", padding: 8, borderRadius: 6, border: "1px solid #cbd5e1",
                   background: "#ffffff", color: "#0f172a", fontSize: 13
                 }} />
@@ -271,11 +311,12 @@ export default function ClassLogModal({ isOpen, onClose, onSuccess }) {
                 placeholder="e.g. Unit 2: Binary Search Trees - Node Insertion & Deletion Algorithms"
                 value={topicCovered}
                 onChange={e => setTopicCovered(e.target.value)}
+                disabled={!!calendarBlockedEvent}
                 required
                 rows={3}
                 style={{
                   width: "100%", padding: 10, borderRadius: 6, border: "1px solid #cbd5e1",
-                  background: "#ffffff", color: "#0f172a", fontSize: 13, resize: "vertical", outline: "none"
+                  background: calendarBlockedEvent ? "#f1f5f9" : "#ffffff", color: "#0f172a", fontSize: 13, resize: "vertical", outline: "none"
                 }}
               />
             </div>
@@ -286,13 +327,13 @@ export default function ClassLogModal({ isOpen, onClose, onSuccess }) {
                 Class Attendance ({students.length} Students)
               </div>
               <div style={{ display: "flex", gap: 6 }}>
-                <button type="button" onClick={() => handleSelectAll(true)} style={{ padding: "3px 8px", borderRadius: 4, background: "#ecfdf5", border: "1px solid #6ee7b7", color: "#047857", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>All Present</button>
-                <button type="button" onClick={() => handleSelectAll(false)} style={{ padding: "3px 8px", borderRadius: 4, background: "#fef2f2", border: "1px solid #fca5a5", color: "#dc2626", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>All Absent</button>
+                <button type="button" onClick={() => handleSelectAll(true)} disabled={!!calendarBlockedEvent} style={{ padding: "3px 8px", borderRadius: 4, background: "#ecfdf5", border: "1px solid #6ee7b7", color: "#047857", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>All Present</button>
+                <button type="button" onClick={() => handleSelectAll(false)} disabled={!!calendarBlockedEvent} style={{ padding: "3px 8px", borderRadius: 4, background: "#fef2f2", border: "1px solid #fca5a5", color: "#dc2626", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>All Absent</button>
               </div>
             </div>
 
             {/* Student Attendance List */}
-            <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, maxHeight: 180, overflowY: "auto", padding: 8, marginBottom: 16 }}>
+            <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, maxHeight: 180, overflowY: "auto", padding: 8, marginBottom: 16, opacity: calendarBlockedEvent ? 0.5 : 1, pointerEvents: calendarBlockedEvent ? "none" : "auto" }}>
               {students.length === 0 ? (
                 <div style={{ textAlign: "center", padding: 12, color: "#64748b", fontSize: 12 }}>No enrolled students found for this class section.</div>
               ) : (
@@ -330,13 +371,13 @@ export default function ClassLogModal({ isOpen, onClose, onSuccess }) {
                 flex: 1, padding: "9px 16px", borderRadius: 6, border: "1px solid #cbd5e1",
                 background: "#ffffff", color: "#334155", fontWeight: 600, cursor: "pointer"
               }}>Cancel</button>
-              <button type="submit" disabled={submitting} style={{
+              <button type="submit" disabled={submitting || !!calendarBlockedEvent} style={{
                 flex: 1, padding: "9px 16px", borderRadius: 6, border: "none",
                 background: "#2563eb", color: "#ffffff", fontWeight: 700, cursor: "pointer",
                 display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,
-                opacity: submitting ? 0.6 : 1
+                opacity: (submitting || calendarBlockedEvent) ? 0.6 : 1
               }}>
-                <Send size={15} /> {submitting ? "Submitting Log..." : "Submit & Forward Report"}
+                <Send size={15} /> {submitting ? "Submitting Log..." : calendarBlockedEvent ? "Class Suspended Today" : "Submit & Forward Report"}
               </button>
             </div>
           </form>

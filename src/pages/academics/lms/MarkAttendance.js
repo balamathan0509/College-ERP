@@ -3,8 +3,10 @@ import Sidebar from '../../../components/Sidebar';
 import { db } from "../../../supabase/supabaseAdapter";
 import { collection, query, getDocs, doc, setDoc, where, serverTimestamp } from "../../../supabase/supabaseAdapter";
 import { useAuth } from '../../../context/AuthContext';
-import { Users, Save } from 'lucide-react';
+import { Users, Save, AlertTriangle, ArrowRight } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { getDepartmentCalendar, getCalendarEventForDate } from '../../../utils/academicCalendarUtils';
+import { useNavigate } from 'react-router-dom';
 
 const DAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 const SLOTS = [
@@ -16,6 +18,7 @@ const SLOTS = [
 
 export default function MarkAttendance() {
   const { userProfile } = useAuth();
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState([]);
   const [filterSession, setFilterSession] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -27,6 +30,7 @@ export default function MarkAttendance() {
   
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState({}); // { studentId: 'P' or 'A' }
+  const [calendarBlockedEvent, setCalendarBlockedEvent] = useState(null);
 
   useEffect(() => {
     getDocs(query(collection(db, "academic_sessions"))).then(s => setSessions(s.docs.map(d => ({ id: d.id, ...d.data() }))));
@@ -35,6 +39,7 @@ export default function MarkAttendance() {
   async function loadClasses() {
     if (!filterSession || !date) { toast.error("Session and Date required."); return; }
     setLoading(true);
+    setCalendarBlockedEvent(null);
     try {
       const d = new Date(date);
       const dayName = DAYS[d.getDay()];
@@ -82,7 +87,18 @@ export default function MarkAttendance() {
   async function selectClassToMark(cls) {
     setSelectedClass(cls);
     setLoading(true);
+    setCalendarBlockedEvent(null);
     try {
+      // Check Academic Calendar for this Department & Date
+      const dept = cls.department || userProfile?.dept || "CSE";
+      const calData = await getDepartmentCalendar(dept);
+      if (calData) {
+        const activeEvent = await getCalendarEventForDate(calData, date);
+        if (activeEvent && activeEvent.suspendClasses !== false) {
+          setCalendarBlockedEvent(activeEvent);
+        }
+      }
+
       // Load enrolled students
       const eq = query(collection(db, "course_enrollments"), where("courseId", "==", cls.courseId), where("sessionId", "==", filterSession));
       const eSnap = await getDocs(eq);
@@ -106,6 +122,10 @@ export default function MarkAttendance() {
   }
 
   async function handleSaveAttendance() {
+    if (calendarBlockedEvent) {
+      toast.error(`Attendance cannot be saved on "${calendarBlockedEvent.title}" dates according to the Academic Calendar.`);
+      return;
+    }
     setSaving(true);
     try {
       const docId = `${filterSession}_${date}_${selectedClass.courseId}_${selectedClass.slotId}`;
@@ -126,6 +146,7 @@ export default function MarkAttendance() {
   }
 
   const toggleAtt = (sid) => {
+    if (calendarBlockedEvent) return;
     setAttendance(prev => ({ ...prev, [sid]: prev[sid] === 'P' ? 'A' : 'P' }));
   };
 
@@ -189,13 +210,33 @@ export default function MarkAttendance() {
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={() => setSelectedClass(null)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', cursor: 'pointer' }}>Back</button>
-                <button onClick={handleSaveAttendance} disabled={saving} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px' }}><Save size={16} /> {saving ? 'Saving...' : 'Save Attendance'}</button>
+                <button onClick={handleSaveAttendance} disabled={saving || !!calendarBlockedEvent} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', opacity: calendarBlockedEvent ? 0.6 : 1 }}>
+                  <Save size={16} /> {saving ? 'Saving...' : calendarBlockedEvent ? 'Attendance Suspended' : 'Save Attendance'}
+                </button>
               </div>
             </div>
 
+            {/* Calendar Block Banner */}
+            {calendarBlockedEvent && (
+              <div style={{
+                padding: "16px", borderRadius: 10, background: "#fef2f2", border: "1px solid #fecaca",
+                marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <AlertTriangle size={22} color="#dc2626" />
+                  <div style={{ color: "#991b1b", fontSize: 13 }}>
+                    <strong>⛔ Attendance Suspended ({calendarBlockedEvent.title}):</strong> Date {date} is marked in the Academic Calendar. Regular classes & attendance are suspended.
+                  </div>
+                </div>
+                <button className="btn-secondary" onClick={() => navigate("/academics/academic-calendar")} style={{ width: "auto", padding: "6px 12px", fontSize: 12, color: "#991b1b" }}>
+                  View Calendar <ArrowRight size={12} />
+                </button>
+              </div>
+            )}
+
             {loading ? <div style={{ padding: 40, textAlign: 'center' }}>Loading students...</div> : students.length === 0 ? <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>No students enrolled in this course.</div> : (
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, opacity: calendarBlockedEvent ? 0.5 : 1, pointerEvents: calendarBlockedEvent ? "none" : "auto" }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
                       <th style={{ padding: '10px 8px', textAlign: 'left', width: 60 }}>S.No</th>
@@ -213,6 +254,7 @@ export default function MarkAttendance() {
                         <td style={{ padding: '10px 8px', textAlign: 'center' }}>
                           <button 
                             onClick={() => toggleAtt(s.id)}
+                            disabled={!!calendarBlockedEvent}
                             style={{ 
                               padding: '4px 12px', borderRadius: 12, border: 'none', cursor: 'pointer', fontWeight: 'bold', fontSize: 11,
                               background: attendance[s.id] === 'P' ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',

@@ -4,16 +4,19 @@ import { useAuth } from "../../context/AuthContext";
 import { db } from "../../supabase/supabaseAdapter";
 import { collection, query, where, getDocs, doc, setDoc } from "../../supabase/supabaseAdapter";
 import toast, { Toaster } from "react-hot-toast";
-import { CheckSquare, Users, CheckCircle2, Briefcase, XCircle, Calendar, Sun, Moon } from "lucide-react";
+import { CheckSquare, Users, CheckCircle2, Briefcase, XCircle, Calendar, AlertTriangle, ArrowRight } from "lucide-react";
+import { getDepartmentCalendar, getCalendarEventForDate } from "../../utils/academicCalendarUtils";
+import { useNavigate } from "react-router-dom";
 
 export default function StaffAttendance() {
   const { userProfile } = useAuth();
+  const navigate = useNavigate();
   
   const [loadingAssignments, setLoadingAssignments] = useState(true);
   const [assignedClasses, setAssignedClasses] = useState([]);
   const [selectedClassIdx, setSelectedClassIdx] = useState(0);
   
-  const [session, setSession] = useState("Morning"); // "Morning" or "Afternoon"
+  const session = "Daily";
   const [currentDate] = useState(new Date().toISOString().split("T")[0]);
   
   const [students, setStudents] = useState([]);
@@ -21,6 +24,9 @@ export default function StaffAttendance() {
   const [fetchingStudents, setFetchingStudents] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Academic Calendar event restriction state
+  const [calendarBlockedEvent, setCalendarBlockedEvent] = useState(null);
 
   useEffect(() => {
     fetchAssignments();
@@ -72,12 +78,22 @@ export default function StaffAttendance() {
     if (selectedClass) {
       fetchStudents(selectedClass);
     }
-  }, [selectedClassIdx, session, assignedClasses]);
+  }, [selectedClassIdx, assignedClasses]);
 
   async function fetchStudents(cls) {
     setFetchingStudents(true);
     setSaved(false);
+    setCalendarBlockedEvent(null);
     try {
+      // Check Department Academic Calendar for Event / Holiday / Exam
+      const calData = await getDepartmentCalendar(cls.dept);
+      if (calData) {
+        const activeEvent = await getCalendarEventForDate(calData, currentDate, cls.year);
+        if (activeEvent && activeEvent.suspendClasses !== false) {
+          setCalendarBlockedEvent(activeEvent);
+        }
+      }
+
       // Fetch students for this Dept, Year, Section
       const q = query(
         collection(db, "users"),
@@ -91,9 +107,9 @@ export default function StaffAttendance() {
       list.sort((a, b) => a.name.localeCompare(b.name));
       setStudents(list);
 
-      // Fetch Attendance record for today & session
-      const docId = `${cls.dept}_${cls.year}_${cls.section}_${currentDate}_${session}`.replace(/\s+/g, '_');
-      const attQ = query(collection(db, "daily_attendance"), where("date", "==", currentDate), where("dept", "==", cls.dept), where("year", "==", cls.year), where("section", "==", cls.section), where("session", "==", session));
+      // Fetch Attendance record for today
+      const docId = `${cls.dept}_${cls.year}_${cls.section}_${currentDate}`.replace(/\s+/g, '_');
+      const attQ = query(collection(db, "daily_attendance"), where("date", "==", currentDate), where("dept", "==", cls.dept), where("year", "==", cls.year), where("section", "==", cls.section));
       const attSnap = await getDocs(attQ);
       
       if (!attSnap.empty) {
@@ -127,7 +143,7 @@ export default function StaffAttendance() {
     if (!selectedClass) return;
     setSaving(true);
     try {
-      const docId = `${selectedClass.dept}_${selectedClass.year}_${selectedClass.section}_${currentDate}_${session}`.replace(/\s+/g, '_');
+      const docId = `${selectedClass.dept}_${selectedClass.year}_${selectedClass.section}_${currentDate}`.replace(/\s+/g, '_');
       
       const rawRecords = {};
       Object.entries(attendance).forEach(([uid, st]) => { rawRecords[uid] = st; });
@@ -137,7 +153,7 @@ export default function StaffAttendance() {
         year: selectedClass.year,
         section: selectedClass.section,
         date: currentDate,
-        session: session,
+        session: "Daily",
         records: rawRecords,
         totalCount: students.length,
         markedBy: userProfile.uid,
@@ -146,7 +162,7 @@ export default function StaffAttendance() {
         updatedAt: new Date().toISOString()
       }, { merge: true });
 
-      toast.success(`${session} attendance saved!`);
+      toast.success("Today's attendance saved successfully!");
       setSaved(true);
     } catch (err) {
       toast.error("Save failed.");
@@ -189,16 +205,47 @@ export default function StaffAttendance() {
                     ))}
                   </select>
                 </div>
-                <div style={{ display: 'flex', gap: 8, background: 'var(--bg-secondary)', padding: 6, borderRadius: 'var(--radius-md)' }}>
-                  <button onClick={() => setSession("Morning")} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, transition: 'all 0.2s', background: session === "Morning" ? 'var(--primary)' : 'transparent', color: session === "Morning" ? '#fff' : 'var(--text-muted)' }}>
-                    <Sun size={18} /> Morning
-                  </button>
-                  <button onClick={() => setSession("Afternoon")} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 'var(--radius-sm)', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, transition: 'all 0.2s', background: session === "Afternoon" ? 'var(--primary)' : 'transparent', color: session === "Afternoon" ? '#fff' : 'var(--text-muted)' }}>
-                    <Moon size={18} /> Afternoon
-                  </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(37, 99, 235, 0.1)', padding: '10px 16px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(37, 99, 235, 0.2)', color: 'var(--highlight)', fontWeight: 700, fontSize: 14 }}>
+                  <Calendar size={18} /> Today's Attendance
                 </div>
               </div>
             </div>
+
+            {/* Academic Calendar Notice Banner for Class Incharge */}
+            {calendarBlockedEvent && (
+              <div style={{
+                padding: "18px 22px",
+                borderRadius: 12,
+                background: "rgba(245, 158, 11, 0.08)",
+                border: "1px solid rgba(245, 158, 11, 0.3)",
+                marginBottom: 24,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 16
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <AlertTriangle size={26} color="#d97706" style={{ flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "#b45309" }}>
+                      Academic Calendar Notice: {calendarBlockedEvent.title} ({calendarBlockedEvent.type?.toUpperCase()})
+                    </div>
+                    <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
+                      Today ({currentDate}) is scheduled as <strong>{calendarBlockedEvent.title}</strong> in the {selectedClass?.dept} Department Academic Calendar. Daily attendance marking is available for Class Incharge.
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  className="btn-secondary"
+                  onClick={() => navigate("/academics/academic-calendar")}
+                  style={{ width: "auto", fontSize: 13, padding: "8px 16px" }}
+                >
+                  View Academic Calendar <ArrowRight size={14} />
+                </button>
+              </div>
+            )}
 
             {students.length > 0 && !fetchingStudents && (
               <div className="stats-grid" style={{ marginBottom: 24 }}>
@@ -235,7 +282,7 @@ export default function StaffAttendance() {
                     <CheckSquare size={24} color="var(--highlight)" />
                   </div>
                   <div className="stat-value" style={{ color: "var(--highlight)" }}>{attendancePercentage}%</div>
-                  <div className="stat-label">{session} Rate</div>
+                  <div className="stat-label">Attendance Rate</div>
                 </div>
               </div>
             )}
@@ -258,7 +305,7 @@ export default function StaffAttendance() {
                     </div>
 
                     <button className="btn-primary" onClick={handleSave} disabled={saving} style={{ width: "auto", padding: "8px 24px", opacity: saved ? 0.7 : 1 }}>
-                      {saving ? "Saving..." : saved ? "Update Attendance" : `Save ${session} Attendance`}
+                      {saving ? "Saving..." : saved ? "Update Today's Attendance" : "Save Today's Attendance"}
                     </button>
                   </div>
 

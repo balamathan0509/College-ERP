@@ -75,6 +75,7 @@ import PrincipalQuestionPaperReview from "./pages/cia/PrincipalQuestionPaperRevi
 import StudentQuestionPapers from "./pages/student/StudentQuestionPapers";
 
 // Academics Pages
+import AcademicCalendar from "./pages/academics/AcademicCalendar";
 import CourseAllocation from "./pages/academics/CourseAllocation";
 import CourseEnrollment from "./pages/academics/CourseEnrollment";
 
@@ -195,6 +196,7 @@ export default function App() {
           <Route path="/cia/reports" element={<ProtectedRoute allowedRole="staff"><Reports /></ProtectedRoute>} />
 
           {/* Academics & LMS Routes */}
+          <Route path="/academics/academic-calendar" element={<ProtectedRoute allowedRole={['staff', 'hod', 'admin', 'management', 'principal']}><AcademicCalendar /></ProtectedRoute>} />
           <Route path="/academics/course-allocation" element={<ProtectedRoute allowedRole={['staff', 'hod']}><CourseAllocation /></ProtectedRoute>} />
           <Route path="/academics/course-enrollment" element={<ProtectedRoute allowedRole={['staff', 'hod']}><CourseEnrollment /></ProtectedRoute>} />
 

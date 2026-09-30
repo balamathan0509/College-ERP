@@ -15,12 +15,16 @@ import {
   Inbox
 } from "lucide-react";
 
+import { getCalendarEventForDate } from "../../utils/academicCalendarUtils";
+import { Calendar } from "lucide-react";
+
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 
 export default function HodAttendance() {
   const { userProfile } = useAuth();
   const [selectedYear, setSelectedYear] = useState("1st Year");
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+  const [calendarEvent, setCalendarEvent] = useState(null);
   const [tab, setTab] = useState("daily");
   const [records, setRecords] = useState(null);
   const [alerts, setAlerts] = useState([]);
@@ -30,6 +34,13 @@ export default function HodAttendance() {
   async function fetchDailyAttendance() {
     setFetching(true);
     try {
+      if (userProfile?.dept) {
+        const calEv = await getCalendarEventForDate(userProfile.dept, selectedDate);
+        setCalendarEvent(calEv);
+      } else {
+        setCalendarEvent(null);
+      }
+
       const q = query(
         collection(db, "attendance"),
         where("dept", "==", userProfile.dept),
@@ -136,6 +147,26 @@ export default function HodAttendance() {
                 </div>
               </div>
             </div>
+
+            {/* Calendar Event Alert */}
+            {calendarEvent && (
+              <div style={{
+                padding: "16px 20px", borderRadius: "var(--radius-md)", marginBottom: 24,
+                background: calendarEvent.type === "holiday" ? "rgba(239, 68, 68, 0.1)" : "rgba(245, 158, 11, 0.1)",
+                border: calendarEvent.type === "holiday" ? "1px solid rgba(239, 68, 68, 0.3)" : "1px solid rgba(245, 158, 11, 0.3)",
+                display: "flex", alignItems: "center", gap: 14
+              }}>
+                <Calendar size={22} color={calendarEvent.type === "holiday" ? "#ef4444" : "#f59e0b"} />
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: calendarEvent.type === "holiday" ? "#dc2626" : "#b45309" }}>
+                    Academic Calendar Event: {calendarEvent.title} ({calendarEvent.type.toUpperCase()})
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>
+                    This selected date ({selectedDate}) is listed in the {userProfile?.dept} Department Academic Calendar. No regular classes or attendance were conducted.
+                  </div>
+                </div>
+              </div>
+            )}
 
             {fetching ? (
               <div style={{ textAlign: "center", padding: 60 }}>
