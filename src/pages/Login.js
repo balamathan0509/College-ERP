@@ -44,6 +44,7 @@ export default function Login({ onSwitch }) {
       else if (role === "officestaff") navigate("/officestaff");
       else if (role === "management") navigate("/management");
       else if (role === "principal") navigate("/principal");
+      else if (role === "dept_admin") navigate("/staff");
       else navigate("/");
     } catch (err) {
       console.error("Login error detail:", err);

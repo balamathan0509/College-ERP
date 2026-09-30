@@ -275,45 +275,6 @@ export default function StaffDashboard() {
         )}
 
 
-        {/* Student Directory */}
-        <div className="card" style={{ marginBottom: 24 }}>
-          <h3 style={{ marginBottom: 20, fontFamily: "Plus Jakarta Sans, sans-serif", fontSize: 17, fontWeight: 700 }}>Student Directory - {userProfile?.dept} Department</h3>
-          {YEARS.map(year => {
-            const yearStudents = students.filter(s => s.year === year);
-            if (yearStudents.length === 0) return null;
-            return (
-              <div key={year} style={{ marginBottom: 24 }}>
-                <h4 style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>{year} ({yearStudents.length} Students)</h4>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {yearStudents.map(student => (
-                    <div key={student.id} style={{
-                      padding: 14,
-                      borderRadius: "var(--radius-md)",
-                      background: "var(--bg-color)",
-                      border: "1px solid var(--border)",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: 12
-                    }}>
-                      <div>
-                        <div style={{ fontWeight: 600, color: "var(--text)" }}>{student.name}</div>
-                        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{student.email}</div>
-                      </div>
-                      <div style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{student.year} • {student.registerNo || "N/A"}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-          {students.length === 0 && !loading && (
-            <div style={{ textAlign: "center", padding: 30, color: "var(--text-muted)" }}>
-              No students found in this department.
-            </div>
-          )}
-        </div>
-
         {/* MY ALLOCATED SUBJECTS & CLASS SCHEDULE */}
         <div className="card" style={{ marginBottom: 28, padding: 22, background: "#ffffff", borderRadius: 12, border: "1px solid #e2e8f0" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>

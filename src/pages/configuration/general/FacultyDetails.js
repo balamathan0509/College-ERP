@@ -16,6 +16,7 @@ export default function FacultyDetails() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
+  const [confirmAdminDialog, setConfirmAdminDialog] = useState({ isOpen: false, item: null });
   const { userProfile } = useAuth();
   
   const [formData, setFormData] = useState({
@@ -31,7 +32,7 @@ export default function FacultyDetails() {
   const fetchFaculties = async () => {
     try {
       setLoading(true);
-      const q = query(collection(db, 'users'), where("role", "in", ["staff", "hod"]));
+      const q = query(collection(db, 'users'), where("role", "in", ["staff", "hod", "dept_admin"]));
       const snap = await getDocs(q);
       let fetchedFaculties = snap.docs.map(doc => {
         const data = doc.data();
@@ -133,19 +134,57 @@ export default function FacultyDetails() {
     fetchFaculties();
   };
 
+  const handleToggleAdmin = async (item) => {
+    try {
+      const newRole = item.role === 'dept_admin' ? 'staff' : 'dept_admin';
+      
+      if (newRole === 'dept_admin') {
+        const deptToMatch = item.department || item.dept;
+        const existingAdmins = faculties.filter(f => 
+          f.role === 'dept_admin' && 
+          (f.department === deptToMatch || f.dept === deptToMatch) && 
+          f.id !== item.id
+        );
+        for (const oldAdmin of existingAdmins) {
+          await updateDoc(doc(db, 'users', oldAdmin.id), { role: 'staff', updatedAt: serverTimestamp() });
+        }
+      }
+
+      await updateDoc(doc(db, 'users', item.id), { role: newRole, updatedAt: serverTimestamp() });
+      toast.success(`Dept Coordinator access ${item.role === 'dept_admin' ? 'revoked' : 'granted'} successfully`);
+      fetchFaculties();
+    } catch (err) {
+      toast.error('Failed to update role');
+    }
+  };
+
   const columns = [
     { key: 'employeeCode', label: 'Employee Code' },
     { key: 'facultyName', label: 'Faculty Name' },
     { key: 'department', label: 'Department' },
-    { key: 'designation', label: 'Designation' },
+    { key: 'role', label: 'System Role', render: (item) => (
+      <span style={{ padding: '4px 8px', borderRadius: '12px', background: item.role === 'hod' ? '#fef08a' : item.role === 'dept_admin' ? '#e0e7ff' : '#f1f5f9', color: item.role === 'hod' ? '#854d0e' : item.role === 'dept_admin' ? '#4338ca' : '#475569', fontSize: '12px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+        {item.role === 'dept_admin' ? 'Dept Coordinator' : item.role}
+      </span>
+    )},
     { key: 'status', label: 'Status', render: (item) => <span style={{ padding: '4px 8px', borderRadius: '12px', background: item.status === 'Active' ? '#dcfce7' : '#fee2e2', color: item.status === 'Active' ? '#166534' : '#991b1b', fontSize: '12px', fontWeight: '500' }}>{item.status}</span> },
     { 
       key: 'actions', 
       label: 'Actions', 
       render: (item) => (
-        <button onClick={() => { setEditItem(item); setFormData(item); setIsModalOpen(true); }} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer' }}>
-          <Edit2 size={16} />
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button onClick={() => { setEditItem(item); setFormData(item); setIsModalOpen(true); }} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer' }} title="Edit Faculty">
+            <Edit2 size={16} />
+          </button>
+          {userProfile?.role === 'hod' && item.role !== 'hod' && (
+            <button 
+              onClick={() => setConfirmAdminDialog({ isOpen: true, item: item })} 
+              style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 'bold', borderRadius: '6px', border: 'none', cursor: 'pointer', background: item.role === 'dept_admin' ? '#fee2e2' : '#dcfce7', color: item.role === 'dept_admin' ? '#b91c1c' : '#166534' }}
+            >
+              {item.role === 'dept_admin' ? 'Revoke Coordinator' : 'Make Coordinator'}
+            </button>
+          )}
+        </div>
       )
     }
   ];
@@ -168,6 +207,20 @@ export default function FacultyDetails() {
       </div>
 
       <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        {userProfile?.role === 'hod' && (
+          <div style={{ background: '#e0e7ff', padding: '15px 20px', borderRadius: '8px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #c7d2fe' }}>
+            <div>
+              <h3 style={{ margin: '0 0 5px 0', color: '#4338ca', fontSize: '15px' }}>Current Department Coordinator</h3>
+              <div style={{ color: '#475569', fontSize: '14px' }}>
+                {faculties.find(f => f.role === 'dept_admin' && (f.department === userProfile?.dept || f.dept === userProfile?.dept)) ? (
+                  <><b>{faculties.find(f => f.role === 'dept_admin' && (f.department === userProfile?.dept || f.dept === userProfile?.dept)).facultyName}</b> is currently managing Timetables and other department configurations.</>
+                ) : (
+                  <>No Dept Coordinator assigned. Click "Make Coordinator" on a staff member to assign one.</>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         <DataTable columns={columns} data={faculties} loading={loading} />
       </div>
 
@@ -202,6 +255,34 @@ export default function FacultyDetails() {
         expectedColumns={['Employee Code', 'Faculty Name', 'Email', 'Mobile', 'Department', 'Designation', 'Status']}
         onUpload={handleBulkUpload}
       />
+
+      {confirmAdminDialog.isOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', width: '100%', maxWidth: '400px', borderRadius: '12px', padding: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ margin: '0 0 10px 0', color: '#1e293b' }}>Confirm Action</h3>
+            <p style={{ margin: '0 0 20px 0', color: '#475569', lineHeight: '1.5' }}>
+              Are you sure you want to {confirmAdminDialog.item.role === 'dept_admin' ? 'revoke' : 'grant'} <b>Dept Coordinator</b> access for <b>{confirmAdminDialog.item.facultyName}</b>?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button 
+                onClick={() => setConfirmAdminDialog({ isOpen: false, item: null })} 
+                style={{ padding: '8px 16px', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  handleToggleAdmin(confirmAdminDialog.item);
+                  setConfirmAdminDialog({ isOpen: false, item: null });
+                }} 
+                style={{ padding: '8px 16px', background: confirmAdminDialog.item.role === 'dept_admin' ? '#ef4444' : '#22c55e', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: '500' }}
+              >
+                {confirmAdminDialog.item.role === 'dept_admin' ? 'Yes, Revoke' : 'Yes, Grant'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
       </main>
     </div>

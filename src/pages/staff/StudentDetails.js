@@ -57,9 +57,10 @@ export default function StudentDetails() {
         {selectedStudent ? (
           <div style={{ background: "#f8f9fa", minHeight: "100%", display: "flex", flexDirection: "column" }}>
             {/* Header Section with Dark Blue Background */}
+            {/* Header Section with Solid Blue Color */}
             <div style={{
-              background: "linear-gradient(135deg, #3b4b72 0%, #8ba3c7 100%)",
-              padding: "30px 40px 0 40px",
+              background: "#1e3a8a", // Dark Navy Blue
+              padding: "32px 40px 0 40px",
               color: "white",
               display: "flex",
               flexDirection: "column",
@@ -69,34 +70,59 @@ export default function StudentDetails() {
               <button 
                 onClick={() => { setSelectedStudent(null); setActiveTab('Basic Info'); }}
                 style={{
-                  position: "absolute", top: 16, right: 24,
-                  background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)",
-                  color: "white", padding: "6px 14px", borderRadius: 4, cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 6, fontSize: 13, transition: "all 0.2s"
+                  position: "absolute", top: 20, right: 30,
+                  background: "transparent",
+                  border: "1px solid rgba(255,255,255,0.4)",
+                  color: "white", padding: "6px 14px", borderRadius: 6, cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 500,
+                  transition: "all 0.2s"
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.2)"}
-                onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = "rgba(255,255,255,0.15)";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = "transparent";
+                }}
               >
-                <X size={14} /> Back to List
+                <X size={16} /> Back to List
               </button>
 
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 24 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+                {/* Avatar */}
                 <div style={{ 
-                  width: 120, height: 120, borderRadius: "50%", 
-                  background: "white", color: "#ccc",
+                  width: 100, height: 100, borderRadius: "50%", 
+                  background: "white",
+                  color: "#1e3a8a",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontWeight: 700, fontSize: 48
+                  fontWeight: 700, fontSize: 40
                 }}>
-                  {selectedStudent.name ? selectedStudent.name.charAt(0).toUpperCase() : <User size={64} />}
+                  {selectedStudent.name ? selectedStudent.name.charAt(0).toUpperCase() : <User size={48} />}
                 </div>
-                <div style={{ paddingTop: 10 }}>
-                  <h2 style={{ margin: "0 0 8px 0", fontSize: 24, fontWeight: 500, letterSpacing: "0.5px", textTransform: "uppercase", color: "#ffffff" }}>
+
+                {/* Info block */}
+                <div style={{ flex: 1 }}>
+                  <h2 style={{ 
+                    margin: "0 0 10px 0", fontSize: 24, fontWeight: 700, 
+                    textTransform: "uppercase", color: "#ffffff"
+                  }}>
                     {selectedStudent.name}
                   </h2>
-                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", marginBottom: 12, letterSpacing: "0.3px" }}>
-                    {selectedStudent.registerNo || selectedStudent.registerNumber || "N/A"} | {selectedStudent.programme || selectedStudent.programmeCode || "N/A"} | {selectedStudent.academicSession || selectedStudent.batch || "N/A"}
+                  
+                  {/* Badges */}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 14 }}>
+                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", display: "flex", alignItems: "center", gap: 6 }}>
+                      <MapPin size={14} /> {selectedStudent.registerNo || selectedStudent.registerNumber || "N/A"}
+                    </span>
+                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", display: "flex", alignItems: "center", gap: 6 }}>
+                      <GraduationCap size={14} /> {selectedStudent.programme || selectedStudent.programmeCode || "N/A"}
+                    </span>
+                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.9)", display: "flex", alignItems: "center", gap: 6 }}>
+                      <Calendar size={14} /> {selectedStudent.academicSession || selectedStudent.batch || "N/A"}
+                    </span>
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 24, fontSize: 13, color: "rgba(255,255,255,0.85)" }}>
+
+                  {/* Contacts */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 24, fontSize: 13, color: "rgba(255,255,255,0.9)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <Mail size={14} /> {selectedStudent.email || "N/A"}
                     </div>
@@ -107,24 +133,26 @@ export default function StudentDetails() {
                 </div>
               </div>
 
-              {/* Tabs */}
-              <div style={{ display: "flex", gap: 32, marginTop: 30 }}>
+              {/* Simple Tabs */}
+              <div style={{ display: "flex", gap: 32, marginTop: 32 }}>
                 {['Basic Info', 'Personal Info', 'Parent Info', 'Contact Info'].map(tab => (
                   <div 
                     key={tab}
                     onClick={() => setActiveTab(tab)}
                     style={{ 
-                      padding: "12px 20px",
+                      padding: "0 0 12px 0",
                       cursor: "pointer",
                       fontSize: 14,
                       fontWeight: 500,
-                      color: activeTab === tab ? "#ffffff" : "rgba(255,255,255,0.7)",
-                      background: activeTab === tab ? "rgba(255,255,255,0.12)" : "transparent",
-                      borderTopLeftRadius: "6px",
-                      borderTopRightRadius: "6px",
+                      color: activeTab === tab ? "#ffffff" : "rgba(255,255,255,0.6)",
                       borderBottom: activeTab === tab ? "3px solid white" : "3px solid transparent",
-                      transition: "all 0.2s",
-                      marginBottom: activeTab === tab ? "-3px" : "0"
+                      transition: "color 0.2s"
+                    }}
+                    onMouseEnter={e => {
+                      if (activeTab !== tab) e.currentTarget.style.color = "rgba(255,255,255,0.9)";
+                    }}
+                    onMouseLeave={e => {
+                      if (activeTab !== tab) e.currentTarget.style.color = "rgba(255,255,255,0.6)";
                     }}
                   >
                     {tab}

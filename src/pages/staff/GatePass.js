@@ -114,6 +114,8 @@ College Portal`
 
   useEffect(() => { fetchPasses(); }, []);
 
+  console.log("SIDEBAR IS:", Sidebar);
+
   return (
     <div className="dashboard-wrapper">
       <Sidebar />

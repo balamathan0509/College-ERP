@@ -86,8 +86,7 @@ const staffNav = [
       { label: "Course Allocation", path: "/academics/course-allocation" },
       { label: "My Subjects", path: "/staff/my-subjects" },
       { label: "Course Enrollment", path: "/academics/course-enrollment" },
-      { label: "Timetable Config", path: "/academics/timetable-config" },
-      { label: "View Timetable", path: "/academics/view-timetable" },
+
       { label: "Faculty Profile", path: "/academics/faculty-profile" },
       { label: "Academic Reports", path: "/academics/reports" },
       { 
@@ -95,7 +94,7 @@ const staffNav = [
         isNestedSubmenu: true,
         children: [
           { label: "Course Contents & Plan", path: "/academics/lms/course-contents" },
-          { label: "Faculty Timetable", path: "/academics/lms/faculty-timetable" },
+
           { label: "Plan Completion", path: "/academics/lms/plan-completion" },
           { label: "Plan Feedback", path: "/academics/lms/plan-feedback" },
           { label: "Assignments", path: "/academics/lms/assignments" },
@@ -108,6 +107,11 @@ const staffNav = [
       }
     ]
   }
+];
+
+const deptAdminNav = [
+  { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/dept-admin" },
+  { icon: <Calendar size={18} />, label: "Timetable Management", path: "/dept-admin/timetable" }
 ];
 
 const hodNav = [
@@ -128,7 +132,7 @@ const hodNav = [
       { label: "Subject Allocation", path: "/hod/subject-allocation" },
       { label: "Class Incharge", path: "/hod/class-incharge" },
       { label: "Attendance Monitor", path: "/hod/attendance" },
-      { label: "Timetable", path: "/hod/timetable" },
+
       { label: "Reports", path: "/academics/reports" },
       {
         label: "CIA Configuration",
@@ -366,6 +370,7 @@ export default function Sidebar() {
     role === "student" ? studentNav :
     role === "staff" ? [...staffNav] :
     role === "hod" ? hodNav :
+    role === "dept_admin" ? [...staffNav, { icon: <Calendar size={18} />, label: "Manage Timetables", path: "/staff/manage-timetable" }] :
     role === "warden" ? wardenNav :
     role === "officestaff" ? officestaffNav :
     role === "security" ? securityNav :
@@ -527,12 +532,14 @@ export default function Sidebar() {
             onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
             style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
           >
-            <div className="header-user-avatar">
+            <div className="header-user-avatar" style={{ background: "#1e3a8a", color: "white", width: "32px", height: "32px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
               {userProfile?.name ? userProfile.name.charAt(0).toUpperCase() : <User size={16} />}
             </div>
-            <div className="header-user-info">
-              <span className="name">RVCE</span>
-              <span className="role">{userProfile?.name || role?.toUpperCase()}</span>
+            <div className="header-user-info" style={{ display: "flex", flexDirection: "column" }}>
+              <span className="name" style={{ fontWeight: "bold", fontSize: "14px" }}>{userProfile?.name || 'RVCE User'}</span>
+              <span className="role" style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                {role === 'dept_admin' ? `${userProfile?.dept || ''} ADMIN`.trim() : role?.toUpperCase()}
+              </span>
             </div>
           </div>
           
