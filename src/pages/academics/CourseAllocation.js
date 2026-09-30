@@ -281,7 +281,7 @@ export default function CourseAllocation() {
                   <option value="">-- Select --</option>
                   {sessions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
-                {userProfile?.role === "admin" && (
+                {["admin", "hod", "dept_admin"].includes(userProfile?.role) && (
                   <button onClick={() => setShowSessionModal(true)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', cursor: 'pointer', fontSize: 16 }} title="Add Session">+</button>
                 )}
               </div>
@@ -291,27 +291,6 @@ export default function CourseAllocation() {
               <select value={filterSemester} onChange={e => setFilterSemester(e.target.value)} style={inputStyle}>
                 <option value="">-- All --</option>
                 {SEMESTERS.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={labelStyle}>Programme</label>
-              <select value={filterProgramme} onChange={e => setFilterProgramme(e.target.value)} style={inputStyle}>
-                <option value="">-- All --</option>
-                {PROGRAMMES.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={labelStyle}>Department</label>
-              <select value={filterDept} onChange={e => setFilterDept(e.target.value)} style={inputStyle}>
-                <option value="">-- All --</option>
-                {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={labelStyle}>Regulation ID</label>
-              <select value={filterRegulation} onChange={e => setFilterRegulation(e.target.value)} style={inputStyle}>
-                <option value="">-- All --</option>
-                {REGULATIONS.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </div>
           </div>
@@ -324,10 +303,7 @@ export default function CourseAllocation() {
         <div className="card" style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button onClick={openAdd} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px' }}>
-                <Plus size={16} /> Create
-              </button>
-              <button onClick={() => setShowCourseModal(true)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--accent)', background: 'transparent', color: 'var(--accent)', cursor: 'pointer', fontSize: 13 }}>
+              <button onClick={() => setShowCourseModal(true)} className="btn-primary" style={{ padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>
                 + Add Course
               </button>
             </div>
@@ -520,13 +496,8 @@ export default function CourseAllocation() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div><label style={labelStyle}>Course Code *</label><input value={courseForm.courseCode} onChange={e => setCourseForm({ ...courseForm, courseCode: e.target.value })} style={inputStyle} /></div>
                 <div><label style={labelStyle}>Course Name *</label><input value={courseForm.courseName} onChange={e => setCourseForm({ ...courseForm, courseName: e.target.value })} style={inputStyle} /></div>
-                <div><label style={labelStyle}>Programme</label><select value={courseForm.programme} onChange={e => setCourseForm({ ...courseForm, programme: e.target.value })} style={inputStyle}><option value="">--</option>{PROGRAMMES.map(p => <option key={p} value={p}>{p}</option>)}</select></div>
-                <div><label style={labelStyle}>Department</label><select value={courseForm.department} onChange={e => setCourseForm({ ...courseForm, department: e.target.value })} style={inputStyle}><option value="">--</option>{DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}</select></div>
                 <div><label style={labelStyle}>Semester</label><select value={courseForm.semester} onChange={e => setCourseForm({ ...courseForm, semester: e.target.value })} style={inputStyle}><option value="">--</option>{SEMESTERS.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
-                <div><label style={labelStyle}>Regulation</label><select value={courseForm.regulationId} onChange={e => setCourseForm({ ...courseForm, regulationId: e.target.value })} style={inputStyle}>{REGULATIONS.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
-                <div><label style={labelStyle}>Credits</label><input type="number" value={courseForm.credits} onChange={e => setCourseForm({ ...courseForm, credits: e.target.value })} style={inputStyle} /></div>
                 <div><label style={labelStyle}>Total Hours</label><input type="number" value={courseForm.totalHours} onChange={e => setCourseForm({ ...courseForm, totalHours: e.target.value })} style={inputStyle} /></div>
-                <div><label style={labelStyle}>No. of Chapters</label><input type="number" value={courseForm.chapters} onChange={e => setCourseForm({ ...courseForm, chapters: e.target.value })} style={inputStyle} /></div>
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
                 <button onClick={() => setShowCourseModal(false)} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', cursor: 'pointer' }}>Cancel</button>

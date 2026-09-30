@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { db } from "../../supabase/supabaseAdapter";
-import { collection, query, getDocs, setDoc, doc, where, orderBy } from "../../supabase/supabaseAdapter";
+import { collection, query, getDocs, setDoc, doc, where, orderBy, addDoc } from "../../supabase/supabaseAdapter";
 import { Save, Search, Users, CheckCircle, XCircle } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -152,6 +152,50 @@ export default function MarkAttendance() {
       });
 
       await Promise.all(batchPromises);
+
+      // Notify HOD and Class Incharge
+      try {
+        const deptStr = schedule.programmeName.includes("CSE") ? "CSE" :
+                        schedule.programmeName.includes("ECE") ? "ECE" :
+                        schedule.programmeName.includes("IT") ? "IT" :
+                        schedule.programmeName.includes("EEE") ? "EEE" :
+                        schedule.programmeName.includes("MECH") ? "MECH" : "";
+
+        if (deptStr) {
+          // Notify HOD
+          const hodQ = query(collection(db, "users"), where("role", "==", "hod"), where("dept", "==", deptStr));
+          const hodSnap = await getDocs(hodQ);
+          hodSnap.docs.forEach(async (d) => {
+            await addDoc(collection(db, "alerts"), {
+              title: "CIA Attendance Marked",
+              message: `CIA Attendance for ${schedule.courseCode} (${schedule.class}) has been marked by Exam Cell.`,
+              date: new Date().toISOString(),
+              targetRole: "hod",
+              targetUid: d.id,
+              isRead: false
+            });
+          });
+
+          // Notify Class Incharge
+          const ciQ = query(collection(db, "class_incharges"), where("department", "==", deptStr));
+          const ciSnap = await getDocs(ciQ);
+          ciSnap.docs.forEach(async (d) => {
+            const ciData = d.data();
+            // Could add year filtering here if needed
+            await addDoc(collection(db, "alerts"), {
+              title: "CIA Attendance Marked",
+              message: `CIA Attendance for ${schedule.courseCode} (${schedule.class}) has been marked by Exam Cell.`,
+              date: new Date().toISOString(),
+              targetRole: "staff",
+              targetUid: ciData.facultyId,
+              isRead: false
+            });
+          });
+        }
+      } catch (notifErr) {
+        console.error("Failed to send notifications:", notifErr);
+      }
+
       toast.success("Attendance saved successfully");
     } catch (err) {
       console.error(err);

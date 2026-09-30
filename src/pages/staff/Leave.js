@@ -40,15 +40,29 @@ export default function StaffLeave() {
   async function fetchStudentLeaves() {
     setFetching(true);
     try {
+      // Only fetch leave requests assigned to this staff as class incharge
       const q = query(
+        collection(db, "leave_requests"),
+        where("classInchargeId", "==", userProfile.uid),
+        where("status", "==", "pending_staff")
+      );
+      const snap = await getDocs(q);
+      let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Fallback: also show old requests with no classInchargeId but matching dept
+      const fallbackQ = query(
         collection(db, "leave_requests"),
         where("department", "==", userProfile.dept),
         where("status", "==", "pending_staff")
       );
-      const snap = await getDocs(q);
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      setLeaves(list);
+      const fallbackSnap = await getDocs(fallbackQ);
+      const fallbackList = fallbackSnap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(l => !l.classInchargeId && l.role !== "staff"); // unassigned student leaves only
+
+      const merged = [...list, ...fallbackList];
+      merged.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setLeaves(merged);
     } catch (err) {}
     setFetching(false);
   }

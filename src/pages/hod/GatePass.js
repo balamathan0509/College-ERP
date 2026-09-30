@@ -19,7 +19,7 @@ function generateToken() {
 export default function HodGatePass() {
   const { userProfile } = useAuth();
   const [tab, setTab] = useState("pending");
-  const [selectedYear, setSelectedYear] = useState("1st Year");
+  const [selectedYear, setSelectedYear] = useState("4th Year");
   const [passes, setPasses] = useState([]);
   const [approved, setApproved] = useState([]);
   const [fetching, setFetching] = useState(true);
@@ -51,6 +51,18 @@ export default function HodGatePass() {
       const approvedList = snap2.docs.map(d => ({ id: d.id, ...d.data() }));
       approvedList.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setApproved(approvedList);
+
+      // Auto-select the year that has pending passes first, then approved
+      const allPasses = [...pending, ...approvedList];
+      if (allPasses.length > 0) {
+        // Prefer year with pending passes
+        const yearWithPending = pending[0]?.year;
+        const yearWithApproved = approvedList[0]?.year;
+        const autoYear = yearWithPending || yearWithApproved;
+        if (autoYear && YEARS.includes(autoYear)) {
+          setSelectedYear(autoYear);
+        }
+      }
     } catch (err) {}
     setFetching(false);
   }
@@ -219,67 +231,63 @@ Renganayagi Varatharaj College of Engineering`
         </div>
 
         <div className="card" style={{ marginBottom: 24, opacity: yearChanging ? 0.7 : 1, transition: "opacity 0.3s" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 16 }}>
-            <div>
-              <div style={{ fontSize: 13, color: "#a0aec0", marginBottom: 12 }}>Filter gate pass requests by year</div>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {YEARS.map(year => (
-                  <button
-                    key={year}
-                    onClick={() => handleYearChange(year)}
-                    style={{
-                      padding: "10px 16px",
-                      borderRadius: 12,
-                      border: selectedYear === year ? "1px solid #e94560" : "1px solid rgba(255,255,255,0.12)",
-                      background: selectedYear === year ? "rgba(233,69,96,0.15)" : "rgba(255,255,255,0.05)",
-                      color: "white",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                      position: "relative",
-                      paddingRight: pendingCountByYear[year] > 0 ? 36 : 16
-                    }}
-                  >
-                    {year}
-                    {pendingCountByYear[year] > 0 && (
-                      <span style={{
-                        position: "absolute",
-                        top: -6,
-                        right: -6,
-                        minWidth: 22,
-                        height: 22,
-                        borderRadius: 11,
-                        background: "linear-gradient(135deg, #e94560, #c0392b)",
-                        color: "white",
-                        fontSize: 11,
-                        fontWeight: 800,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        padding: "0 5px",
-                        boxShadow: "0 2px 8px rgba(233,69,96,0.5)",
-                        animation: "badgePulse 2s infinite"
-                      }}>
-                        {pendingCountByYear[year]}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
+          {/* Year filter buttons — full width row */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: "#a0aec0", marginBottom: 12 }}>Filter gate pass requests by year</div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {YEARS.map(year => (
+                <button
+                  key={year}
+                  onClick={() => handleYearChange(year)}
+                  style={{
+                    padding: "10px 20px",
+                    borderRadius: 12,
+                    border: selectedYear === year ? "2px solid #e94560" : "1.5px solid #e2e8f0",
+                    background: selectedYear === year ? "rgba(233,69,96,0.1)" : "#f7fafc",
+                    color: selectedYear === year ? "#e94560" : "#4a5568",
+                    fontWeight: 700,
+                    fontSize: 14,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    position: "relative",
+                    paddingRight: pendingCountByYear[year] > 0 ? 36 : 20
+                  }}
+                >
+                  {year}
+                  {pendingCountByYear[year] > 0 && (
+                    <span style={{
+                      position: "absolute",
+                      top: -6, right: -6,
+                      minWidth: 22, height: 22,
+                      borderRadius: 11,
+                      background: "linear-gradient(135deg, #e94560, #c0392b)",
+                      color: "white", fontSize: 11, fontWeight: 800,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      padding: "0 5px",
+                      boxShadow: "0 2px 8px rgba(233,69,96,0.5)",
+                      animation: "badgePulse 2s infinite"
+                    }}>
+                      {pendingCountByYear[year]}
+                    </span>
+                  )}
+                </button>
+              ))}
             </div>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", opacity: yearChanging ? 0.5 : 1, transition: "opacity 0.3s" }}>
-              <div style={{ padding: "14px 18px", borderRadius: 14, background: "rgba(255,255,255,0.05)", minWidth: 140 }}>
-                <div style={{ fontSize: 12, color: "#a0aec0", marginBottom: 6 }}>Requests</div>
-                <div style={{ fontSize: 28, fontWeight: 800 }}>{totalRequestsByYear}</div>
-              </div>
-              <div style={{ padding: "14px 18px", borderRadius: 14, background: "rgba(255,255,255,0.05)", minWidth: 140 }}>
-                <div style={{ fontSize: 12, color: "#a0aec0", marginBottom: 6 }}>Pending</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: "#e94560" }}>{pendingByYear.length}</div>
-              </div>
-              <div style={{ padding: "14px 18px", borderRadius: 14, background: "rgba(255,255,255,0.05)", minWidth: 140 }}>
-                <div style={{ fontSize: 12, color: "#a0aec0", marginBottom: 6 }}>Approved</div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: "#48bb78" }}>{approvedByYear.length}</div>
-              </div>
+          </div>
+
+          {/* Stats row */}
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", opacity: yearChanging ? 0.5 : 1, transition: "opacity 0.3s", borderTop: "1px solid #e2e8f0", paddingTop: 16 }}>
+            <div style={{ padding: "12px 20px", borderRadius: 14, background: "#f7fafc", border: "1px solid #e2e8f0", flex: 1, minWidth: 100 }}>
+              <div style={{ fontSize: 12, color: "#718096", marginBottom: 4 }}>Requests</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: "#2d3748" }}>{totalRequestsByYear}</div>
+            </div>
+            <div style={{ padding: "12px 20px", borderRadius: 14, background: "#fff5f5", border: "1px solid #fed7d7", flex: 1, minWidth: 100 }}>
+              <div style={{ fontSize: 12, color: "#718096", marginBottom: 4 }}>Pending</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: "#e94560" }}>{pendingByYear.length}</div>
+            </div>
+            <div style={{ padding: "12px 20px", borderRadius: 14, background: "#f0fff4", border: "1px solid #c6f6d5", flex: 1, minWidth: 100 }}>
+              <div style={{ fontSize: 12, color: "#718096", marginBottom: 4 }}>Approved</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: "#38a169" }}>{approvedByYear.length}</div>
             </div>
           </div>
         </div>
@@ -404,18 +412,52 @@ Renganayagi Varatharaj College of Engineering`
                 <p style={{ color: "#a0aec0" }}>No approved passes for {selectedYear}.</p>
               </div>
             ) : sortedApprovedByYear.map(pass => (
-              <div key={pass.id} className="card">
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
-                  <div>
-                    <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 16 }}>{pass.studentName}</div>
-                    <div style={{ color: "#a0aec0", fontSize: 13, marginTop: 4 }}>{pass.registerNo} • {pass.year} • {pass.reason}</div>
-                    <div style={{ color: "#a0aec0", fontSize: 12, marginTop: 6 }}>📅 {new Date(pass.createdAt).toLocaleDateString()} • 🕐 {new Date(pass.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end" }}>
-                    <div style={{ padding: "10px", background: "white", borderRadius: 12, textAlign: "center", border: "2px solid #48bb78" }}>
-                      <QRCode value={pass.token} size={60} level="L" />
+              <div key={pass.id} className="card" style={{ padding: 0, overflow: "hidden", border: "1px solid rgba(72,187,120,0.3)" }}>
+                {/* Green Header */}
+                <div style={{ background: "linear-gradient(135deg, #1a6b3c, #2ecc71)", padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🚪</div>
+                    <div>
+                      <div style={{ color: "white", fontWeight: 800, fontSize: 15, fontFamily: "Syne" }}>GATE PASS — APPROVED</div>
+                      <div style={{ color: "rgba(255,255,255,0.75)", fontSize: 12 }}>{pass.dept} Department · {pass.year}</div>
                     </div>
-                    <div style={{ fontSize: 12, color: "#48bb78", fontWeight: 700, textAlign: "center" }}>✅ Approved</div>
+                  </div>
+                  <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: 10, padding: "6px 14px", textAlign: "center" }}>
+                    <div style={{ color: "rgba(255,255,255,0.7)", fontSize: 10, fontWeight: 600, letterSpacing: 1 }}>TOKEN</div>
+                    <div style={{ color: "white", fontWeight: 900, fontSize: 18, letterSpacing: 3, fontFamily: "monospace" }}>{pass.token}</div>
+                  </div>
+                </div>
+                {/* Body */}
+                <div style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontFamily: "Syne", fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{pass.studentName}</div>
+                    <div style={{ color: "#a0aec0", fontSize: 13, marginBottom: 12 }}>{pass.registerNo}</div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "10px 14px" }}>
+                        <div style={{ fontSize: 10, color: "#a0aec0", fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>REASON</div>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{pass.reason}</div>
+                      </div>
+                      <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "10px 14px" }}>
+                        <div style={{ fontSize: 10, color: "#a0aec0", fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>PLACE</div>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>📍 {pass.place}</div>
+                      </div>
+                      <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "10px 14px" }}>
+                        <div style={{ fontSize: 10, color: "#a0aec0", fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>OUT</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#fc8181" }}>🕐 {pass.outDate} {pass.outTime}</div>
+                      </div>
+                      <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "10px 14px" }}>
+                        <div style={{ fontSize: 10, color: "#a0aec0", fontWeight: 600, letterSpacing: 1, marginBottom: 4 }}>IN</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#48bb78" }}>🕐 {pass.inDate} {pass.inTime}</div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* QR Code */}
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                    <div style={{ padding: 10, background: "white", borderRadius: 12, border: "3px solid #48bb78", boxShadow: "0 4px 20px rgba(72,187,120,0.3)" }}>
+                      <QRCode value={pass.token || "NO_TOKEN"} size={90} level="M" />
+                    </div>
+                    <div style={{ fontSize: 11, color: "#48bb78", fontWeight: 700 }}>✅ Show to Security</div>
+                    <div style={{ fontSize: 11, color: "#a0aec0" }}>Approved by {pass.hodName || "HOD"}</div>
                   </div>
                 </div>
               </div>

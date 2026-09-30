@@ -64,12 +64,9 @@ const staffNav = [
     label: "CIA", 
     isSubmenu: true,
     children: [
-      { label: "Exam Creation", path: "/cia/exam-creation" },
-      { label: "Schedule Examination", path: "/cia/schedule" },
       { label: "Question Bank", path: "/cia/question-bank" },
       { label: "My Question Papers", path: "/cia/my-papers" },
       { label: "Question Paper", path: "/cia/question-paper" },
-      { label: "CIA Mark Attendance", path: "/cia/attendance" },
       { label: "Mark Entry Process", path: "/cia/mark-entry" },
       { label: "Other Mark Entry Process", path: "/cia/other-mark-entry" },
       { label: "ESE Mark Entry Process", path: "/cia/ese-mark-entry" },
@@ -87,8 +84,7 @@ const staffNav = [
       { label: "Course Allocation", path: "/academics/course-allocation" },
       { label: "My Subjects", path: "/staff/my-subjects" },
       { label: "Course Enrollment", path: "/academics/course-enrollment" },
-      { label: "Timetable Config", path: "/academics/timetable-config" },
-      { label: "View Timetable", path: "/academics/view-timetable" },
+
       { label: "Faculty Profile", path: "/academics/faculty-profile" },
       { label: "Academic Reports", path: "/academics/reports" },
       { 
@@ -96,7 +92,7 @@ const staffNav = [
         isNestedSubmenu: true,
         children: [
           { label: "Course Contents & Plan", path: "/academics/lms/course-contents" },
-          { label: "Faculty Timetable", path: "/academics/lms/faculty-timetable" },
+
           { label: "Plan Completion", path: "/academics/lms/plan-completion" },
           { label: "Plan Feedback", path: "/academics/lms/plan-feedback" },
           { label: "Assignments", path: "/academics/lms/assignments" },
@@ -109,6 +105,25 @@ const staffNav = [
       }
     ]
   }
+];
+
+const examCellNav = [
+  { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/exam_cell" },
+  { 
+    icon: <FileText size={18} />, 
+    label: "CIA", 
+    isSubmenu: true,
+    children: [
+      { label: "Exam Creation", path: "/cia/exam-creation" },
+      { label: "Schedule Examination", path: "/cia/schedule" },
+      { label: "CIA Mark Attendance", path: "/cia/attendance" }
+    ]
+  }
+];
+
+const deptAdminNav = [
+  { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/dept-admin" },
+  { icon: <Calendar size={18} />, label: "Timetable Management", path: "/dept-admin/timetable" }
 ];
 
 const hodNav = [
@@ -130,7 +145,7 @@ const hodNav = [
       { label: "Subject Allocation", path: "/hod/subject-allocation" },
       { label: "Class Incharge", path: "/hod/class-incharge" },
       { label: "Attendance Monitor", path: "/hod/attendance" },
-      { label: "Timetable", path: "/hod/timetable" },
+
       { label: "Reports", path: "/academics/reports" },
       {
         label: "CIA Configuration",
@@ -297,7 +312,7 @@ const adminNav = [
 ];
 
 export default function Sidebar() {
-  const { currentUser, userProfile, logout, isSuperAdmin } = useAuth();
+  const { userProfile, logout, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -318,6 +333,7 @@ export default function Sidebar() {
     return state;
   });
   const [reviewCount, setReviewCount] = useState(0);
+  const [isClassIncharge, setIsClassIncharge] = useState(false);
 
   const role = userProfile?.role;
 
@@ -342,7 +358,7 @@ export default function Sidebar() {
 
   useEffect(() => {
     if (!role) return;
-    import('../supabase/supabaseAdapter').then(({ collection, query, onSnapshot, where, db }) => {
+    import('../supabase/supabaseAdapter').then(({ collection, query, onSnapshot, getDocs, where, db }) => {
       if (role === 'hod') {
         const q = query(collection(db, "cia_question_papers"), where("status", "in", ["SUBMITTED_TO_HOD", "RETURNED_TO_HOD"]));
         const unsub = onSnapshot(q, snap => setReviewCount(snap.docs.length));
@@ -353,19 +369,32 @@ export default function Sidebar() {
         const unsub = onSnapshot(q, snap => setReviewCount(snap.docs.length));
         return () => unsub();
       }
+      if (role === 'staff' && userProfile?.uid) {
+        const q = query(collection(db, "class_incharges"), where("facultyId", "==", userProfile.uid));
+        getDocs(q).then(snap => {
+          setIsClassIncharge(!snap.empty);
+        });
+      }
     });
-  }, [role]);
+  }, [role, userProfile]);
 
-  const navItems =
+  let navItems =
     isSuperAdmin ? adminNav :
     role === "student" ? studentNav :
-    role === "staff" ? staffNav :
+    role === "exam_cell" ? examCellNav :
+    role === "staff" ? [...staffNav] :
     role === "hod" ? hodNav :
+    role === "dept_admin" ? [...staffNav, { icon: <Calendar size={18} />, label: "Manage Timetables", path: "/staff/manage-timetable" }] :
     role === "warden" ? wardenNav :
     role === "officestaff" ? officestaffNav :
     role === "security" ? securityNav :
     role === "management" ? managementNav :
     role === "principal" ? principalNav : [];
+
+  if (role === "staff" && isClassIncharge) {
+    // Insert "Student Details" right after Dashboard (index 1)
+    navItems.splice(1, 0, { icon: <Users size={18} />, label: "Student Details", path: "/staff/students" });
+  }
 
   async function handleLogout() {
     await logout();
@@ -489,12 +518,7 @@ export default function Sidebar() {
   return (
     <>
       {/* Top Header */}
-      {/* Top Header */}
-      <div className="top-header" style={{
-        background: "#ffffff",
-        borderBottom: "1px solid #e2e8f0",
-        color: "#0f172a"
-      }}>
+      <div className="top-header">
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <button
             onClick={() => setMobileOpen(true)}
@@ -502,16 +526,16 @@ export default function Sidebar() {
               display: "none",
               background: "transparent",
               border: "none",
-              color: "#0f172a",
+              color: "var(--text)",
               cursor: "pointer",
               padding: 4,
               marginRight: 15
             }}
             className="hamburger-btn-header"
           >
-            <div style={{ width: 20, height: 2, background: "#0f172a", margin: "4px 0" }}></div>
-            <div style={{ width: 20, height: 2, background: "#0f172a", margin: "4px 0" }}></div>
-            <div style={{ width: 20, height: 2, background: "#0f172a", margin: "4px 0" }}></div>
+            <div style={{ width: 20, height: 2, background: "var(--text-dark)", margin: "4px 0" }}></div>
+            <div style={{ width: 20, height: 2, background: "var(--text-dark)", margin: "4px 0" }}></div>
+            <div style={{ width: 20, height: 2, background: "var(--text-dark)", margin: "4px 0" }}></div>
           </button>
         </div>
         
@@ -522,21 +546,13 @@ export default function Sidebar() {
             onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
             style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
           >
-            <div className="header-user-avatar" style={{ overflow: "hidden", borderRadius: "50%", width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center", background: "#2563eb", color: "#ffffff", fontWeight: 700 }}>
-              {userProfile?.photoURL ? (
-                <img src={userProfile.photoURL} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : userProfile?.name ? (
-                userProfile.name.charAt(0).toUpperCase()
-              ) : (
-                <User size={16} />
-              )}
+            <div className="header-user-avatar" style={{ background: "#1e3a8a", color: "white", width: "32px", height: "32px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
+              {userProfile?.name ? userProfile.name.charAt(0).toUpperCase() : <User size={16} />}
             </div>
-            <div className="header-user-info">
-              <span className="name" style={{ fontWeight: 700, fontSize: '13px', color: '#0f172a', display: 'block' }}>
-                {userProfile?.name || currentUser?.email || "User"}
-              </span>
-              <span className="role" style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, display: 'block' }}>
-                {isSuperAdmin ? "SUPER ADMIN" : (role ? role.toUpperCase() : "USER")}
+            <div className="header-user-info" style={{ display: "flex", flexDirection: "column" }}>
+              <span className="name" style={{ fontWeight: "bold", fontSize: "14px" }}>{userProfile?.name || 'RVCE User'}</span>
+              <span className="role" style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                {role === 'dept_admin' ? `${userProfile?.dept || ''} ADMIN`.trim() : role?.toUpperCase()}
               </span>
             </div>
           </div>
@@ -552,42 +568,42 @@ export default function Sidebar() {
                 top: '100%',
                 right: 0,
                 marginTop: '10px',
-                background: '#ffffff',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+                background: '#fff',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                 borderRadius: '8px',
                 width: '220px',
                 padding: '8px 0',
                 zIndex: 1000,
-                color: '#0f172a',
-                border: '1px solid #e2e8f0',
+                color: '#333',
+                border: '1px solid #eaeaea',
                 fontFamily: 'sans-serif'
               }}>
-                <div style={{ padding: '12px 20px', borderBottom: '1px solid #f1f5f9', fontSize: '13px', color: '#64748b', marginBottom: '4px' }}>
-                  Welcome <strong style={{ color: "#0f172a" }}>{userProfile?.name?.toUpperCase() || role?.toUpperCase()}</strong>!
+                <div style={{ padding: '12px 20px', borderBottom: '1px solid #f0f0f0', fontSize: '13px', color: '#666', marginBottom: '4px' }}>
+                  Welcome {userProfile?.name?.toUpperCase() || role?.toUpperCase()}!
                 </div>
                 <div 
                   onClick={() => { setProfileDropdownOpen(false); handleNavClick(isSuperAdmin ? "/admin/profile" : `/${role}/profile`); }}
-                  style={{ padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', color: '#334155' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                  style={{ padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', color: '#444' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9f9f9'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                 >
-                  <User size={16} color="#2563eb" /> Profile
+                  <User size={16} color="#6b7280" /> Profile
                 </div>
                 <div 
                   onClick={() => { setProfileDropdownOpen(false); handleNavClick(isSuperAdmin ? "/admin/help" : `/${role}/help`); }}
-                  style={{ padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', color: '#334155', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px', marginBottom: '4px' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                  style={{ padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', color: '#444', borderBottom: '1px solid #f0f0f0', paddingBottom: '12px', marginBottom: '4px' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9f9f9'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                 >
-                  <HelpCircle size={16} color="#2563eb" /> Help
+                  <HelpCircle size={16} color="#6b7280" /> Help
                 </div>
                 <div 
                   onClick={() => { setProfileDropdownOpen(false); handleLogout(); }}
-                  style={{ padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', color: '#dc2626' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
+                  style={{ padding: '10px 20px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px', color: '#444' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = '#f9f9f9'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                 >
-                  <LogOut size={16} color="#dc2626" /> Logout
+                  <LogOut size={16} color="#6b7280" /> Logout
                 </div>
               </div>
             </>

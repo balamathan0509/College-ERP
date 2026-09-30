@@ -59,7 +59,7 @@ export default function Login({ onSwitch }) {
         navigate("/admin");
       } else if (rawRole === "student" || rawRole.includes("student")) {
         navigate("/student");
-      } else if (rawRole === "staff" || rawRole.includes("staff") || rawRole.includes("faculty")) {
+      } else if (rawRole === "staff" || rawRole.includes("staff") || rawRole.includes("faculty") || rawRole === "dept_admin") {
         navigate("/staff");
       } else if (rawRole === "hod" || rawRole.includes("hod")) {
         navigate("/hod");
@@ -73,6 +73,8 @@ export default function Login({ onSwitch }) {
         navigate("/management");
       } else if (rawRole === "principal" || rawRole.includes("principal")) {
         navigate("/principal");
+      } else if (rawRole === "exam_cell" || rawRole.includes("exam")) {
+        navigate("/exam_cell");
       } else if (userData) {
         // Default to student if profile exists but role wasn't explicitly matched
         navigate("/student");

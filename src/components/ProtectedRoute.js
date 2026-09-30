@@ -10,10 +10,15 @@ export default function ProtectedRoute({ children, allowedRole }) {
   // Super admins can access ALL routes
   if (isSuperAdmin) return children;
   if (allowedRole && userProfile?.role !== "management") {
-    if (Array.isArray(allowedRole)) {
-      if (!allowedRole.includes(userProfile?.role)) return <Navigate to="/" />;
-    } else {
-      if (userProfile?.role !== allowedRole) return <Navigate to="/" />;
+    const roles = Array.isArray(allowedRole) ? allowedRole : [allowedRole];
+    
+    // Treat dept_admin as having staff permissions
+    if (roles.includes("staff") && userProfile?.role === "dept_admin") {
+      return children;
+    }
+
+    if (!roles.includes(userProfile?.role)) {
+      return <Navigate to="/" />;
     }
   }
 

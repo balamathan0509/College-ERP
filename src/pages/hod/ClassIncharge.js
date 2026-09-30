@@ -206,7 +206,7 @@ export default function ClassIncharge() {
                     return (
                       <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: 12, fontWeight: 600 }}>{cls.year}</td>
-                        <td style={{ padding: 12 }}>{cls.section}</td>
+                        <td style={{ padding: 12 }}>{cls.section === "." ? <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>No Section</span> : cls.section}</td>
                         <td style={{ padding: 12 }}>
                           {inc ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -250,7 +250,7 @@ export default function ClassIncharge() {
           <div className="modal-overlay">
             <div className="modal-content" style={{ maxWidth: 400 }}>
               <h3>Assign Permanent Incharge</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>{selectedClass?.year} - Section {selectedClass?.section}</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>{selectedClass?.year} {selectedClass?.section !== "." ? `- Section ${selectedClass?.section}` : "(No Section)"}</p>
               <form onSubmit={handleSetPermanent}>
                 <div style={{ marginBottom: 15 }}>
                   <label>Select Staff *</label>
@@ -273,7 +273,7 @@ export default function ClassIncharge() {
           <div className="modal-overlay">
             <div className="modal-content" style={{ maxWidth: 450 }}>
               <h3>Assign Temporary Substitute</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>{selectedClass?.year} - Section {selectedClass?.section}</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: 13, marginBottom: 20 }}>{selectedClass?.year} {selectedClass?.section !== "." ? `- Section ${selectedClass?.section}` : "(No Section)"}</p>
               <form onSubmit={handleSetSubstitute}>
                 <div style={{ marginBottom: 15 }}>
                   <label>Substitute Staff *</label>

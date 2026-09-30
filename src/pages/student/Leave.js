@@ -45,6 +45,12 @@ export default function StudentLeave() {
     setLoading(true);
     try {
       const reasonText = form.leaveType === "Other" ? form.otherReason : form.reason;
+      const studentSection = userProfile.section || ".";
+
+      // Lookup class incharge for this student's class
+      const incSnap = await getDocs(query(collection(db, "class_incharges"), where("dept", "==", userProfile.dept)));
+      const myIncharge = incSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .find(i => i.year === userProfile.year && (i.section === studentSection || i.section === "."));
 
       await addDoc(collection(db, "leave_requests"), {
         studentId: currentUser.uid,
@@ -53,6 +59,8 @@ export default function StudentLeave() {
         registerNo: userProfile.registerNo,
         department: userProfile.dept,
         year: userProfile.year,
+        section: studentSection,
+        classInchargeId: myIncharge?.facultyId || null,
         phone: userProfile.phone || "",
         fromDate: form.fromDate,
         toDate: form.toDate,
@@ -63,23 +71,21 @@ export default function StudentLeave() {
         createdAt: new Date().toISOString()
       });
 
-      const staffQ = query(
-        collection(db, "users"),
-        where("role", "==", "staff"),
-        where("dept", "==", userProfile.dept)
-      );
-      const staffSnap = await getDocs(staffQ);
-      staffSnap.docs.forEach(d => {
-        const staffData = d.data();
-        if (staffData.email) {
-          sendEmail({
-            toEmail: staffData.email,
-            toName: staffData.name,
-            subject: "New Student Leave Application",
-            message: `${userProfile.name} (${userProfile.registerNo}) has submitted a Leave request (${form.leaveType}) from ${form.fromDate} to ${form.toDate}.\nReason: ${reasonText}`
-          });
+      // Notify only the class incharge (not all dept staff)
+      if (myIncharge?.facultyId) {
+        const incUserSnap = await getDocs(query(collection(db, "users"), where("uid", "==", myIncharge.facultyId)));
+        if (!incUserSnap.empty) {
+          const incData = incUserSnap.docs[0].data();
+          if (incData.email) {
+            sendEmail({
+              toEmail: incData.email,
+              toName: incData.name,
+              subject: "New Student Leave Application",
+              message: `${userProfile.name} (${userProfile.registerNo}) has submitted a Leave request (${form.leaveType}) from ${form.fromDate} to ${form.toDate}.\nReason: ${reasonText}`
+            });
+          }
         }
-      });
+      }
 
       setSuccess("Leave request submitted successfully! Pending faculty review.");
       setForm({ fromDate: "", toDate: "", reason: "", leaveType: "", otherReason: "" });
