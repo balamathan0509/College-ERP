@@ -181,7 +181,6 @@ export default function MarkAttendance() {
           const ciSnap = await getDocs(ciQ);
           ciSnap.docs.forEach(async (d) => {
             const ciData = d.data();
-            // Could add year filtering here if needed
             await addDoc(collection(db, "alerts"), {
               title: "CIA Attendance Marked",
               message: `CIA Attendance for ${schedule.courseCode} (${schedule.class}) has been marked by Exam Cell.`,
@@ -192,6 +191,36 @@ export default function MarkAttendance() {
             });
           });
         }
+
+        // Notify Subject Staff
+        const allocQ = query(collection(db, "subject_allocations"), where("courseCode", "==", schedule.courseCode));
+        const allocSnap = await getDocs(allocQ);
+        allocSnap.docs.forEach(async (d) => {
+          const allocData = d.data();
+          await addDoc(collection(db, "alerts"), {
+            title: "CIA Attendance Marked",
+            message: `CIA Attendance for your subject ${schedule.courseCode} (${schedule.class}) has been marked by Exam Cell.`,
+            date: new Date().toISOString(),
+            targetRole: "staff",
+            targetUid: allocData.facultyId,
+            isRead: false
+          });
+        });
+
+        // Notify Absent Students
+        students.forEach(async (student) => {
+          if (attendance[student.id] === 'Absent') {
+            await addDoc(collection(db, "alerts"), {
+              title: "CIA Exam Absent Alert",
+              message: `You have been marked ABSENT for the CIA Exam: ${schedule.courseCode} - ${schedule.courseName} scheduled today.`,
+              date: new Date().toISOString(),
+              targetRole: "student",
+              targetUid: student.id,
+              isRead: false
+            });
+          }
+        });
+
       } catch (notifErr) {
         console.error("Failed to send notifications:", notifErr);
       }
