@@ -1,4 +1,5 @@
 // src/utils/academicCalendarUtils.js
+// Department Academic Calendar Utility Functions
 import { db, doc, getDoc } from "../supabase/supabaseAdapter";
 
 /**
