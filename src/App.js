@@ -60,6 +60,7 @@ import StaffStudentDetails from "./pages/staff/StudentDetails";
 // CIA Pages
 import ExamCreation from "./pages/cia/ExamCreation";
 import ScheduleExamination from "./pages/cia/ScheduleExamination";
+import ExamSeatingArrangement from "./pages/cia/ExamSeatingArrangement";
 import QuestionBank from "./pages/cia/QuestionBank";
 import QuestionPaper from "./pages/cia/QuestionPaper";
 import MarkAttendance from "./pages/cia/MarkAttendance";
@@ -158,6 +159,7 @@ export default function App() {
           <Route path="/student/complaints" element={<ProtectedRoute allowedRole="student"><ComplaintsPage /></ProtectedRoute>} />
           <Route path="/student/fines" element={<ProtectedRoute allowedRole="student"><StudentFines /></ProtectedRoute>} />
           <Route path="/student/question-papers" element={<ProtectedRoute allowedRole="student"><StudentQuestionPapers /></ProtectedRoute>} />
+          <Route path="/student/seating-arrangement" element={<ProtectedRoute allowedRole="student"><ExamSeatingArrangement /></ProtectedRoute>} />
           <Route path="/student/help" element={<ProtectedRoute allowedRole="student"><HelpCenter /></ProtectedRoute>} />
 
           {/* Staff Routes */}
@@ -168,7 +170,7 @@ export default function App() {
           <Route path="/staff/attendance" element={<ProtectedRoute allowedRole="staff"><StaffAttendance /></ProtectedRoute>} />
           <Route path="/staff/my-subjects" element={<ProtectedRoute allowedRole={["staff", "hod"]}><MySubjects /></ProtectedRoute>} />
           <Route path="/staff/results" element={<ProtectedRoute allowedRole="staff"><StaffResults /></ProtectedRoute>} />
-          <Route path="/staff/timetable" element={<ProtectedRoute allowedRole="staff"><StaffTimetable /></ProtectedRoute>} />
+          <Route path="/staff/timetable" element={<ProtectedRoute allowedRole={["staff", "hod", "dept_admin"]}><StaffTimetable /></ProtectedRoute>} />
           <Route path="/staff/mess" element={<ProtectedRoute allowedRole="staff"><MessPage /></ProtectedRoute>} />
           <Route path="/staff/hostel" element={<ProtectedRoute allowedRole="staff"><HostelPage /></ProtectedRoute>} />
           <Route path="/staff/profile" element={<ProtectedRoute allowedRole="staff"><Profile /></ProtectedRoute>} />
@@ -182,6 +184,7 @@ export default function App() {
           {/* Exam Cell CIA Routes */}
           <Route path="/cia/exam-creation" element={<ProtectedRoute allowedRole="exam_cell"><ExamCreation /></ProtectedRoute>} />
           <Route path="/cia/schedule" element={<ProtectedRoute allowedRole="exam_cell"><ScheduleExamination /></ProtectedRoute>} />
+          <Route path="/cia/seating-arrangement" element={<ProtectedRoute allowedRole={["exam_cell", "admin", "staff", "hod"]}><ExamSeatingArrangement /></ProtectedRoute>} />
           <Route path="/cia/attendance" element={<ProtectedRoute allowedRole="exam_cell"><MarkAttendance /></ProtectedRoute>} />
 
           {/* Staff CIA Routes */}
@@ -214,7 +217,9 @@ export default function App() {
           <Route path="/academics/lms/self-appraisal" element={<ProtectedRoute allowedRole={['staff', 'hod']}><SelfAppraisal /></ProtectedRoute>} />
           <Route path="/academics/lms/faculty-participation" element={<ProtectedRoute allowedRole={['staff', 'hod']}><FacultyParticipation /></ProtectedRoute>} />
 
-          <Route path="/staff/manage-timetable" element={<ProtectedRoute allowedRole="dept_admin"><TimetableEditor /></ProtectedRoute>} />
+          <Route path="/dept-admin/timetable" element={<ProtectedRoute allowedRole={["dept_admin", "hod", "admin"]}><TimetableEditor /></ProtectedRoute>} />
+          <Route path="/hod/timetable" element={<ProtectedRoute allowedRole={["hod", "dept_admin", "admin"]}><TimetableEditor /></ProtectedRoute>} />
+          <Route path="/staff/manage-timetable" element={<ProtectedRoute allowedRole={["dept_admin", "hod", "admin"]}><TimetableEditor /></ProtectedRoute>} />
           <Route path="/dept_admin/profile" element={<ProtectedRoute allowedRole="dept_admin"><Profile /></ProtectedRoute>} />
           <Route path="/dept_admin/help" element={<ProtectedRoute allowedRole="dept_admin"><HelpCenter /></ProtectedRoute>} />
 
@@ -230,7 +235,7 @@ export default function App() {
           <Route path="/hod/results" element={<ProtectedRoute allowedRole="hod"><HodResults /></ProtectedRoute>} />
           <Route path="/hod/attendance" element={<ProtectedRoute allowedRole="hod"><HodAttendance /></ProtectedRoute>} />
           <Route path="/hod/class-incharge" element={<ProtectedRoute allowedRole={["hod", "admin"]}><ClassIncharge /></ProtectedRoute>} />
-          <Route path="/hod/subject-allocation" element={<ProtectedRoute allowedRole={["hod", "admin", "management"]}><SubjectAllocation /></ProtectedRoute>} />
+          <Route path="/hod/subject-allocation" element={<Navigate to="/academics/course-allocation" replace />} />
           <Route path="/hod/attendance-overview" element={<ProtectedRoute allowedRole={["hod", "admin"]}><AttendanceOverview /></ProtectedRoute>} />
           <Route path="/reports/daily-attendance" element={<ProtectedRoute allowedRole={["hod", "admin", "management", "principal"]}><DailyAttendanceReport /></ProtectedRoute>} />
           <Route path="/hod/fees" element={<ProtectedRoute allowedRole="hod"><HodFees /></ProtectedRoute>} />

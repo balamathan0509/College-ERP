@@ -5,6 +5,7 @@ import { db } from "../../supabase/supabaseAdapter";
 import { collection, query, where, getDocs } from "../../supabase/supabaseAdapter";
 import toast, { Toaster } from "react-hot-toast";
 import { Calendar, CheckCircle2, XCircle, LayoutDashboard } from "lucide-react";
+import { COLLEGE_DEPARTMENTS } from "../../utils/collegeConfig";
 
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 
@@ -19,7 +20,7 @@ export default function AttendanceOverview() {
 
   useEffect(() => {
     if (isSuperAdmin) {
-      setDepartments(["CSE", "ECE", "EEE", "MECH", "IT", "AIDS"]);
+      setDepartments(COLLEGE_DEPARTMENTS);
     } else if (userProfile?.dept) {
       setDepartment(userProfile.dept);
     }

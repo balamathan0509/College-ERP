@@ -32,29 +32,42 @@ export default function FacultyDetails() {
   const fetchFaculties = async () => {
     try {
       setLoading(true);
-      const q = query(collection(db, 'users'), where("role", "in", ["staff", "hod", "dept_admin"]));
-      const snap = await getDocs(q);
-      let fetchedFaculties = snap.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          employeeCode: data.registerNo || data.staffId || data.employeeCode || '',
-          facultyName: data.name || data.facultyName || '',
-          email: data.email || '',
-          mobile: data.phone || data.mobile || '',
-          department: data.dept || data.department || '',
-          designation: data.designation || '',
-          status: data.status || 'Active',
-          ...data
-        };
-      });
+      const snap = await getDocs(collection(db, 'users'));
+      const staffRoles = ['staff', 'faculty', 'teacher', 'dept_admin', 'hod'];
       
-      if (userProfile?.role === 'hod') {
-        fetchedFaculties = fetchedFaculties.filter(f => f.department === userProfile.dept || f.dept === userProfile.dept);
+      let fetchedFaculties = snap.docs
+        .map(doc => {
+          const data = doc.data() || {};
+          const dept = data.dept || data.department || '';
+          return {
+            ...data,
+            id: doc.id,
+            employeeCode: data.staffId || data.registerNo || data.employeeCode || (data.email ? data.email.split('@')[0] : '—'),
+            facultyName: data.name || data.facultyName || 'Staff Member',
+            email: data.email || '—',
+            mobile: data.phone || data.mobile || '—',
+            department: dept || 'CSE',
+            dept: dept || 'CSE',
+            designation: data.designation || 'Faculty',
+            status: data.status || 'Active',
+            role: data.role || 'staff'
+          };
+        })
+        .filter(f => staffRoles.includes((f.role || '').toLowerCase()));
+      
+      if (userProfile?.role === 'hod' && userProfile?.dept) {
+        const hodDept = (userProfile.dept || userProfile.department || '').trim().toLowerCase();
+        if (hodDept) {
+          fetchedFaculties = fetchedFaculties.filter(f => {
+            const fDept = (f.dept || f.department || '').trim().toLowerCase();
+            return !fDept || fDept === hodDept || fDept.includes(hodDept) || hodDept.includes(fDept);
+          });
+        }
       }
       
       setFaculties(fetchedFaculties);
     } catch (err) {
+      console.error("Failed to load faculty details:", err);
       toast.error('Failed to load faculty details');
     } finally {
       setLoading(false);
@@ -63,7 +76,7 @@ export default function FacultyDetails() {
 
   useEffect(() => {
     fetchFaculties();
-  }, []);
+  }, [userProfile]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -212,8 +225,8 @@ export default function FacultyDetails() {
             <div>
               <h3 style={{ margin: '0 0 5px 0', color: '#4338ca', fontSize: '15px' }}>Current Department Coordinator</h3>
               <div style={{ color: '#475569', fontSize: '14px' }}>
-                {faculties.find(f => f.role === 'dept_admin' && (f.department === userProfile?.dept || f.dept === userProfile?.dept)) ? (
-                  <><b>{faculties.find(f => f.role === 'dept_admin' && (f.department === userProfile?.dept || f.dept === userProfile?.dept)).facultyName}</b> is currently managing Timetables and other department configurations.</>
+                {faculties.find(f => (f.role || '').toLowerCase() === 'dept_admin' && ((f.department || '').toLowerCase() === (userProfile?.dept || '').toLowerCase() || (f.dept || '').toLowerCase() === (userProfile?.dept || '').toLowerCase())) ? (
+                  <><b>{faculties.find(f => (f.role || '').toLowerCase() === 'dept_admin' && ((f.department || '').toLowerCase() === (userProfile?.dept || '').toLowerCase() || (f.dept || '').toLowerCase() === (userProfile?.dept || '').toLowerCase())).facultyName}</b> is currently managing Timetables and other department configurations.</>
                 ) : (
                   <>No Dept Coordinator assigned. Click "Make Coordinator" on a staff member to assign one.</>
                 )}

@@ -240,34 +240,47 @@ export default function ScheduleExamination() {
       <Sidebar />
       <main className='main-content'>
         <Toaster position="top-right" />
-        <div className='page-header' style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* Professional Header */}
+        <div style={{
+          marginTop: '24px',
+          marginBottom: '32px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-end',
+          borderBottom: '1px solid var(--border-color)',
+          paddingBottom: '16px'
+        }}>
           <div>
-            <h1>Schedule Examination</h1>
-            <p className="subtitle">Manage examination timetables</p>
+            <h1 style={{ margin: '0 0 8px 0', fontSize: '24px', fontWeight: '600', color: 'var(--text-dark)', textTransform: 'none' }}>
+              Schedule Examination
+            </h1>
+            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '14px' }}>
+              Manage examination timetables
+            </p>
           </div>
-          <button className="btn-primary" onClick={() => { resetForm(); setShowModal(true); }}>
+          <button className="btn-primary" onClick={() => { resetForm(); setShowModal(true); }} style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '8px', fontWeight: '500', width: 'auto' }}>
             <Plus size={18} /> Schedule Exam
           </button>
         </div>
 
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', gap: 15, alignItems: 'center', flexWrap: 'wrap' }}>
-            <select value={filterSession} onChange={(e) => setFilterSession(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}>
-              <option value="">All Sessions</option>
+        <div className="card" style={{ marginBottom: 24, boxShadow: '0 2px 4px rgba(0,0,0,0.02)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '16px' }}>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <select value={filterSession} onChange={(e) => setFilterSession(e.target.value)} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f8fafc', color: 'var(--text-dark)', fontSize: '14px', outline: 'none', transition: 'all 0.2s', minWidth: '150px' }}>
+              <option value="">All Session</option>
               {SESSIONS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
-            <select value={filterProgramme} onChange={(e) => setFilterProgramme(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}>
-              <option value="">All Programmes</option>
+            <select value={filterProgramme} onChange={(e) => setFilterProgramme(e.target.value)} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f8fafc', color: 'var(--text-dark)', fontSize: '14px', outline: 'none', transition: 'all 0.2s', minWidth: '180px' }}>
+              <option value="">All Dept</option>
               {PROGRAMMES.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
-            <select value={filterSemester} onChange={(e) => setFilterSemester(e.target.value)} style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}>
-              <option value="">All Semesters</option>
+            <select value={filterSemester} onChange={(e) => setFilterSemester(e.target.value)} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f8fafc', color: 'var(--text-dark)', fontSize: '14px', outline: 'none', transition: 'all 0.2s', minWidth: '150px' }}>
+              <option value="">All Semester</option>
               {SEMESTERS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
         </div>
 
-        <div className="card">
+        <div className="card" style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.02)', border: '1px solid var(--border-color)', borderRadius: '12px', overflow: 'hidden' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Loading schedules...</div>
           ) : filteredSchedules.length === 0 ? (
@@ -276,39 +289,39 @@ export default function ScheduleExamination() {
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
-                    <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>EXAM / SESSION</th>
-                    <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>COURSE</th>
-                    <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>CLASS</th>
-                    <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>DATE & TIME</th>
-                    <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>STATUS</th>
-                    <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13, textAlign: 'right' }}>ACTION</th>
+                  <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left', background: '#f8fafc' }}>
+                    <th style={{ padding: '16px 20px', color: '#64748b', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>EXAM / SESSION</th>
+                    <th style={{ padding: '16px 20px', color: '#64748b', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>COURSE</th>
+                    <th style={{ padding: '16px 20px', color: '#64748b', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>CLASS</th>
+                    <th style={{ padding: '16px 20px', color: '#64748b', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>DATE & TIME</th>
+                    <th style={{ padding: '16px 20px', color: '#64748b', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>STATUS</th>
+                    <th style={{ padding: '16px 20px', color: '#64748b', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right' }}>ACTION</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredSchedules.map((item) => (
-                    <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div style={{ fontWeight: 600 }}>{item.examName}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{item.academicSession} | Sem {item.semester}</div>
+                    <tr key={item.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s', ':hover': { background: '#f8fafc' } }}>
+                      <td style={{ padding: '16px 20px' }}>
+                        <div style={{ color: 'var(--text-dark)', fontSize: '14px', fontWeight: '600' }}>{item.examName}</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: '4px' }}>{item.academicSession} | Sem {item.semester}</div>
                       </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div>{item.courseCode}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{item.courseName}</div>
+                      <td style={{ padding: '16px 20px' }}>
+                        <div style={{ color: 'var(--text-dark)', fontSize: '14px', fontWeight: '500' }}>{item.courseCode}</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: '4px' }}>{item.courseName}</div>
                       </td>
-                      <td style={{ padding: '12px 16px', fontWeight: 600 }}>{item.class}</td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <div>{item.date} ({item.session})</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{item.startTime} - {item.endTime}</div>
+                      <td style={{ padding: '16px 20px', fontWeight: '600', color: 'var(--text-dark)', fontSize: '14px' }}>{item.class}</td>
+                      <td style={{ padding: '16px 20px' }}>
+                        <div style={{ color: 'var(--text-dark)', fontSize: '14px', fontWeight: '500' }}>{item.date} ({item.session})</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: '4px' }}>{item.startTime} - {item.endTime}</div>
                       </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <span style={{ padding: '4px 8px', borderRadius: 4, background: item.status === 'Completed' ? 'rgba(16,185,129,0.1)' : 'rgba(59,130,246,0.1)', color: item.status === 'Completed' ? '#10b981' : '#3b82f6', fontSize: 12 }}>
+                      <td style={{ padding: '16px 20px' }}>
+                        <span style={{ padding: '6px 12px', borderRadius: '20px', background: item.status === 'Completed' ? 'rgba(16, 185, 129, 0.1)' : (item.status === 'Cancelled' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59,130,246,0.1)'), color: item.status === 'Completed' ? '#10b981' : (item.status === 'Cancelled' ? '#ef4444' : '#3b82f6'), fontSize: 12, fontWeight: '600' }}>
                           {item.status}
                         </span>
                       </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                        <button onClick={() => handleEdit(item)} style={{ background: 'transparent', border: 'none', color: '#6366f1', cursor: 'pointer', marginRight: 12 }}><Edit2 size={16} /></button>
-                        <button onClick={() => handleDelete(item.id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}><Trash2 size={16} /></button>
+                      <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                        <button onClick={() => handleEdit(item)} style={{ background: 'rgba(99, 102, 241, 0.1)', border: 'none', color: '#6366f1', cursor: 'pointer', marginRight: 12, padding: '8px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} title="Edit"><Edit2 size={16} /></button>
+                        <button onClick={() => handleDelete(item.id)} style={{ background: 'rgba(239, 68, 68, 0.1)', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '8px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} title="Delete"><Trash2 size={16} /></button>
                       </td>
                     </tr>
                   ))}
@@ -321,51 +334,58 @@ export default function ScheduleExamination() {
 
       {/* Modal */}
       {showModal && (
-        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="card" style={{ width: '90%', maxWidth: 600, maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 style={{ marginTop: 0, marginBottom: 20 }}>{editId ? 'Edit Schedule' : 'Schedule Examination'}</h2>
+        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ width: '90%', maxWidth: 700, maxHeight: '90vh', overflowY: 'auto', padding: '32px', borderRadius: '16px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', borderBottom: '1px solid #e2e8f0', paddingBottom: '16px' }}>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#1e293b' }}>
+                {editId ? 'Edit Schedule' : 'Schedule Examination'}
+              </h2>
+              <button onClick={() => setShowModal(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+                <XCircle size={24} />
+              </button>
+            </div>
             
             <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, marginBottom: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '28px' }}>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Select Examination *</label>
-                  <select name="examId" value={formData.examId} onChange={handleInputChange} required style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Select Examination *</label>
+                  <select name="examId" value={formData.examId} onChange={handleInputChange} required style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }}>
                     <option value="">Select Exam</option>
                     {exams.map(e => <option key={e.id} value={e.id}>{e.examName} ({e.academicSession} - {e.programmeName} Sem {e.semester})</option>)}
                   </select>
                 </div>
                 
                 <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Course Code *</label>
-                  <select name="courseCode" value={formData.courseCode} onChange={handleInputChange} required style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Course Code *</label>
+                  <select name="courseCode" value={formData.courseCode} onChange={handleInputChange} required style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }}>
                     <option value="">Select Course</option>
                     {courses.map(c => <option key={c.id} value={c.courseCode}>{c.courseCode} - {c.courseName}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Course Name *</label>
-                  <input type="text" name="courseName" value={formData.courseName} onChange={handleInputChange} placeholder="Course Name" required readOnly style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: '#f1f5f9', color: 'var(--text-muted)', cursor: 'not-allowed' }} />
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Course Name *</label>
+                  <input type="text" name="courseName" value={formData.courseName} onChange={handleInputChange} placeholder="Course Name" required readOnly style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#e2e8f0', color: '#64748b', fontSize: '14px', outline: 'none', cursor: 'not-allowed' }} />
                 </div>
                 
                 <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Class *</label>
-                  <input type="text" name="class" value={formData.class} onChange={handleInputChange} placeholder="e.g. CSE-A" required style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }} />
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Class *</label>
+                  <input type="text" name="class" value={formData.class} onChange={handleInputChange} placeholder="e.g. CSE-A" required style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Date *</label>
-                  <input type="date" name="date" value={formData.date} onChange={handleInputChange} required style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }} />
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Date *</label>
+                  <input type="date" name="date" value={formData.date} onChange={handleInputChange} required style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }} />
                 </div>
                 
                 <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Session *</label>
-                  <select name="session" value={formData.session} onChange={handleInputChange} required style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Session *</label>
+                  <select name="session" value={formData.session} onChange={handleInputChange} required style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }}>
                     <option value="FN">FN (Forenoon)</option>
                     <option value="AN">AN (Afternoon)</option>
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Status *</label>
-                  <select name="status" value={formData.status} onChange={handleInputChange} required style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Status *</label>
+                  <select name="status" value={formData.status} onChange={handleInputChange} required style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }}>
                     <option value="Scheduled">Scheduled</option>
                     <option value="Completed">Completed</option>
                     <option value="Cancelled">Cancelled</option>
@@ -373,18 +393,18 @@ export default function ScheduleExamination() {
                 </div>
                 
                 <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Start Time *</label>
-                  <input type="time" name="startTime" value={formData.startTime} onChange={handleInputChange} required style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }} />
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Start Time *</label>
+                  <input type="time" name="startTime" value={formData.startTime} onChange={handleInputChange} required style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }} />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>End Time *</label>
-                  <input type="time" name="endTime" value={formData.endTime} onChange={handleInputChange} required style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }} />
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>End Time *</label>
+                  <input type="time" name="endTime" value={formData.endTime} onChange={handleInputChange} required style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }} />
                 </div>
               </div>
               
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
-                <button type="button" onClick={() => setShowModal(false)} style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text)', cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" className="btn-primary" disabled={saving}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px', borderTop: '1px solid #e2e8f0', paddingTop: '20px' }}>
+                <button type="button" onClick={() => setShowModal(false)} style={{ padding: '10px 24px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#475569', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s' }}>Cancel</button>
+                <button type="submit" className="btn-primary" disabled={saving} style={{ padding: '10px 24px', borderRadius: '8px', fontWeight: '600', width: 'auto' }}>
                   {saving ? 'Saving...' : 'Save Schedule'}
                 </button>
               </div>
