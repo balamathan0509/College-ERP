@@ -6,10 +6,12 @@ import { useAuth } from '../../context/AuthContext';
 import { Search, Users, UserPlus, X, CheckCircle } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
-const PROGRAMMES = ["B.E CSE", "B.E ECE", "B.E EEE", "B.E MECH", "B.E CIVIL", "B.Tech IT", "B.Tech AIDS", "B.Tech AIML", "MBA", "MCA"];
-const DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "AIDS", "AIML", "MBA", "MCA"];
+import { COLLEGE_DEPARTMENTS } from '../../utils/collegeConfig';
+
+const PROGRAMMES = ["B.E CSE", "B.Tech AIDS", "B.E ECE", "B.E EEE", "B.Tech IT", "B.E MECH", "B.Tech CSBS"];
+const DEPARTMENTS = COLLEGE_DEPARTMENTS;
 const SEMESTERS = ["1","2","3","4","5","6","7","8"];
-const SECTIONS = ["A", "B", "C", "D"];
+const SECTIONS = ["A", "B", "C", "None"];
 const YEAR_MAP = { "1": "1st Year", "2": "1st Year", "3": "2nd Year", "4": "2nd Year", "5": "3rd Year", "6": "3rd Year", "7": "4th Year", "8": "4th Year" };
 
 export default function CourseEnrollment() {

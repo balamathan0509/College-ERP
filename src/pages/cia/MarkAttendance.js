@@ -167,11 +167,15 @@ export default function MarkAttendance() {
           const hodSnap = await getDocs(hodQ);
           hodSnap.docs.forEach(async (d) => {
             await addDoc(collection(db, "alerts"), {
+              type: "general",
               title: "CIA Attendance Marked",
-              message: `CIA Attendance for ${schedule.courseCode} (${schedule.class}) has been marked by Exam Cell.`,
-              date: new Date().toISOString(),
-              targetRole: "hod",
+              message: `CIA Attendance for ${schedule.courseCode} (${schedule.examName} - ${schedule.class}) has been marked by Exam Cell on ${schedule.date}.`,
+              roleTarget: "hod",
+              deptTarget: deptStr,
+              yearTarget: "all",
               targetUid: d.id,
+              createdAt: new Date().toISOString(),
+              createdByRole: "exam_cell",
               isRead: false
             });
           });
@@ -181,17 +185,58 @@ export default function MarkAttendance() {
           const ciSnap = await getDocs(ciQ);
           ciSnap.docs.forEach(async (d) => {
             const ciData = d.data();
-            // Could add year filtering here if needed
             await addDoc(collection(db, "alerts"), {
+              type: "general",
               title: "CIA Attendance Marked",
-              message: `CIA Attendance for ${schedule.courseCode} (${schedule.class}) has been marked by Exam Cell.`,
-              date: new Date().toISOString(),
-              targetRole: "staff",
+              message: `CIA Attendance for ${schedule.courseCode} (${schedule.examName} - ${schedule.class}) has been marked by Exam Cell on ${schedule.date}.`,
+              roleTarget: "staff",
+              deptTarget: deptStr,
+              yearTarget: "all",
               targetUid: ciData.facultyId,
+              createdAt: new Date().toISOString(),
+              createdByRole: "exam_cell",
               isRead: false
             });
           });
         }
+
+        // Notify Subject Staff
+        const allocQ = query(collection(db, "subject_allocations"), where("courseCode", "==", schedule.courseCode));
+        const allocSnap = await getDocs(allocQ);
+        allocSnap.docs.forEach(async (d) => {
+          const allocData = d.data();
+          await addDoc(collection(db, "alerts"), {
+            type: "general",
+            title: "CIA Attendance Marked",
+            message: `CIA Attendance for your subject ${schedule.courseCode} - ${schedule.courseName} (${schedule.class}) has been marked by Exam Cell on ${schedule.date}.`,
+            roleTarget: "staff",
+            deptTarget: deptStr || "all",
+            yearTarget: "all",
+            targetUid: allocData.facultyId,
+            createdAt: new Date().toISOString(),
+            createdByRole: "exam_cell",
+            isRead: false
+          });
+        });
+
+        // Notify Absent Students
+        for (const student of students) {
+          if (attendance[student.id] === 'Absent') {
+            await addDoc(collection(db, "alerts"), {
+              type: "general",
+              title: "CIA Exam Absent Alert",
+              message: `You have been marked ABSENT for the CIA Exam: ${schedule.courseCode} - ${schedule.courseName} (${schedule.examName}) scheduled on ${schedule.date}.`,
+              roleTarget: "student",
+              deptTarget: deptStr || "all",
+              yearTarget: "all",
+              targetUid: student.id,
+              createdAt: new Date().toISOString(),
+              createdByRole: "exam_cell",
+              isRead: false
+            });
+          }
+        }
+
       } catch (notifErr) {
         console.error("Failed to send notifications:", notifErr);
       }
@@ -211,19 +256,34 @@ export default function MarkAttendance() {
       <Sidebar />
       <main className='main-content'>
         <Toaster position="top-right" />
-        <div className='page-header'>
-          <h1>CIA Mark Attendance</h1>
-          <p className="subtitle">Mark attendance for scheduled examinations</p>
+        {/* Professional Header */}
+        <div style={{
+          marginTop: '24px',
+          marginBottom: '32px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-end',
+          borderBottom: '1px solid var(--border-color)',
+          paddingBottom: '16px'
+        }}>
+          <div>
+            <h1 style={{ margin: '0 0 8px 0', fontSize: '24px', fontWeight: '600', color: 'var(--text-dark)', textTransform: 'none' }}>
+              CIA Mark Attendance
+            </h1>
+            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '14px' }}>
+              Mark attendance for scheduled examinations
+            </p>
+          </div>
         </div>
 
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 15 }}>
+        <div className="card" style={{ marginBottom: 24, boxShadow: '0 2px 4px rgba(0,0,0,0.02)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '8px' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Select Scheduled Examination *</label>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Select Scheduled Examination *</label>
               <select 
                 value={selectedScheduleId} 
                 onChange={(e) => setSelectedScheduleId(e.target.value)} 
-                style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}
+                style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f8fafc', color: 'var(--text-dark)', fontSize: '14px', outline: 'none', transition: 'all 0.2s' }}
               >
                 <option value="">-- Select Schedule --</option>
                 {schedules.map(s => (
@@ -237,7 +297,7 @@ export default function MarkAttendance() {
         </div>
 
         {selectedScheduleId && (
-          <div className="card">
+          <div className="card" style={{ boxShadow: '0 2px 4px rgba(0,0,0,0.02)', border: '1px solid var(--border-color)', borderRadius: '12px', overflow: 'hidden' }}>
             {loading ? (
               <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Loading students...</div>
             ) : students.length === 0 ? (
@@ -246,34 +306,34 @@ export default function MarkAttendance() {
               </div>
             ) : (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 15 }}>
-                  <div style={{ display: 'flex', gap: 15 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 15, padding: '20px', borderBottom: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', gap: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Users size={16} color="var(--text-muted)"/>
-                      <span style={{ fontSize: 14, fontWeight: 600 }}>Total: {students.length}</span>
+                      <Users size={18} color="#64748b"/>
+                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#475569' }}>Total: {students.length}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <CheckCircle size={16} color="#10b981"/>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: '#10b981' }}>
+                      <CheckCircle size={18} color="#10b981"/>
+                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#10b981' }}>
                         Present: {Object.values(attendance).filter(v => v === 'Present').length}
                       </span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <XCircle size={16} color="#ef4444"/>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: '#ef4444' }}>
+                      <XCircle size={18} color="#ef4444"/>
+                      <span style={{ fontSize: '14px', fontWeight: '600', color: '#ef4444' }}>
                         Absent: {Object.values(attendance).filter(v => v === 'Absent').length}
                       </span>
                     </div>
                   </div>
                   
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    <button onClick={() => handleMarkAll('Present')} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #10b981', background: 'rgba(16,185,129,0.1)', color: '#10b981', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button onClick={() => handleMarkAll('Present')} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.2)', background: 'rgba(16,185,129,0.1)', color: '#10b981', cursor: 'pointer', fontSize: '13px', fontWeight: '600', transition: 'all 0.2s' }}>
                       Mark All Present
                     </button>
-                    <button onClick={() => handleMarkAll('Absent')} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #ef4444', background: 'rgba(239,68,68,0.1)', color: '#ef4444', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                    <button onClick={() => handleMarkAll('Absent')} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)', background: 'rgba(239,68,68,0.1)', color: '#ef4444', cursor: 'pointer', fontSize: '13px', fontWeight: '600', transition: 'all 0.2s' }}>
                       Mark All Absent
                     </button>
-                    <button onClick={handleSaveAttendance} className="btn-primary" disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', fontSize: 13 }}>
+                    <button onClick={handleSaveAttendance} className="btn-primary" disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '500', width: 'auto' }}>
                       <Save size={16} /> {saving ? 'Saving...' : 'Save Attendance'}
                     </button>
                   </div>
@@ -282,38 +342,40 @@ export default function MarkAttendance() {
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
-                      <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
-                        <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>S.NO</th>
-                        <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>STUDENT NAME</th>
-                        <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>REGISTER NO</th>
-                        <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>ATTENDANCE STATUS</th>
+                      <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left', background: '#f8fafc' }}>
+                        <th style={{ padding: '16px 20px', color: '#64748b', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>S.NO</th>
+                        <th style={{ padding: '16px 20px', color: '#64748b', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>STUDENT NAME</th>
+                        <th style={{ padding: '16px 20px', color: '#64748b', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>REGISTER NO</th>
+                        <th style={{ padding: '16px 20px', color: '#64748b', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>ATTENDANCE STATUS</th>
                       </tr>
                     </thead>
                     <tbody>
                       {students.map((student, idx) => (
-                        <tr key={student.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: attendance[student.id] === 'Absent' ? 'rgba(239,68,68,0.05)' : 'transparent' }}>
-                          <td style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>{idx + 1}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: 600 }}>{student.name || 'Unknown'}</td>
-                          <td style={{ padding: '12px 16px' }}>{student.registerNo || student.id}</td>
-                          <td style={{ padding: '12px 16px' }}>
-                            <div style={{ display: 'flex', gap: 10 }}>
-                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                        <tr key={student.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s', background: attendance[student.id] === 'Absent' ? 'rgba(239, 68, 68, 0.03)' : 'transparent', ':hover': { background: '#f8fafc' } }}>
+                          <td style={{ padding: '16px 20px', color: '#64748b', fontWeight: '500' }}>{idx + 1}</td>
+                          <td style={{ padding: '16px 20px', fontWeight: '600', color: 'var(--text-dark)', fontSize: '14px' }}>{student.name || 'Unknown'}</td>
+                          <td style={{ padding: '16px 20px', color: 'var(--text-dark)', fontSize: '14px', fontWeight: '500' }}>{student.registerNo || student.id}</td>
+                          <td style={{ padding: '16px 20px' }}>
+                            <div style={{ display: 'flex', gap: '20px' }}>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                                 <input 
                                   type="radio" 
                                   name={`att_${student.id}`} 
                                   checked={attendance[student.id] === 'Present'} 
                                   onChange={() => handleStatusChange(student.id, 'Present')}
+                                  style={{ width: '16px', height: '16px', accentColor: '#10b981' }}
                                 />
-                                <span style={{ color: attendance[student.id] === 'Present' ? '#10b981' : 'var(--text-muted)', fontWeight: attendance[student.id] === 'Present' ? 600 : 400 }}>Present</span>
+                                <span style={{ color: attendance[student.id] === 'Present' ? '#10b981' : '#64748b', fontWeight: attendance[student.id] === 'Present' ? '600' : '500', fontSize: '14px' }}>Present</span>
                               </label>
-                              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                                 <input 
                                   type="radio" 
                                   name={`att_${student.id}`} 
                                   checked={attendance[student.id] === 'Absent'} 
                                   onChange={() => handleStatusChange(student.id, 'Absent')}
+                                  style={{ width: '16px', height: '16px', accentColor: '#ef4444' }}
                                 />
-                                <span style={{ color: attendance[student.id] === 'Absent' ? '#ef4444' : 'var(--text-muted)', fontWeight: attendance[student.id] === 'Absent' ? 600 : 400 }}>Absent</span>
+                                <span style={{ color: attendance[student.id] === 'Absent' ? '#ef4444' : '#64748b', fontWeight: attendance[student.id] === 'Absent' ? '600' : '500', fontSize: '14px' }}>Absent</span>
                               </label>
                             </div>
                           </td>

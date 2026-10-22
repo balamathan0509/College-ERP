@@ -33,6 +33,48 @@ export default function MySubjects() {
       const permSnap = await getDocs(permQ);
       let permanentSubjects = permSnap.docs.map(d => ({ id: d.id, ...d.data(), isSubstitute: false }));
 
+      // 1b. Also fetch from course_allocations
+      try {
+        const courseAllocQ = query(
+          collection(db, "course_allocations"),
+          where("facultyId", "==", userProfile.uid)
+        );
+        const courseAllocSnap = await getDocs(courseAllocQ);
+        const courseSubjects = courseAllocSnap.docs.map(d => {
+          const data = d.data();
+          const sem = Number(data.semester) || 1;
+          const yearNum = Math.ceil(sem / 2);
+          const yearStr = yearNum === 1 ? '1st' : yearNum === 2 ? '2nd' : yearNum === 3 ? '3rd' : '4th';
+          return {
+            id: d.id,
+            ...data,
+            department: data.department || userProfile?.dept || 'CSE',
+            year: yearStr,
+            semester: String(data.semester || 1),
+            section: data.section || 'A',
+            subjectId: data.courseId,
+            subjectCode: data.courseCode,
+            subjectName: data.courseName,
+            subjectType: 'Theory',
+            isSubstitute: false
+          };
+        });
+
+        for (const cs of courseSubjects) {
+          const existing = permanentSubjects.find(ps => 
+            (ps.subjectCode === cs.subjectCode && String(ps.semester) === String(cs.semester)) || 
+            ps.courseAllocationId === cs.id
+          );
+          if (existing) {
+            if (cs.section !== undefined) existing.section = cs.section;
+          } else {
+            permanentSubjects.push(cs);
+          }
+        }
+      } catch (courseAllocErr) {
+        console.warn("Failed to fetch course_allocations:", courseAllocErr);
+      }
+
       // 2. Fetch substitutes WHERE this user is the substitute
       const subQ = query(
         collection(db, "subject_substitutes"),
@@ -169,9 +211,22 @@ export default function MySubjects() {
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "var(--highlight)", marginBottom: 4 }}>
-                      {subject.department} • {subject.year} Year • Sem {subject.semester} • Sec {subject.section}
-                    </div>
+                    {(() => {
+                      const cleanYear = subject.year
+                        ? (String(subject.year).toLowerCase().includes('year') ? subject.year : `${subject.year} Year`)
+                        : '';
+                      const hasValidSection = subject.section && !['None', 'All', 'Single', 'none', 'all', '-', ''].includes(String(subject.section).trim());
+                      return (
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--highlight)", marginBottom: 4 }}>
+                          {[
+                            subject.department,
+                            cleanYear,
+                            subject.semester ? `Sem ${subject.semester}` : '',
+                            hasValidSection ? `Sec ${subject.section}` : ''
+                          ].filter(Boolean).join(' • ')}
+                        </div>
+                      );
+                    })()}
                     <div style={{ fontSize: 18, fontWeight: 700, color: "var(--text)" }}>{subject.subjectName}</div>
                     <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{subject.subjectCode}</div>
                   </div>
