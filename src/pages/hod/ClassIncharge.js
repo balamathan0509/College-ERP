@@ -5,6 +5,7 @@ import { db } from "../../supabase/supabaseAdapter";
 import { collection, query, where, getDocs, doc, setDoc, addDoc, serverTimestamp, deleteDoc } from "../../supabase/supabaseAdapter";
 import toast, { Toaster } from "react-hot-toast";
 import { Users, Plus, Edit2, Calendar } from "lucide-react";
+import { COLLEGE_DEPARTMENTS, getSectionsForDeptAndYear } from "../../utils/collegeConfig";
 
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 
@@ -32,8 +33,7 @@ export default function ClassIncharge() {
 
   useEffect(() => {
     if (isSuperAdmin) {
-      // In a real scenario, fetch departments. Hardcoding standard ones for Admin view.
-      setDepartments(["CSE", "ECE", "EEE", "MECH", "IT", "AIDS"]);
+      setDepartments(COLLEGE_DEPARTMENTS);
     } else if (userProfile?.dept) {
       setDepartment(userProfile.dept);
     }
@@ -319,7 +319,28 @@ export default function ClassIncharge() {
               </div>
               <div style={{ marginBottom: 15 }}>
                 <label>Section *</label>
-                <input type="text" className="input-field" style={{ width: '100%', marginTop: 5 }} value={newClassData.section} onChange={e => setNewClassData({...newClassData, section: e.target.value})} placeholder="e.g. A, B, C" />
+                {(() => {
+                  const validSecs = getSectionsForDeptAndYear(department, newClassData.year);
+                  const isSingle = validSecs.length === 1 && validSecs[0] === 'Single';
+                  if (isSingle) {
+                    return (
+                      <div style={{ padding: "8px 10px", background: "#f1f5f9", borderRadius: 6, fontSize: 13, color: "#475569", marginTop: 5 }}>
+                        Single Class (No section letters for this department/year)
+                      </div>
+                    );
+                  }
+                  return (
+                    <select
+                      className="input-field"
+                      style={{ width: '100%', marginTop: 5 }}
+                      value={newClassData.section}
+                      onChange={e => setNewClassData({ ...newClassData, section: e.target.value })}
+                    >
+                      <option value="">-- Choose Section --</option>
+                      {validSecs.map(s => <option key={s} value={s}>Section {s}</option>)}
+                    </select>
+                  );
+                })()}
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
                 <button type="button" onClick={() => setNewClassModal(false)} className="btn-secondary">Cancel</button>

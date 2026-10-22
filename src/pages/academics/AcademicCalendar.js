@@ -24,7 +24,9 @@ import {
   CheckCircle2
 } from "lucide-react";
 
-const DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "AI&DS"];
+import { COLLEGE_DEPARTMENTS } from "../../utils/collegeConfig";
+
+const DEPARTMENTS = COLLEGE_DEPARTMENTS;
 const EVENT_TYPES = [
   { label: "Internal Exam / CIA", value: "exam", icon: "📝", color: "#dc2626", bg: "#fef2f2" },
   { label: "Holiday / Vacation", value: "holiday", icon: "🏖️", color: "#d97706", bg: "#fffbeb" },

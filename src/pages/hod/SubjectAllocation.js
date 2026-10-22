@@ -6,10 +6,11 @@ import { useAuth } from '../../context/AuthContext';
 import { Plus, Search, Edit2, History, X, Users, BookOpen, Clock, AlertTriangle } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
-const DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "AIDS", "AIML", "MBA", "MCA"];
+import { COLLEGE_DEPARTMENTS, getSectionsForDeptAndYear } from '../../utils/collegeConfig';
+
+const DEPARTMENTS = COLLEGE_DEPARTMENTS;
 const YEARS = ["1", "2", "3", "4"];
 const SEMESTERS = ["1", "2", "3", "4", "5", "6", "7", "8"];
-const SECTIONS = ["A", "B", "C", "D", "E", "F"];
 
 export default function SubjectAllocation() {
   const { userProfile, isSuperAdmin } = useAuth();
@@ -317,16 +318,33 @@ export default function SubjectAllocation() {
             </select>
           </div>
           
-          <div style={{ flex: "1 1 120px" }}>
-            <label style={{ display: "block", fontSize: 13, marginBottom: 6, color: "var(--text-muted)" }}>Section (Optional)</label>
-            <input 
-              type="text" 
-              className="form-control" 
-              placeholder="e.g. A" 
-              value={selectedSection} 
-              onChange={(e) => setSelectedSection(e.target.value.toUpperCase())} 
-            />
-          </div>
+          {(() => {
+            const availableSecs = getSectionsForDeptAndYear(selectedDept, selectedYear);
+            const isSingle = availableSecs.length === 1 && availableSecs[0] === 'Single';
+            return (
+              <div style={{ flex: "1 1 140px" }}>
+                <label style={{ display: "block", fontSize: 13, marginBottom: 6, color: "var(--text-muted)" }}>
+                  Section
+                </label>
+                {isSingle ? (
+                  <div style={{ padding: "8px 12px", background: "#f8fafc", borderRadius: 6, fontSize: 13, color: "#475569", border: "1px solid #cbd5e1", fontWeight: 600 }}>
+                    Single Class (No Sec)
+                  </div>
+                ) : (
+                  <select 
+                    className="form-control" 
+                    value={selectedSection} 
+                    onChange={(e) => setSelectedSection(e.target.value)}
+                  >
+                    <option value="">All Sections</option>
+                    {availableSecs.map(s => (
+                      <option key={s} value={s}>Section {s}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            );
+          })()}
           
           <div style={{ flex: "1 1 120px" }}>
             <label style={{ display: "block", fontSize: 13, marginBottom: 6, color: "var(--text-muted)" }}>Batch (Optional)</label>

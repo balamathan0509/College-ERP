@@ -4,11 +4,12 @@ import { useNavigate } from "react-router-dom";
 import { doc, getDoc, collection, query, where, getDocs } from "../supabase/supabaseAdapter";
 import { db, auth } from "../supabase/supabaseAdapter";
 import { sendPasswordResetEmail } from "../supabase/supabaseAdapter";
-import { GraduationCap, ArrowRight, CheckCircle2 } from "lucide-react";
+import { GraduationCap, ArrowRight, CheckCircle2, Eye, EyeOff } from "lucide-react";
 
 export default function Login({ onSwitch }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
@@ -20,11 +21,12 @@ export default function Login({ onSwitch }) {
     setError("");
     setSuccessMsg("");
     setLoading(true);
+    const cleanEmail = email.trim();
     try {
-      const result = await login(email, password);
+      const result = await login(cleanEmail, password);
       const SUPER_ADMIN_EMAIL = "balamathan0509@gmail.com";
       const userUid = result?.user?.uid;
-      const userEmail = result?.user?.email || email;
+      const userEmail = result?.user?.email || cleanEmail;
       
       let userData = null;
       try {
@@ -57,12 +59,12 @@ export default function Login({ onSwitch }) {
 
       if (userData?.isSuperAdmin === true || userEmail === SUPER_ADMIN_EMAIL) {
         navigate("/admin");
-      } else if (rawRole === "student" || rawRole.includes("student")) {
-        navigate("/student");
-      } else if (rawRole === "staff" || rawRole.includes("staff") || rawRole.includes("faculty") || rawRole === "dept_admin") {
-        navigate("/staff");
       } else if (rawRole === "hod" || rawRole.includes("hod")) {
         navigate("/hod");
+      } else if (rawRole === "staff" || rawRole.includes("staff") || rawRole.includes("faculty") || rawRole === "dept_admin") {
+        navigate("/staff");
+      } else if (rawRole === "student" || rawRole.includes("student")) {
+        navigate("/student");
       } else if (rawRole === "warden" || rawRole.includes("warden")) {
         navigate("/warden");
       } else if (rawRole === "security" || rawRole.includes("security")) {
@@ -97,12 +99,13 @@ export default function Login({ onSwitch }) {
   async function handleForgotPassword() {
     setError("");
     setSuccessMsg("");
-    if (!email) {
+    const cleanEmail = email.trim();
+    if (!cleanEmail) {
       setError("Please enter your email address first, then click Forgot Password.");
       return;
     }
     try {
-      await sendPasswordResetEmail(auth, email);
+      await sendPasswordResetEmail(auth, cleanEmail);
       setSuccessMsg("Password reset email sent! Check your inbox (and spam folder).");
     } catch (err) {
       setError("Could not send reset email. Make sure the email is correct.");
@@ -170,13 +173,36 @@ export default function Login({ onSwitch }) {
           </div>
           <div className="form-group">
             <label>Password</label>
-            <input
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <div style={{ position: "relative" }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                style={{ paddingRight: "40px", width: "100%", boxSizing: "border-box" }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#6b7280",
+                  display: "flex",
+                  alignItems: "center",
+                  padding: 0
+                }}
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
           <div style={{
             textAlign: "right",

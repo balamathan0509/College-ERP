@@ -30,7 +30,8 @@ import {
   FileText,
   BookOpen,
   HelpCircle,
-  Lock
+  Lock,
+  Grid
 } from "lucide-react";
 
 const studentNav = [
@@ -44,17 +45,17 @@ const studentNav = [
   { icon: <Bell size={18} />, label: "Alerts", path: "/student/alerts" },
   { icon: <MessageSquareWarning size={18} />, label: "Complaints", path: "/student/complaints" },
   { icon: <AlertOctagon size={18} />, label: "Fines", path: "/student/fines" },
-  { icon: <FileText size={18} />, label: "Question Papers", path: "/student/question-papers" }
+  { icon: <FileText size={18} />, label: "Question Papers", path: "/student/question-papers" },
+  { icon: <Grid size={18} />, label: "Exam Seating Plan", path: "/student/seating-arrangement" }
 ];
 
 const staffNav = [
   { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/staff" },
-
+  { icon: <Calendar size={18} />, label: "My Timetable", path: "/staff/timetable" },
   { icon: <DoorOpen size={18} />, label: "Gate Pass", path: "/staff/gatepass" },
   { icon: <ClipboardList size={18} />, label: "Leave", path: "/staff/leave" },
   { icon: <CheckSquare size={18} />, label: "Attendance", path: "/staff/attendance" },
   { icon: <Award size={18} />, label: "Results", path: "/staff/results" },
-  { icon: <Calendar size={18} />, label: "Timetable", path: "/staff/timetable" },
   { icon: <Briefcase size={18} />, label: "Placements", path: "/staff/placements" },
   { icon: <Bell size={18} />, label: "Alerts", path: "/staff/alerts" },
   { icon: <MessageSquareWarning size={18} />, label: "Complaints", path: "/staff/complaints" },
@@ -67,6 +68,7 @@ const staffNav = [
       { label: "Question Bank", path: "/cia/question-bank" },
       { label: "My Question Papers", path: "/cia/my-papers" },
       { label: "Question Paper", path: "/cia/question-paper" },
+      { label: "Exam Seating Plan", path: "/cia/seating-arrangement" },
       { label: "Mark Entry Process", path: "/cia/mark-entry" },
       { label: "Other Mark Entry Process", path: "/cia/other-mark-entry" },
       { label: "ESE Mark Entry Process", path: "/cia/ese-mark-entry" },
@@ -116,6 +118,7 @@ const examCellNav = [
     children: [
       { label: "Exam Creation", path: "/cia/exam-creation" },
       { label: "Schedule Examination", path: "/cia/schedule" },
+      { label: "Seating Arrangement", path: "/cia/seating-arrangement" },
       { label: "CIA Mark Attendance", path: "/cia/attendance" }
     ]
   }
@@ -123,11 +126,13 @@ const examCellNav = [
 
 const deptAdminNav = [
   { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/dept-admin" },
+  { icon: <Calendar size={18} />, label: "My Timetable", path: "/staff/timetable" },
   { icon: <Calendar size={18} />, label: "Timetable Management", path: "/dept-admin/timetable" }
 ];
 
 const hodNav = [
   { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/hod" },
+  { icon: <Calendar size={18} />, label: "Class Timetables", path: "/hod/timetable" },
   { icon: <ClipboardList size={18} />, label: "Leave", path: "/hod/leave" },
   { icon: <Award size={18} />, label: "Results", path: "/hod/results" },
   { icon: <Briefcase size={18} />, label: "Placements", path: "/hod/placements" },
@@ -140,9 +145,10 @@ const hodNav = [
     isSubmenu: true,
     children: [
       { label: "Academic Calendar", path: "/academics/academic-calendar" },
+      { label: "Timetable Management", path: "/hod/timetable" },
       { label: "Student Details", path: "/config/general/student" },
       { label: "Staff Details", path: "/config/general/faculty" },
-      { label: "Subject Allocation", path: "/hod/subject-allocation" },
+      { label: "Course Allocation", path: "/academics/course-allocation" },
       { label: "Class Incharge", path: "/hod/class-incharge" },
       { label: "Attendance Monitor", path: "/hod/attendance" },
 
@@ -378,13 +384,50 @@ export default function Sidebar() {
     });
   }, [role, userProfile]);
 
+  const isDeptAdmin = role === "dept_admin" || role === "hod" || isSuperAdmin || userProfile?.isDeptAdmin === true;
+
+  // Filter Academics submenu:
+  // Regular staff get only what they need: Academic Calendar, My Subjects, Faculty Profile, LMS
+  // Department Admin (dept_admin / HOD / SuperAdmin) gets everything: Course Allocation, Course Enrollment, Academic Reports, etc.
+  const academicsChildren = [
+    { label: "Academic Calendar", path: "/academics/academic-calendar" },
+    ...(isDeptAdmin ? [{ label: "Course Allocation", path: "/academics/course-allocation" }] : []),
+    { label: "My Subjects", path: "/staff/my-subjects" },
+    { label: "My Timetable", path: "/staff/timetable" },
+    ...(isDeptAdmin ? [{ label: "Course Enrollment", path: "/academics/course-enrollment" }] : []),
+    { label: "Faculty Profile", path: "/academics/faculty-profile" },
+    ...(isDeptAdmin ? [{ label: "Academic Reports", path: "/academics/reports" }] : []),
+    { 
+      label: "LMS",
+      isNestedSubmenu: true,
+      children: [
+        { label: "Course Contents & Plan", path: "/academics/lms/course-contents" },
+        { label: "Plan Completion", path: "/academics/lms/plan-completion" },
+        { label: "Plan Feedback", path: "/academics/lms/plan-feedback" },
+        { label: "Assignments", path: "/academics/lms/assignments" },
+        { label: "Mark Attendance", path: "/academics/lms/mark-attendance" },
+        { label: "Academic Activities", path: "/academics/lms/academic-activities" },
+        { label: "Research Repository", path: "/academics/lms/research-repository" },
+        { label: "Self Appraisal", path: "/academics/lms/self-appraisal" },
+        { label: "Faculty Participation", path: "/academics/lms/faculty-participation" }
+      ]
+    }
+  ];
+
+  const tailoredStaffNav = staffNav.map(item => {
+    if (item.label === "Academics") {
+      return { ...item, children: academicsChildren };
+    }
+    return item;
+  });
+
   let navItems =
     isSuperAdmin ? adminNav :
     role === "student" ? studentNav :
     role === "exam_cell" ? examCellNav :
-    role === "staff" ? [...staffNav] :
+    role === "staff" ? [...tailoredStaffNav] :
     role === "hod" ? hodNav :
-    role === "dept_admin" ? [...staffNav, { icon: <Calendar size={18} />, label: "Manage Timetables", path: "/staff/manage-timetable" }] :
+    role === "dept_admin" ? [...tailoredStaffNav, { icon: <Calendar size={18} />, label: "Manage Timetables", path: "/staff/manage-timetable" }] :
     role === "warden" ? wardenNav :
     role === "officestaff" ? officestaffNav :
     role === "security" ? securityNav :

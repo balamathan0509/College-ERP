@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS public."complaints" (id TEXT PRIMARY KEY, data JSONB 
 CREATE TABLE IF NOT EXISTS public."course_allocations" (id TEXT PRIMARY KEY, data JSONB DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS public."course_enrollments" (id TEXT PRIMARY KEY, data JSONB DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS public."course_plans" (id TEXT PRIMARY KEY, data JSONB DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW());
+CREATE TABLE IF NOT EXISTS public."exam_seating_plans" (id TEXT PRIMARY KEY, data JSONB DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS public."courses" (id TEXT PRIMARY KEY, data JSONB DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS public."daily_attendance" (id TEXT PRIMARY KEY, data JSONB DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW());
 CREATE TABLE IF NOT EXISTS public."evaluationPatterns" (id TEXT PRIMARY KEY, data JSONB DEFAULT '{}'::jsonb, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW());
@@ -86,6 +87,7 @@ ALTER TABLE public."complaints" DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public."course_allocations" DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public."course_enrollments" DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public."course_plans" DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public."exam_seating_plans" DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public."courses" DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public."daily_attendance" DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public."evaluationPatterns" DISABLE ROW LEVEL SECURITY;

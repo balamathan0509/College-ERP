@@ -5,8 +5,9 @@ import { useAuth } from "../../context/AuthContext";
 import { db } from "../../supabase/supabaseAdapter";
 import { collection, query, where, getDocs, addDoc } from "../../supabase/supabaseAdapter";
 import { notifyStudentFeesPending } from "../../utils/notifications";
+import { COLLEGE_DEPARTMENTS } from "../../utils/collegeConfig";
 
-const DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "AIDS", "AIML"];
+const DEPARTMENTS = COLLEGE_DEPARTMENTS;
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 const FEES_TYPES = ["College Fees", "Bus Fees", "Mess Fees", "Exam Fees", "Library Fees", "Other"];
 

@@ -7,10 +7,13 @@ import { Plus, Search, Edit2, Trash2, Download, Upload, X, BookOpen } from 'luci
 import toast, { Toaster } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 
-const PROGRAMMES = ["B.E CSE", "B.E ECE", "B.E EEE", "B.E MECH", "B.E CIVIL", "B.Tech IT", "B.Tech AIDS", "B.Tech AIML", "MBA", "MCA"];
-const DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "AIDS", "AIML", "MBA", "MCA"];
+import { COLLEGE_DEPARTMENTS } from '../../utils/collegeConfig';
+
+const PROGRAMMES = ["B.E CSE", "B.Tech AIDS", "B.E ECE", "B.E EEE", "B.Tech IT", "B.E MECH", "B.Tech CSBS"];
+const DEPARTMENTS = COLLEGE_DEPARTMENTS;
 const SEMESTERS = ["1","2","3","4","5","6","7","8"];
 const REGULATIONS = ["R2021","R2020","R2019","R2017"];
+const SECTIONS = ["A", "B", "C", "None", "All"];
 
 export default function CourseAllocation() {
   const { userProfile } = useAuth();
@@ -26,6 +29,7 @@ export default function CourseAllocation() {
   // Filters
   const [filterSession, setFilterSession] = useState('');
   const [filterSemester, setFilterSemester] = useState('');
+  const [filterSection, setFilterSection] = useState('');
   const [filterProgramme, setFilterProgramme] = useState('');
   const [filterDept, setFilterDept] = useState('');
   const [filterRegulation, setFilterRegulation] = useState('');
@@ -35,6 +39,8 @@ export default function CourseAllocation() {
   const [modalMode, setModalMode] = useState('add');
   const [editId, setEditId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Session Modal
   const [showSessionModal, setShowSessionModal] = useState(false);
@@ -46,7 +52,7 @@ export default function CourseAllocation() {
 
   // Allocation Form
   const [form, setForm] = useState({
-    sessionId: '', semester: '', programme: '', programmeCode: '', department: '', regulationId: 'R2021',
+    sessionId: '', semester: '', section: 'A', programme: '', programmeCode: '', department: '', regulationId: 'R2021',
     courseId: '', courseCode: '', courseName: '',
     facultyId: '', facultyName: '', facultyCode: '',
     chapters: '', hoursAllocated: ''
@@ -60,7 +66,12 @@ export default function CourseAllocation() {
     try {
       // Sessions
       const sessSnap = await getDocs(query(collection(db, "academic_sessions"), orderBy("createdAt", "desc")));
-      setSessions(sessSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const sessList = sessSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setSessions(sessList);
+      if (sessList.length > 0) {
+        const active = sessList.find(s => s.isActive) || sessList[0];
+        setFilterSession(active.id);
+      }
       // Courses
       const courseSnap = await getDocs(collection(db, "courses"));
       setCourses(courseSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -82,6 +93,7 @@ export default function CourseAllocation() {
       const snap = await getDocs(q);
       let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       if (filterSemester) list = list.filter(a => a.semester === filterSemester);
+      if (filterSection) list = list.filter(a => a.section === filterSection || (filterSection === 'None' && (!a.section || a.section === 'None')));
       if (filterProgramme) list = list.filter(a => a.programme === filterProgramme);
       if (userProfile?.role !== 'hod' && filterDept) list = list.filter(a => a.department === filterDept);
       if (filterRegulation) list = list.filter(a => a.regulationId === filterRegulation);
@@ -106,22 +118,29 @@ export default function CourseAllocation() {
 
   const totalPages = Math.ceil(filtered.length / perPage);
 
-  // Filter courses by selected programme/semester
+  // Filter courses by department & semester automatically
   const filteredCourses = useMemo(() => {
+    const currentDept = userProfile?.dept || form.department || 'CSE';
     return courses.filter(c => {
-      if (form.programme && c.programme !== form.programme) return false;
-      if (form.semester && c.semester !== form.semester) return false;
-      if (form.department && c.department !== form.department) return false;
+      if (currentDept && c.department && c.department !== currentDept) return false;
+      if (form.semester && c.semester && String(c.semester) !== String(form.semester)) return false;
       return true;
     });
-  }, [courses, form.programme, form.semester, form.department]);
+  }, [courses, form.semester, form.department, userProfile?.dept]);
 
   function openAdd() {
     setModalMode('add');
     setEditId(null);
+    const dept = userProfile?.dept || 'CSE';
+    const prog = dept === 'CSE' ? 'B.E CSE' : `B.E ${dept}`;
     setForm({
-      sessionId: filterSession, semester: filterSemester || '', programme: filterProgramme || '',
-      programmeCode: '', department: filterDept || '', regulationId: filterRegulation || 'R2021',
+      sessionId: filterSession || (sessions[0]?.id || ''),
+      semester: filterSemester || '7',
+      section: filterSection && filterSection !== 'None' ? filterSection : 'A',
+      programme: prog,
+      programmeCode: '',
+      department: dept,
+      regulationId: 'R2021',
       courseId: '', courseCode: '', courseName: '',
       facultyId: '', facultyName: '', facultyCode: '',
       chapters: '', hoursAllocated: ''
@@ -133,7 +152,7 @@ export default function CourseAllocation() {
     setModalMode('edit');
     setEditId(alloc.id);
     setForm({
-      sessionId: alloc.sessionId, semester: alloc.semester, programme: alloc.programme,
+      sessionId: alloc.sessionId, semester: alloc.semester, section: alloc.section || 'A', programme: alloc.programme,
       programmeCode: alloc.programmeCode || '', department: alloc.department, regulationId: alloc.regulationId || 'R2021',
       courseId: alloc.courseId, courseCode: alloc.courseCode, courseName: alloc.courseName,
       facultyId: alloc.facultyId, facultyName: alloc.facultyName, facultyCode: alloc.facultyCode || '',
@@ -145,7 +164,19 @@ export default function CourseAllocation() {
   function handleCourseSelect(courseId) {
     const c = courses.find(x => x.id === courseId);
     if (c) {
-      setForm(prev => ({ ...prev, courseId: c.id, courseCode: c.courseCode, courseName: c.courseName, chapters: c.chapters || prev.chapters }));
+      setForm(prev => ({
+        ...prev,
+        courseId: c.id,
+        courseCode: c.courseCode,
+        courseName: c.courseName,
+        chapters: c.chapters || prev.chapters || 5,
+        hoursAllocated: c.totalHours || prev.hoursAllocated || 45,
+        programme: c.programme || prev.programme || 'B.E CSE',
+        department: c.department || prev.department || userProfile?.dept || 'CSE',
+        regulationId: c.regulationId || prev.regulationId || 'R2021',
+        semester: c.semester || prev.semester || '7',
+        section: prev.section || 'A'
+      }));
     }
   }
 
@@ -167,6 +198,7 @@ export default function CourseAllocation() {
     try {
       const payload = {
         ...form,
+        section: form.section || 'A',
         hoursAllocated: Number(form.hoursAllocated),
         chapters: Number(form.chapters) || 0,
         updatedAt: serverTimestamp(),
@@ -177,17 +209,68 @@ export default function CourseAllocation() {
         const dupQ = query(collection(db, "course_allocations"),
           where("sessionId", "==", form.sessionId),
           where("courseId", "==", form.courseId),
-          where("facultyId", "==", form.facultyId)
+          where("facultyId", "==", form.facultyId),
+          where("section", "==", form.section || 'A')
         );
         const dupSnap = await getDocs(dupQ);
-        if (!dupSnap.empty) { toast.error("This course is already allocated to this faculty."); setSaving(false); return; }
+        if (!dupSnap.empty) { 
+          toast.error(`This course is already allocated to this faculty for Section ${form.section || 'A'}.`); 
+          setSaving(false); 
+          return; 
+        }
 
         payload.createdAt = serverTimestamp();
         payload.createdBy = userProfile?.uid;
-        await addDoc(collection(db, "course_allocations"), payload);
+        const newDocRef = await addDoc(collection(db, "course_allocations"), payload);
+        
+        // Auto-sync to subject_allocations for full cross-module compatibility
+        try {
+          const sem = Number(payload.semester) || 1;
+          const yearNum = Math.ceil(sem / 2);
+          const yearStr = yearNum === 1 ? '1st Year' : yearNum === 2 ? '2nd Year' : yearNum === 3 ? '3rd Year' : '4th Year';
+          await addDoc(collection(db, "subject_allocations"), {
+            department: payload.department || 'CSE',
+            year: yearStr,
+            semester: String(payload.semester || 1),
+            section: payload.section || 'A',
+            batch: payload.programme || 'B.E CSE',
+            subjectId: payload.courseId,
+            subjectCode: payload.courseCode,
+            subjectName: payload.courseName,
+            subjectType: 'Theory',
+            facultyId: payload.facultyId,
+            facultyName: payload.facultyName,
+            facultyCode: payload.facultyCode || '',
+            assignmentType: 'Permanent',
+            status: 'Active',
+            startDate: new Date().toISOString(),
+            courseAllocationId: newDocRef?.id || '',
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+        } catch (syncErr) {
+          console.warn("Failed to sync subject_allocations:", syncErr);
+        }
+
         toast.success("Course allocated successfully!");
       } else {
         await updateDoc(doc(db, "course_allocations", editId), payload);
+        try {
+          const saQ = query(collection(db, "subject_allocations"), where("courseAllocationId", "==", editId));
+          const saSnap = await getDocs(saQ);
+          for (const d of saSnap.docs) {
+            await updateDoc(doc(db, "subject_allocations", d.id), {
+              section: payload.section || 'None',
+              semester: String(payload.semester || 1),
+              facultyId: payload.facultyId,
+              facultyName: payload.facultyName,
+              facultyCode: payload.facultyCode || '',
+              updatedAt: serverTimestamp()
+            });
+          }
+        } catch (syncErr) {
+          console.warn("Failed to sync updated subject_allocations:", syncErr);
+        }
         toast.success("Allocation updated!");
       }
       setShowModal(false);
@@ -196,13 +279,24 @@ export default function CourseAllocation() {
     setSaving(false);
   }
 
-  async function handleDelete(id) {
-    if (!window.confirm("Delete this allocation?")) return;
+  async function executeDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      await deleteDoc(doc(db, "course_allocations", id));
-      toast.success("Deleted.");
+      await deleteDoc(doc(db, "course_allocations", deleteTarget.id));
+      try {
+        const subSnap = await getDocs(query(collection(db, "subject_allocations"), where("courseAllocationId", "==", deleteTarget.id)));
+        for (const d of subSnap.docs) {
+          await deleteDoc(doc(db, "subject_allocations", d.id));
+        }
+      } catch (_) {}
+      toast.success("Course allocation removed.");
+      setDeleteTarget(null);
       fetchAllocations();
-    } catch (err) { toast.error("Delete failed."); }
+    } catch (err) { 
+      toast.error("Delete failed."); 
+    }
+    setDeleting(false);
   }
 
   // Session CRUD
@@ -293,6 +387,17 @@ export default function CourseAllocation() {
                 {SEMESTERS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
+            <div>
+              <label style={labelStyle}>Section</label>
+              <select value={filterSection} onChange={e => setFilterSection(e.target.value)} style={inputStyle}>
+                <option value="">-- All --</option>
+                <option value="A">Section A</option>
+                <option value="B">Section B</option>
+                <option value="C">Section C</option>
+                <option value="D">Section D</option>
+                <option value="None">None / Single Class</option>
+              </select>
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             <button onClick={fetchAllocations} className="btn-primary" style={{ padding: '8px 20px' }}>Search</button>
@@ -303,8 +408,11 @@ export default function CourseAllocation() {
         <div className="card" style={{ marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <button onClick={() => setShowCourseModal(true)} className="btn-primary" style={{ padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 13 }}>
-                + Add Course
+              <button onClick={openAdd} className="btn-primary" style={{ padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Plus size={16} /> + Allocate Course
+              </button>
+              <button onClick={() => setShowCourseModal(true)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Plus size={16} /> + Create New Course
               </button>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -337,6 +445,7 @@ export default function CourseAllocation() {
                       <th style={{ padding: '10px 8px', textAlign: 'left' }}>S.No</th>
                       <th style={{ padding: '10px 8px', textAlign: 'left' }}>Course Code</th>
                       <th style={{ padding: '10px 8px', textAlign: 'left' }}>Course Name</th>
+                      <th style={{ padding: '10px 8px', textAlign: 'center' }}>Section</th>
                       <th style={{ padding: '10px 8px', textAlign: 'left' }}>Faculty Code</th>
                       <th style={{ padding: '10px 8px', textAlign: 'left' }}>Faculty Name</th>
                       <th style={{ padding: '10px 8px', textAlign: 'center' }}>Chapters</th>
@@ -350,14 +459,26 @@ export default function CourseAllocation() {
                         <td style={{ padding: '10px 8px' }}>{(page - 1) * perPage + idx + 1}</td>
                         <td style={{ padding: '10px 8px' }}>{a.courseCode}</td>
                         <td style={{ padding: '10px 8px' }}>{a.courseName}</td>
+                        <td style={{ padding: '10px 8px', textAlign: 'center' }}>
+                          <span style={{ 
+                            background: '#eff6ff', 
+                            color: '#1d4ed8', 
+                            padding: '3px 8px', 
+                            borderRadius: 6, 
+                            fontWeight: 600, 
+                            fontSize: 12 
+                          }}>
+                            {a.section === 'None' ? 'Single' : a.section || 'A'}
+                          </span>
+                        </td>
                         <td style={{ padding: '10px 8px' }}>{a.facultyCode || '-'}</td>
                         <td style={{ padding: '10px 8px' }}>{a.facultyName}</td>
                         <td style={{ padding: '10px 8px', textAlign: 'center' }}>{a.chapters || '-'}</td>
                         <td style={{ padding: '10px 8px', textAlign: 'center' }}>{a.hoursAllocated}</td>
                         <td style={{ padding: '10px 8px', textAlign: 'center' }}>
                           <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-                            <button onClick={() => openEdit(a)} style={{ background: 'transparent', border: 'none', color: 'var(--accent)', cursor: 'pointer' }}><Edit2 size={15} /></button>
-                            <button onClick={() => handleDelete(a.id)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer' }}><Trash2 size={15} /></button>
+                            <button onClick={() => openEdit(a)} style={{ background: 'transparent', border: 'none', color: 'var(--accent)', cursor: 'pointer' }} title="Edit"><Edit2 size={15} /></button>
+                            <button onClick={() => setDeleteTarget(a)} style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer' }} title="Delete"><Trash2 size={15} /></button>
                           </div>
                         </td>
                       </tr>
@@ -384,6 +505,17 @@ export default function CourseAllocation() {
                 <h3 style={{ margin: 0 }}>{modalMode === 'add' ? 'Create' : 'Edit'} Course Allocation</h3>
                 <button onClick={() => setShowModal(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
               </div>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
+                <span style={{ background: 'rgba(37,99,235,0.08)', color: '#2563eb', padding: '5px 12px', borderRadius: 6, fontSize: 13, fontWeight: 600 }}>
+                  Department: {form.department || userProfile?.dept || 'CSE'}
+                </span>
+                <span style={{ background: 'rgba(37,99,235,0.08)', color: '#2563eb', padding: '5px 12px', borderRadius: 6, fontSize: 13, fontWeight: 600 }}>
+                  Programme: {form.programme || (userProfile?.dept === 'CSE' ? 'B.E CSE' : `B.E ${userProfile?.dept || 'CSE'}`)}
+                </span>
+                <span style={{ background: 'rgba(107,114,128,0.1)', color: 'var(--text-muted)', padding: '5px 12px', borderRadius: 6, fontSize: 13, fontWeight: 500 }}>
+                  Regulation: {form.regulationId || 'R2021'}
+                </span>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={labelStyle}>Academic Session *</label>
@@ -400,26 +532,17 @@ export default function CourseAllocation() {
                   </select>
                 </div>
                 <div>
-                  <label style={labelStyle}>Programme *</label>
-                  <select value={form.programme} onChange={e => setForm({ ...form, programme: e.target.value })} style={inputStyle}>
-                    <option value="">-- Select --</option>
-                    {PROGRAMMES.map(p => <option key={p} value={p}>{p}</option>)}
+                  <label style={labelStyle}>Section *</label>
+                  <select value={form.section || 'A'} onChange={e => setForm({ ...form, section: e.target.value })} style={inputStyle}>
+                    <option value="A">Section A</option>
+                    <option value="B">Section B</option>
+                    <option value="C">Section C</option>
+                    <option value="D">Section D</option>
+                    <option value="None">None / Single Class</option>
+                    <option value="All">All Sections</option>
                   </select>
                 </div>
-                <div>
-                  <label style={labelStyle}>Department</label>
-                  <select value={form.department} onChange={e => setForm({ ...form, department: e.target.value })} style={inputStyle}>
-                    <option value="">-- Select --</option>
-                    {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={labelStyle}>Regulation ID</label>
-                  <select value={form.regulationId} onChange={e => setForm({ ...form, regulationId: e.target.value })} style={inputStyle}>
-                    {REGULATIONS.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </div>
-                <div>
+                <div style={{ gridColumn: 'span 2' }}>
                   <label style={labelStyle}>Course *</label>
                   <select value={form.courseId} onChange={e => handleCourseSelect(e.target.value)} style={inputStyle}>
                     <option value="">-- Select Course --</option>
@@ -502,6 +625,97 @@ export default function CourseAllocation() {
               <div style={{ display: 'flex', gap: 10, marginTop: 20, justifyContent: 'flex-end' }}>
                 <button onClick={() => setShowCourseModal(false)} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', cursor: 'pointer' }}>Cancel</button>
                 <button onClick={handleSaveCourse} className="btn-primary" style={{ padding: '8px 20px' }}>Save Course</button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Custom Delete Confirmation Modal */}
+        {deleteTarget && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(5px)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16
+          }}>
+            <div style={{
+              background: '#ffffff',
+              borderRadius: 16,
+              padding: '28px 24px',
+              width: '100%',
+              maxWidth: 440,
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              textAlign: 'center'
+            }}>
+              <div style={{
+                width: 60,
+                height: 60,
+                borderRadius: '50%',
+                background: '#fee2e2',
+                color: '#dc2626',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px'
+              }}>
+                <Trash2 size={30} />
+              </div>
+
+              <h3 style={{ margin: '0 0 8px', fontSize: 19, fontWeight: 700, color: 'var(--text)' }}>
+                Delete Course Allocation?
+              </h3>
+
+              <p style={{ margin: '0 0 20px', fontSize: 14, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                Are you sure you want to delete <strong style={{ color: 'var(--text)' }}>{deleteTarget.courseCode} ({deleteTarget.courseName})</strong> assigned to <strong style={{ color: 'var(--text)' }}>{deleteTarget.facultyName}</strong>?
+                <br />
+                <span style={{ fontSize: 12, color: '#ef4444' }}>This will also remove this subject from the staff member's portal.</span>
+              </p>
+
+              <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={deleting}
+                  style={{
+                    padding: '10px 20px',
+                    borderRadius: 8,
+                    border: '1px solid var(--border)',
+                    background: '#f8fafc',
+                    color: 'var(--text)',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    flex: 1
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={executeDelete}
+                  disabled={deleting}
+                  style={{
+                    padding: '10px 20px',
+                    borderRadius: 8,
+                    border: 'none',
+                    background: '#dc2626',
+                    color: '#ffffff',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    flex: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6
+                  }}
+                >
+                  {deleting ? 'Deleting...' : 'Yes, Delete'}
+                </button>
               </div>
             </div>
           </div>
