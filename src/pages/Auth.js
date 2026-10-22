@@ -8,6 +8,14 @@ export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const { currentUser, userProfile, loading } = useAuth();
 
+  // If redirected from password reset recovery email
+  if (
+    typeof window !== "undefined" &&
+    (window.location.hash.includes("type=recovery") || window.location.search.includes("type=recovery"))
+  ) {
+    return <Navigate to="/reset-password" replace />;
+  }
+
   if (!loading && currentUser && userProfile) {
     let role = (userProfile.role || "").toLowerCase().trim();
     const designation = (userProfile.designation || "").toLowerCase().trim();

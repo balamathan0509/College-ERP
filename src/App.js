@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import StaffDashboard from "./pages/staff/StaffDashboard";
 import HodDashboard from "./pages/hod/HodDashboard";
@@ -142,6 +143,8 @@ export default function App() {
           <Routes>
           {/* Auth */}
           <Route path="/" element={<Auth />} />
+          <Route path="/login" element={<Auth />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Student Routes */}
           <Route path="/student" element={<ProtectedRoute allowedRole="student"><StudentDashboard /></ProtectedRoute>} />
