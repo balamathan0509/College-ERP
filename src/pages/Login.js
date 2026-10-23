@@ -3,15 +3,14 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { doc, getDoc, collection, query, where, getDocs } from "../supabase/supabaseAdapter";
 import { db, auth } from "../supabase/supabaseAdapter";
-import { sendPasswordResetEmail } from "../supabase/supabaseAdapter";
-import { GraduationCap, ArrowRight, CheckCircle2, Eye, EyeOff } from "lucide-react";
 
-export default function Login({ onSwitch }) {
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
+
+export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -19,7 +18,6 @@ export default function Login({ onSwitch }) {
   async function handleLogin(e) {
     e.preventDefault();
     setError("");
-    setSuccessMsg("");
     setLoading(true);
     const cleanEmail = email.trim();
     try {
@@ -96,21 +94,7 @@ export default function Login({ onSwitch }) {
     setLoading(false);
   }
 
-  async function handleForgotPassword() {
-    setError("");
-    setSuccessMsg("");
-    const cleanEmail = email.trim();
-    if (!cleanEmail) {
-      setError("Please enter your email address first, then click Forgot Password.");
-      return;
-    }
-    try {
-      await sendPasswordResetEmail(auth, cleanEmail);
-      setSuccessMsg("Password reset email sent! Check your inbox (and spam folder).");
-    } catch (err) {
-      setError("Could not send reset email. Make sure the email is correct.");
-    }
-  }
+
 
   return (
     <div className="auth-wrapper">
@@ -146,19 +130,6 @@ export default function Login({ onSwitch }) {
         </div>
 
         {error && <div className="error-msg">{error}</div>}
-        {successMsg && <div className="success-msg" style={{
-          background: "rgba(16, 185, 129, 0.15)",
-          border: "1px solid rgba(16, 185, 129, 0.3)",
-          color: "var(--success)",
-          padding: "12px 16px",
-          borderRadius: "10px",
-          marginBottom: "16px",
-          fontSize: "14px",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          justifyContent: "center"
-        }}><CheckCircle2 size={16} /> {successMsg}</div>}
 
         <form onSubmit={handleLogin}>
           <div className="form-group">
@@ -204,32 +175,10 @@ export default function Login({ onSwitch }) {
               </button>
             </div>
           </div>
-          <div style={{
-            textAlign: "right",
-            marginBottom: "16px",
-            marginTop: "-4px"
-          }}>
-            <span
-              onClick={handleForgotPassword}
-              style={{
-                color: "var(--highlight)",
-                fontSize: "13px",
-                cursor: "pointer",
-                fontWeight: 500
-              }}
-            >
-              Forgot Password?
-            </span>
-          </div>
-          <button className="btn-primary" type="submit" disabled={loading}>
+          <button className="btn-primary" type="submit" disabled={loading} style={{ marginTop: "16px" }}>
             {loading ? "Signing in..." : <>Sign In <ArrowRight size={16} /></>}
           </button>
         </form>
-
-        <div className="auth-switch">
-          Don't have an account?{" "}
-          <span onClick={onSwitch}>Sign Up</span>
-        </div>
       </div>
     </div>
   );

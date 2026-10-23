@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../supabase/config";
-import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle, ArrowRight, KeyRound } from "lucide-react";
+import { supabase, dbClient } from "../supabase/config";
+import { db } from "../supabase/supabaseAdapter";
+import { collection, query, where, getDocs } from "../supabase/supabaseAdapter";
+import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle, ArrowRight, KeyRound, ShieldCheck, UserCheck } from "lucide-react";
 
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
@@ -12,24 +14,93 @@ export default function ResetPassword() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+  const [currentUserEmail, setCurrentUserEmail] = useState("");
+  const [currentUserId, setCurrentUserId] = useState("");
   const navigate = useNavigate();
 
+  // Helper to format role name for display
+  function formatRole(role) {
+    if (!role) return "User";
+    const r = role.toLowerCase().trim();
+    if (r === "student") return "Student";
+    if (r === "staff" || r === "faculty") return "Faculty / Staff";
+    if (r === "hod") return "Head of Department (HOD)";
+    if (r === "admin") return "Administrator";
+    if (r === "principal") return "Principal";
+    if (r === "warden") return "Hostel Warden";
+    if (r === "officestaff") return "Office Staff";
+    if (r === "security") return "Security Officer";
+    if (r === "exam_cell") return "Exam Cell";
+    return role.toUpperCase();
+  }
+
+  // Fetch user profile from DB to display role & name
+  async function loadUserProfile(email, uid) {
+    try {
+      if (email) {
+        setCurrentUserEmail(email);
+        const q = query(collection(db, "users"), where("email", "==", email.toLowerCase().trim()));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          setUserProfile(snap.docs[0].data());
+          return;
+        }
+      }
+      if (uid) {
+        const q2 = query(collection(db, "users"), where("uid", "==", uid));
+        const snap2 = await getDocs(q2);
+        if (!snap2.empty) {
+          setUserProfile(snap2.docs[0].data());
+        }
+      }
+    } catch (e) {
+      console.warn("Could not load user profile:", e);
+    }
+  }
+
   useEffect(() => {
-    // Check if recovery session or token is available
-    const checkSession = async () => {
-      // 1. Listen for Supabase password recovery event
+    const initSession = async () => {
+      // 1. Check for PKCE exchange code in URL search params
+      const searchParams = new URLSearchParams(window.location.search);
+      const code = searchParams.get("code");
+      if (code) {
+        try {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (data?.session) {
+            setSessionReady(true);
+            setCurrentUserEmail(data.session.user?.email || "");
+            setCurrentUserId(data.session.user?.id || "");
+            loadUserProfile(data.session.user?.email, data.session.user?.id);
+            return;
+          }
+        } catch (err) {
+          console.warn("PKCE code exchange notice:", err);
+        }
+      }
+
+      // 2. Listen for Supabase password recovery event
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === "PASSWORD_RECOVERY" || session) {
           setSessionReady(true);
+          if (session?.user) {
+            setCurrentUserEmail(session.user.email || "");
+            setCurrentUserId(session.user.id || "");
+            loadUserProfile(session.user.email, session.user.id);
+          }
         }
       });
 
-      // 2. Check current session
+      // 3. Check current session
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         setSessionReady(true);
+        if (session.user) {
+          setCurrentUserEmail(session.user.email || "");
+          setCurrentUserId(session.user.id || "");
+          loadUserProfile(session.user.email, session.user.id);
+        }
       } else {
-        // If hash contains type=recovery or access_token, allow a moment for supabase to parse it
         if (window.location.hash.includes("type=recovery") || window.location.hash.includes("access_token")) {
           setSessionReady(true);
         }
@@ -40,7 +111,7 @@ export default function ResetPassword() {
       };
     };
 
-    checkSession();
+    initSession();
   }, []);
 
   async function handleResetPassword(e) {
@@ -65,33 +136,52 @@ export default function ResetPassword() {
     setLoading(true);
 
     try {
+      let updated = false;
+
+      // 1. Try standard supabase auth updateUser
       const { error: updateError } = await supabase.auth.updateUser({
         password: password
       });
 
-      if (updateError) {
-        throw updateError;
+      if (!updateError) {
+        updated = true;
+      } else {
+        console.warn("Standard updateUser error, trying admin fallback:", updateError.message);
+        // 2. Fallback to admin update if current user id is available
+        if (currentUserId && dbClient?.auth?.admin) {
+          const { error: adminErr } = await dbClient.auth.admin.updateUserById(currentUserId, {
+            password: password
+          });
+          if (!adminErr) {
+            updated = true;
+          } else {
+            throw adminErr;
+          }
+        } else {
+          throw updateError;
+        }
       }
 
-      // Password successfully updated!
-      setSuccess(true);
-
-      // Sign out to enforce clean login with new password
-      await supabase.auth.signOut().catch(() => {});
-      sessionStorage.clear();
+      if (updated) {
+        setSuccess(true);
+        await supabase.auth.signOut().catch(() => {});
+        sessionStorage.clear();
+      }
     } catch (err) {
       console.error("Password reset error:", err);
-      setError(err?.message || "Failed to update password. Please try requesting a new link.");
+      setError(err?.message || "Failed to update password. Your reset session may have expired. Please request a new link.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="auth-wrapper">
-      <div className="auth-card" style={{ maxWidth: "440px", width: "100%" }}>
+    <div className="auth-wrapper" style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+      <div className="auth-card" style={{ maxWidth: "460px", width: "100%", padding: "32px 28px" }}>
+        
+        {/* RVCE Official Logo Header */}
         <div className="auth-logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px', width: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginBottom: '8px', width: '100%' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '14px', marginBottom: '8px', width: '100%' }}>
             <img 
               src="/seal-logo.png" 
               alt="College Seal" 
@@ -127,6 +217,38 @@ export default function ResetPassword() {
           </p>
         </div>
 
+        {/* User Profile Card if recognized */}
+        {(userProfile || currentUserEmail) && !success && (
+          <div style={{
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            borderRadius: "10px",
+            padding: "10px 14px",
+            marginBottom: "16px",
+            fontSize: "13px"
+          }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#1e3a8a", fontWeight: "600" }}>
+                <ShieldCheck size={16} />
+                <span>{userProfile?.name || currentUserEmail}</span>
+              </div>
+              {userProfile?.role && (
+                <span style={{
+                  background: "#dbeafe",
+                  color: "#1d4ed8",
+                  padding: "2px 8px",
+                  borderRadius: "6px",
+                  fontSize: "11px",
+                  fontWeight: "700"
+                }}>
+                  {formatRole(userProfile.role)}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Error message */}
         {error && (
           <div className="error-msg" style={{
             background: "rgba(239, 68, 68, 0.1)",
@@ -145,8 +267,9 @@ export default function ResetPassword() {
           </div>
         )}
 
+        {/* Success View */}
         {success ? (
-          <div style={{ textAlign: "center", padding: "16px 0" }}>
+          <div style={{ textAlign: "center", padding: "12px 0" }}>
             <div style={{
               width: "60px",
               height: "60px",
@@ -160,21 +283,24 @@ export default function ResetPassword() {
             }}>
               <CheckCircle2 size={36} />
             </div>
-            <h3 style={{ fontSize: "18px", fontWeight: "700", color: "#1e293b", margin: "0 0 8px 0" }}>
+            <h3 style={{ fontSize: "19px", fontWeight: "700", color: "#1e293b", margin: "0 0 8px 0" }}>
               Password Reset Successful!
             </h3>
             <p style={{ fontSize: "14px", color: "#64748b", margin: "0 0 24px 0", lineHeight: "1.5" }}>
-              Your password has been updated successfully. You can now log in using your new credentials.
+              Your RVCE account password has been updated successfully. You can now log in using your new credentials.
             </p>
             <button
               className="btn-primary"
-              onClick={() => navigate("/")}
+              onClick={() => navigate("/login")}
               style={{
                 width: "100%",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                gap: "8px"
+                gap: "8px",
+                padding: "12px",
+                fontSize: "15px",
+                fontWeight: "600"
               }}
             >
               Back to Sign In <ArrowRight size={16} />
@@ -282,7 +408,7 @@ export default function ResetPassword() {
 
             <div style={{ textAlign: "center", marginTop: "16px" }}>
               <span
-                onClick={() => navigate("/")}
+                onClick={() => navigate("/login")}
                 style={{
                   color: "var(--highlight)",
                   fontSize: "13px",

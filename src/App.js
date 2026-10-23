@@ -4,7 +4,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Auth from "./pages/Auth";
-import ResetPassword from "./pages/ResetPassword";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import StaffDashboard from "./pages/staff/StaffDashboard";
 import HodDashboard from "./pages/hod/HodDashboard";
@@ -47,7 +46,6 @@ import FeesCollection from "./pages/officestaff/FeesCollection";
 import FeesOverview from "./pages/officestaff/FeesOverview";
 import FeesAlerts from "./pages/officestaff/FeesAlerts";
 import CampusMap from "./pages/shared/CampusMap";
-import Signup from "./pages/Signup";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import PrincipalDashboard from "./pages/principal/Dashboard";
 import PrincipalLeave from "./pages/principal/Leave";
@@ -120,6 +118,10 @@ import TimetableEditor from "./pages/dept_admin/TimetableEditor";
 import StudentTimetable from "./pages/student/Timetable";
 import StaffTimetable from "./pages/staff/Timetable";
 
+// New Student Admission & Coordinator Management
+import NewStudentAdmission from "./pages/dept_admin/NewStudentAdmission";
+import CoordinatorManagement from "./pages/hod/CoordinatorManagement";
+
 const ComingSoon = ({ title }) => (
   <div style={{
     minHeight: "100vh",
@@ -144,7 +146,6 @@ export default function App() {
           {/* Auth */}
           <Route path="/" element={<Auth />} />
           <Route path="/login" element={<Auth />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Student Routes */}
           <Route path="/student" element={<ProtectedRoute allowedRole="student"><StudentDashboard /></ProtectedRoute>} />
@@ -225,6 +226,12 @@ export default function App() {
           <Route path="/staff/manage-timetable" element={<ProtectedRoute allowedRole={["dept_admin", "hod", "admin"]}><TimetableEditor /></ProtectedRoute>} />
           <Route path="/dept_admin/profile" element={<ProtectedRoute allowedRole="dept_admin"><Profile /></ProtectedRoute>} />
           <Route path="/dept_admin/help" element={<ProtectedRoute allowedRole="dept_admin"><HelpCenter /></ProtectedRoute>} />
+
+          {/* New Student Admission — Coordinator Only */}
+          <Route path="/dept_admin/new-admission" element={<ProtectedRoute allowedRole={["dept_admin", "hod", "admin"]}><NewStudentAdmission /></ProtectedRoute>} />
+
+          {/* HOD Coordinator Management */}
+          <Route path="/hod/coordinators" element={<ProtectedRoute allowedRole={["hod", "admin"]}><CoordinatorManagement /></ProtectedRoute>} />
 
           {/* Exam Cell Routes */}
           <Route path="/exam_cell" element={<ProtectedRoute allowedRole="exam_cell"><ExamCellDashboard /></ProtectedRoute>} />
@@ -309,7 +316,7 @@ export default function App() {
           <Route path="/config/general/programme" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><Programme /></ProtectedRoute>} />
           <Route path="/config/general/upload-courses" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><UploadCourses /></ProtectedRoute>} />
           <Route path="/config/general/regulation-mapping" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><RegulationMapping /></ProtectedRoute>} />
-          <Route path="/config/general/student" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><StudentDetails /></ProtectedRoute>} />
+          <Route path="/config/general/student" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod", "dept_admin"]}><StudentDetails /></ProtectedRoute>} />
           <Route path="/config/general/faculty" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><FacultyDetails /></ProtectedRoute>} />
           <Route path="/config/general/promote-student" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><PromoteStudent /></ProtectedRoute>} />
           <Route path="/config/general/pass-out-students" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><PassOutStudents /></ProtectedRoute>} />

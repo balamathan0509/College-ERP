@@ -126,6 +126,7 @@ const examCellNav = [
 
 const deptAdminNav = [
   { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/dept-admin" },
+  { icon: <Users size={18} />, label: "New Student Add", path: "/dept_admin/new-admission" },
   { icon: <Calendar size={18} />, label: "My Timetable", path: "/staff/timetable" },
   { icon: <Calendar size={18} />, label: "Timetable Management", path: "/dept-admin/timetable" }
 ];
@@ -146,6 +147,8 @@ const hodNav = [
     children: [
       { label: "Academic Calendar", path: "/academics/academic-calendar" },
       { label: "Timetable Management", path: "/hod/timetable" },
+      { label: "New Student Add", path: "/dept_admin/new-admission" },
+      { label: "Coordinator Management", path: "/hod/coordinators" },
       { label: "Student Details", path: "/config/general/student" },
       { label: "Staff Details", path: "/config/general/faculty" },
       { label: "Course Allocation", path: "/academics/course-allocation" },
@@ -427,7 +430,12 @@ export default function Sidebar() {
     role === "exam_cell" ? examCellNav :
     role === "staff" ? [...tailoredStaffNav] :
     role === "hod" ? hodNav :
-    role === "dept_admin" ? [...tailoredStaffNav, { icon: <Calendar size={18} />, label: "Manage Timetables", path: "/staff/manage-timetable" }] :
+    role === "dept_admin" ? [
+      ...tailoredStaffNav.slice(0, 1),
+      { icon: <Users size={18} />, label: "New Student Add", path: "/dept_admin/new-admission" },
+      ...tailoredStaffNav.slice(1),
+      { icon: <Calendar size={18} />, label: "Manage Timetables", path: "/staff/manage-timetable" }
+    ] :
     role === "warden" ? wardenNav :
     role === "officestaff" ? officestaffNav :
     role === "security" ? securityNav :

@@ -1,20 +1,10 @@
-import React, { useState } from "react";
+import React from "react";
 import { useAuth } from "../context/AuthContext";
 import { Navigate } from "react-router-dom";
 import Login from "./Login";
-import Signup from "./Signup";
 
 export default function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
   const { currentUser, userProfile, loading } = useAuth();
-
-  // If redirected from password reset recovery email
-  if (
-    typeof window !== "undefined" &&
-    (window.location.hash.includes("type=recovery") || window.location.search.includes("type=recovery"))
-  ) {
-    return <Navigate to="/reset-password" replace />;
-  }
 
   if (!loading && currentUser && userProfile) {
     let role = (userProfile.role || "").toLowerCase().trim();
@@ -39,7 +29,5 @@ export default function Auth() {
     return <Navigate to="/student" replace />;
   }
 
-  return isLogin
-    ? <Login onSwitch={() => setIsLogin(false)} />
-    : <Signup onSwitch={() => setIsLogin(true)} />;
+  return <Login />;
 }
