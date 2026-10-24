@@ -31,7 +31,8 @@ import {
   BookOpen,
   HelpCircle,
   Lock,
-  Grid
+  Grid,
+  ArrowLeftRight
 } from "lucide-react";
 
 const studentNav = [
@@ -52,9 +53,12 @@ const studentNav = [
 const staffNav = [
   { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/staff" },
   { icon: <Calendar size={18} />, label: "My Timetable", path: "/staff/timetable" },
+  { icon: <CheckSquare size={18} />, label: "Period Attendance", path: "/staff/period-attendance" },
+  { icon: <ArrowLeftRight size={18} />, label: "Hour Alteration", path: "/staff/hour-alteration" },
+  { icon: <BookOpen size={18} />, label: "Classwork Logbook", path: "/staff/classwork-record" },
   { icon: <DoorOpen size={18} />, label: "Gate Pass", path: "/staff/gatepass" },
   { icon: <ClipboardList size={18} />, label: "Leave", path: "/staff/leave" },
-  { icon: <CheckSquare size={18} />, label: "Attendance", path: "/staff/attendance" },
+  { icon: <CheckSquare size={18} />, label: "Class Incharge Att.", path: "/staff/attendance" },
   { icon: <Award size={18} />, label: "Results", path: "/staff/results" },
   { icon: <Briefcase size={18} />, label: "Placements", path: "/staff/placements" },
   { icon: <Bell size={18} />, label: "Alerts", path: "/staff/alerts" },
@@ -154,6 +158,9 @@ const hodNav = [
       { label: "Course Allocation", path: "/academics/course-allocation" },
       { label: "Class Incharge", path: "/hod/class-incharge" },
       { label: "Attendance Monitor", path: "/hod/attendance" },
+      { label: "Period Attendance", path: "/staff/period-attendance" },
+      { label: "Classwork Logbook", path: "/staff/classwork-record" },
+      { label: "Hour Alterations", path: "/staff/hour-alteration" },
 
       { label: "Reports", path: "/academics/reports" },
       {

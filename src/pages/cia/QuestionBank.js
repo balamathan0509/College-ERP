@@ -3,8 +3,9 @@ import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { db } from "../../supabase/supabaseAdapter";
 import { collection, query, getDocs, addDoc, deleteDoc, doc, updateDoc, orderBy, where } from "../../supabase/supabaseAdapter";
-import { Plus, Trash2, Search, FileText, Edit2, Printer, ArrowLeft, Download } from 'lucide-react';
+import { Plus, Trash2, Search, FileText, Edit2, Printer, ArrowLeft, Download, FileSpreadsheet } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+import * as XLSX from 'xlsx';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function QuestionBank() {
@@ -426,6 +427,167 @@ try {
     html2pdf().set(opt).from(htmlString).save();
   };
 
+  const handleDownloadExcel = () => {
+    if (filteredQuestions.length === 0) {
+      toast.error("No questions available to download.");
+      return;
+    }
+    try {
+      toast.loading("Generating Question Bank spreadsheet...", { id: "excel-toast" });
+      const wb = XLSX.utils.book_new();
+
+      const rows = [
+        ["RENGANAYAGI VARATHARAJ COLLEGE OF ENGINEERING"],
+        ["Salvarpatti, Sivakasi - 626 128"],
+        ["QUESTION BANK - " + courseText],
+        [],
+        ["S.No", "Course Code", "Course Name", "Part / Section", "Unit", "Question Text", "Marks", "Difficulty / BTL", "CO", "Created By"]
+      ];
+
+      filteredQuestions.forEach((q, idx) => {
+        const marks = q.section === 'A' ? 2 : q.section === 'B' ? 13 : 15;
+        rows.push([
+          idx + 1,
+          q.courseCode || '',
+          q.courseName || '',
+          `Part ${q.section || ''}`,
+          q.unit ? `Unit ${q.unit}` : '',
+          q.questionText || '',
+          marks,
+          q.difficulty || q.btlLevel || '',
+          q.co || '',
+          q.createdByName || ''
+        ]);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [
+        { wch: 8 },
+        { wch: 15 },
+        { wch: 25 },
+        { wch: 15 },
+        { wch: 10 },
+        { wch: 65 },
+        { wch: 8 },
+        { wch: 15 },
+        { wch: 10 },
+        { wch: 20 }
+      ];
+      XLSX.utils.book_append_sheet(wb, ws, "Question Bank");
+
+      const firstQ = filteredQuestions[0] || {};
+      const filename = firstQ.courseCode ? `Question_Bank_${firstQ.courseCode}.xlsx` : `Question_Bank.xlsx`;
+      XLSX.writeFile(wb, filename);
+
+      toast.success("Excel (.xlsx) downloaded successfully!", { id: "excel-toast" });
+    } catch (err) {
+      console.error("Excel generation error:", err);
+      toast.error("Failed to generate Excel file.", { id: "excel-toast" });
+    }
+  };
+
+  const handleDownloadWord = async () => {
+    if (filteredQuestions.length === 0) {
+      toast.error("No questions available to download.");
+      return;
+    }
+    const printContent = document.getElementById("printable-bank");
+    if (!printContent) return;
+
+    toast.loading("Preparing Word document...", { id: "word-toast" });
+
+    try {
+      const getBase64 = async (url) => {
+        try {
+          const res = await fetch(url);
+          const blob = await res.blob();
+          return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          });
+        } catch (e) {
+          return url;
+        }
+      };
+
+      const leftLogo = await getBase64('/logo-left.png');
+      const rightLogo = await getBase64('/logo-right.png');
+
+      let contentHtml = printContent.innerHTML;
+      contentHtml = contentHtml.replace(/\/logo-left\.png/g, leftLogo);
+      contentHtml = contentHtml.replace(/\/logo-right\.png/g, rightLogo);
+
+      const wordDocHtml = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+              xmlns:w='urn:schemas-microsoft-com:office:word' 
+              xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset="utf-8">
+          <title>Question Bank - ${courseText}</title>
+          <!--[if gte mso 9]>
+          <xml>
+            <w:WordDocument>
+              <w:View>Print</w:View>
+              <w:Zoom>100</w:Zoom>
+              <w:DoNotOptimizeForBrowser/>
+            </w:WordDocument>
+          </xml>
+          <![endif]-->
+          <style>
+            @page Section1 {
+              size: 8.5in 11in;
+              margin: 0.5in 0.5in 0.5in 0.5in;
+              mso-header-margin: 0.2in;
+              mso-footer-margin: 0.2in;
+            }
+            div.Section1 {
+              page: Section1;
+              font-family: "Times New Roman", Times, serif;
+              font-size: 11pt;
+              color: #000000;
+            }
+            table {
+              border-collapse: collapse;
+              width: 100%;
+            }
+            th, td {
+              border: 1pt solid black;
+              padding: 4pt 6pt;
+              font-family: "Times New Roman", Times, serif;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="Section1">
+            ${contentHtml}
+          </div>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob(['\ufeff', wordDocHtml], {
+        type: 'application/msword;charset=utf-8'
+      });
+
+      const firstQ = filteredQuestions[0] || {};
+      const filename = firstQ.courseCode ? `Question_Bank_${firstQ.courseCode}.doc` : `Question_Bank.doc`;
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      toast.success("Word document (.doc) downloaded successfully!", { id: "word-toast" });
+    } catch (err) {
+      console.error("Word generation error:", err);
+      toast.error("Failed to generate Word document.", { id: "word-toast" });
+    }
+  };
+
   // Data for printing
   const partA = filteredQuestions.filter(q => q.section === 'A');
   const partB = filteredQuestions.filter(q => q.section === 'B');
@@ -445,15 +607,21 @@ try {
             <h1>Question Bank</h1>
             <p className="subtitle">Manage question pools for generating papers</p>
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn-secondary" onClick={handleDownloadPdf} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', cursor: 'pointer' }}>
-              <Download size={18} /> Download PDF
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button className="btn-secondary" onClick={handleDownloadPdf} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', cursor: 'pointer', fontWeight: 600 }} title="Download Question Bank as PDF">
+              <Download size={16} /> Download PDF
             </button>
-            <button className="btn-secondary" onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', cursor: 'pointer' }}>
-              <Printer size={18} /> Print Bank
+            <button className="btn" onClick={handleDownloadExcel} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: 'none', background: '#107c41', color: '#fff', cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(16,124,65,0.2)' }} title="Download Question Bank as Excel (.xlsx)">
+              <FileSpreadsheet size={16} /> Download Excel
+            </button>
+            <button className="btn" onClick={handleDownloadWord} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: 'none', background: '#2b579a', color: '#fff', cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(43,87,154,0.2)' }} title="Download Question Bank as Word (.doc)">
+              <FileText size={16} /> Download Word
+            </button>
+            <button className="btn-secondary" onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', cursor: 'pointer', fontWeight: 600 }} title="Print Question Bank">
+              <Printer size={16} /> Print Bank
             </button>
             <button className="btn-primary" onClick={() => { setModalMode('add'); setShowModal(true); }}>
-              <Plus size={18} /> Add Questions
+              <Plus size={16} /> Add Questions
             </button>
           </div>
         </div>

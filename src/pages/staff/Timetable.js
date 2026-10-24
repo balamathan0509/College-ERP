@@ -3,7 +3,8 @@ import { db } from "../../supabase/supabaseAdapter";
 import { collection, query, getDocs, where } from "../../supabase/supabaseAdapter";
 import { useAuth } from "../../context/AuthContext";
 import Sidebar from "../../components/Sidebar";
-import { Calendar, User, BookOpen, Clock, Loader2, MapPin } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Calendar, User, BookOpen, Clock, Loader2, MapPin, CheckSquare, ArrowLeftRight, FileText } from "lucide-react";
 import toast, { Toaster } from 'react-hot-toast';
 import { DEFAULT_TIMETABLE_SCHEDULE, getCachedSchedule, fetchScheduleFromDB } from "../../utils/timetableSchedule";
 
@@ -70,6 +71,7 @@ function formatCourseTitle(name = "") {
 
 export default function StaffTimetable() {
   const { userProfile } = useAuth();
+  const navigate = useNavigate();
   const [timetable, setTimetable] = useState({});
   const [loading, setLoading] = useState(false);
   const [schedule, setSchedule] = useState(() => getCachedSchedule(userProfile?.dept));
@@ -124,7 +126,7 @@ export default function StaffTimetable() {
     return (
       <td key={`${day}-${period}`} 
           style={{ 
-            padding: "10px 4px", 
+            padding: "8px 4px", 
             borderBottom: "1px solid #e2e8f0", 
             borderRight: period < 8 ? "1px solid #e2e8f0" : "none",
             verticalAlign: "middle",
@@ -135,14 +137,21 @@ export default function StaffTimetable() {
       >
         {slot ? (
           <div 
-            title={`${slot.subject_code} - ${slot.subject_name || ''}\nClass: ${slot.dept} - Sem ${slot.semester}`}
+            onClick={() => navigate(`/staff/period-attendance?period=${slot.period}&dept=${slot.dept}&year=${slot.year || slot.semester}&section=${slot.section || 'A'}&code=${slot.subject_code}`)}
+            title={`Click to mark attendance for Period ${slot.period}\n${slot.subject_code} - ${slot.subject_name || ''}\nClass: ${slot.dept} - Sem ${slot.semester}`}
             style={{ 
               display: "flex", 
               flexDirection: "column", 
               alignItems: "center", 
               justifyContent: "center", 
-              gap: "3px" 
+              gap: "3px",
+              cursor: "pointer",
+              padding: "4px 2px",
+              borderRadius: "6px",
+              transition: "all 0.15s ease"
             }}
+            onMouseEnter={e => e.currentTarget.style.background = "#f1f5f9"}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
           >
             <div style={{ 
               fontWeight: 700, 
@@ -182,14 +191,71 @@ export default function StaffTimetable() {
         <div style={{ padding: "24px", maxWidth: "1400px", margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
       <Toaster position="top-right" />
       
-      <div style={{ background: "white", padding: "24px", borderRadius: "12px", border: "1px solid var(--border)", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ background: "white", padding: "22px 24px", borderRadius: "12px", border: "1px solid var(--border)", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
         <div>
           <h2 style={{ margin: 0, display: "flex", alignItems: "center", gap: "12px", fontFamily: "Plus Jakarta Sans, sans-serif", color: "var(--text)" }}>
             <Calendar size={28} color="#1e3a8a" /> My Schedule
           </h2>
-          <p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>
-            Your assigned classes across all departments
+          <p style={{ margin: "6px 0 0 0", color: "var(--text-muted)", fontSize: "13.5px" }}>
+            Your assigned classes across all departments. Click on any lecture slot to take period attendance.
           </p>
+        </div>
+
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <button
+            onClick={() => navigate("/staff/period-attendance")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "9px 16px",
+              background: "#10b981",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontWeight: "600",
+              fontSize: "13px",
+              cursor: "pointer"
+            }}
+          >
+            <CheckSquare size={16} /> Period Attendance
+          </button>
+          <button
+            onClick={() => navigate("/staff/hour-alteration")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "9px 16px",
+              background: "#4f46e5",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontWeight: "600",
+              fontSize: "13px",
+              cursor: "pointer"
+            }}
+          >
+            <ArrowLeftRight size={16} /> Hour Alteration / Proxy
+          </button>
+          <button
+            onClick={() => navigate("/staff/classwork-record")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "9px 16px",
+              background: "#0284c7",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontWeight: "600",
+              fontSize: "13px",
+              cursor: "pointer"
+            }}
+          >
+            <FileText size={16} /> Classwork Logbook
+          </button>
         </div>
       </div>
 

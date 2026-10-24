@@ -35,9 +35,11 @@ import {
   Calendar,
   Layers,
   UserPlus,
-  AlertTriangle
+  AlertTriangle,
+  FileSpreadsheet
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+import * as XLSX from 'xlsx';
 import toast, { Toaster } from 'react-hot-toast';
 import { COLLEGE_DEPARTMENTS, getAllCollegeClasses, ANNA_UNIV_DEPT_CODES } from '../../utils/collegeConfig';
 
@@ -878,7 +880,9 @@ export default function ExamSeatingArrangement() {
         </div>
       `;
 
-      const filename = `Seating_Plan_Hall_${headerConfig.hallNo.replace(/\s+/g, '_')}_${headerConfig.examTitle.replace(/\s+/g, '_')}.pdf`;
+      const hallSafe = (headerConfig.hallNo || 'Hall').replace(/\s+/g, '_');
+      const titleSafe = (headerConfig.examTitle || 'Exam').replace(/\s+/g, '_');
+      const filename = `Seating_Plan_Hall_${hallSafe}_${titleSafe}.pdf`;
 
       const opt = {
         margin: [6, 6, 6, 6],
@@ -891,8 +895,233 @@ export default function ExamSeatingArrangement() {
       await html2pdf().set(opt).from(container).save();
       toast.success("PDF Downloaded successfully!", { id: "pdf-toast" });
     } catch (err) {
-      console.error(err);
+      console.error("PDF generation error:", err);
       toast.error("Failed to generate PDF.", { id: "pdf-toast" });
+    }
+  };
+
+  // Download Excel (.xlsx) using SheetJS (XLSX)
+  const handleDownloadExcel = () => {
+    try {
+      toast.loading("Generating Excel spreadsheet...", { id: "excel-toast" });
+
+      const wb = XLSX.utils.book_new();
+
+      // --- SHEET 1: Seating Chart Matrix ---
+      const matrixRows = [];
+
+      // College Title & Exam details
+      matrixRows.push([headerConfig.collegeName || 'RENGANAYAGI VARATHARAJ COLLEGE OF ENGINEERING']);
+      matrixRows.push([headerConfig.collegeAddress || 'Salvarpatti, Sivakasi - 626 128']);
+      matrixRows.push([headerConfig.examTitle || 'EXAMINATION SEATING ARRANGEMENT']);
+      matrixRows.push([]); // blank separator
+
+      matrixRows.push([
+        `Hall No: ${headerConfig.hallNo || 'N/A'}`,
+        "",
+        "",
+        `No. Of Candidates: ${totalCandidates}`,
+        "",
+        "",
+        `Date: ${headerConfig.examDate || ''} (${headerConfig.examSession || 'FN'})`
+      ]);
+      matrixRows.push([]); // blank separator
+
+      // Row 1: Bench Pair Header (Roman Numerals I, II, III...)
+      const romanRow = [];
+      for (let p = 0; p < numBenchPairs; p++) {
+        romanRow.push(ROMAN_NUMERALS[p] || `Bench ${p + 1}`);
+        romanRow.push(""); // spans 2 columns
+      }
+      matrixRows.push(romanRow);
+
+      // Row 2: Seat Numbers (1, 2, 3, 4, 5...)
+      const seatNoRow = [];
+      for (let c = 0; c < numBenchPairs * 2; c++) {
+        seatNoRow.push(`Seat ${c + 1}`);
+      }
+      matrixRows.push(seatNoRow);
+
+      // Row 3: Department / Class Labels
+      const deptRow = [];
+      for (let c = 0; c < numBenchPairs * 2; c++) {
+        deptRow.push(columnBatches[c] || '-');
+      }
+      matrixRows.push(deptRow);
+
+      // Rows 4+: Matrix roll numbers
+      seatingGrid.forEach(row => {
+        matrixRows.push(row.map(val => val || '-'));
+      });
+
+      matrixRows.push([]); // blank separator
+      matrixRows.push([
+        `Hall Invigilator 1: ${headerConfig.invigilatorName || 'Assigned Staff'}`,
+        "",
+        "",
+        "Present: _______   Absent: _______",
+        "",
+        "",
+        headerConfig.invigilator2Name ? `Hall Invigilator 2: ${headerConfig.invigilator2Name}` : "Invigilator Sign: _________________"
+      ]);
+
+      const wsMatrix = XLSX.utils.aoa_to_sheet(matrixRows);
+
+      // Set generous column widths
+      const colWidths = [];
+      for (let c = 0; c < numBenchPairs * 2; c++) {
+        colWidths.push({ wch: 18 });
+      }
+      wsMatrix['!cols'] = colWidths;
+
+      XLSX.utils.book_append_sheet(wb, wsMatrix, "Seating Chart");
+
+      // --- SHEET 2: Student Allocation Table (Allotted List) ---
+      const studentList = [];
+      let sNo = 1;
+      for (let rIdx = 0; rIdx < seatingGrid.length; rIdx++) {
+        for (let cIdx = 0; cIdx < (seatingGrid[rIdx] || []).length; cIdx++) {
+          const regNo = seatingGrid[rIdx][cIdx];
+          if (regNo && String(regNo).trim() !== '' && regNo !== '-') {
+            const benchPair = Math.floor(cIdx / 2) + 1;
+            const benchRoman = ROMAN_NUMERALS[benchPair - 1] || `Bench ${benchPair}`;
+            const seatNo = cIdx + 1;
+            const dept = columnBatches[cIdx] || '';
+            studentList.push({
+              "S.No": sNo++,
+              "Register Number": String(regNo).trim(),
+              "Department / Class": dept,
+              "Hall No": headerConfig.hallNo || '',
+              "Bench": benchRoman,
+              "Row": rIdx + 1,
+              "Seat No": seatNo
+            });
+          }
+        }
+      }
+
+      if (studentList.length > 0) {
+        studentList.sort((a, b) => String(a["Register Number"]).localeCompare(String(b["Register Number"])));
+        studentList.forEach((item, idx) => { item["S.No"] = idx + 1; });
+
+        const wsList = XLSX.utils.json_to_sheet(studentList);
+        wsList['!cols'] = [
+          { wch: 8 },
+          { wch: 22 },
+          { wch: 22 },
+          { wch: 14 },
+          { wch: 12 },
+          { wch: 8 },
+          { wch: 10 }
+        ];
+        XLSX.utils.book_append_sheet(wb, wsList, "Student Allotment List");
+      }
+
+      const hallSafe = (headerConfig.hallNo || 'Hall').replace(/\s+/g, '_');
+      const titleSafe = (headerConfig.examTitle || 'Exam').replace(/\s+/g, '_');
+      const filename = `Seating_Plan_Hall_${hallSafe}_${titleSafe}.xlsx`;
+      XLSX.writeFile(wb, filename);
+
+      toast.success("Excel (.xlsx) downloaded successfully!", { id: "excel-toast" });
+    } catch (err) {
+      console.error("Excel generation error:", err);
+      toast.error("Failed to generate Excel file.", { id: "excel-toast" });
+    }
+  };
+
+  // Download Word document (.doc) with complete formatting and styles
+  const handleDownloadWord = async () => {
+    const printContent = document.getElementById("printable-seating-chart");
+    if (!printContent) return;
+
+    toast.loading("Preparing Word document...", { id: "word-toast" });
+
+    try {
+      let contentHtml = printContent.innerHTML;
+
+      try {
+        const leftLogoBase64 = await getBase64('/logo-left.png');
+        const rightLogoBase64 = await getBase64('/logo-right.png');
+        contentHtml = contentHtml.replace(/\/logo-left\.png/g, leftLogoBase64);
+        contentHtml = contentHtml.replace(/\/logo-right\.png/g, rightLogoBase64);
+      } catch (imgErr) {
+        console.warn("Logo conversion skipped for Word:", imgErr);
+      }
+
+      const wordDocHtml = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+              xmlns:w='urn:schemas-microsoft-com:office:word' 
+              xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset="utf-8">
+          <title>Seating Arrangement - Hall ${headerConfig.hallNo || ''}</title>
+          <!--[if gte mso 9]>
+          <xml>
+            <w:WordDocument>
+              <w:View>Print</w:View>
+              <w:Zoom>100</w:Zoom>
+              <w:DoNotOptimizeForBrowser/>
+            </w:WordDocument>
+          </xml>
+          <![endif]-->
+          <style>
+            @page Section1 {
+              size: 841.9pt 595.3pt;
+              mso-page-orientation: landscape;
+              margin: 0.4in 0.4in 0.4in 0.4in;
+              mso-header-margin: 0.2in;
+              mso-footer-margin: 0.2in;
+            }
+            div.Section1 {
+              page: Section1;
+              font-family: Arial, Helvetica, sans-serif;
+            }
+            table {
+              border-collapse: collapse;
+              width: 100%;
+              table-layout: fixed;
+            }
+            th, td {
+              border: 1.5pt solid black;
+              text-align: center;
+              vertical-align: middle;
+              padding: 5px 2px;
+              font-family: Arial, Helvetica, sans-serif;
+            }
+            .seating-print-sheet {
+              border: 2pt solid black;
+              padding: 12px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="Section1">
+            ${contentHtml}
+          </div>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob(['\ufeff', wordDocHtml], {
+        type: 'application/msword;charset=utf-8'
+      });
+
+      const hallSafe = (headerConfig.hallNo || 'Hall').replace(/\s+/g, '_');
+      const titleSafe = (headerConfig.examTitle || 'Exam').replace(/\s+/g, '_');
+      const filename = `Seating_Plan_Hall_${hallSafe}_${titleSafe}.doc`;
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      toast.success("Word document (.doc) downloaded successfully!", { id: "word-toast" });
+    } catch (err) {
+      console.error("Word generation error:", err);
+      toast.error("Failed to generate Word document.", { id: "word-toast" });
     }
   };
 
@@ -1435,39 +1664,87 @@ export default function ExamSeatingArrangement() {
               </div>
 
               {/* Action Buttons */}
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <button
                   onClick={handleDownloadPdf}
                   className="btn"
+                  title="Download Door Sheet as PDF"
                   style={{
                     background: '#059669',
                     color: '#fff',
                     border: 'none',
-                    padding: '8px 16px',
+                    padding: '8px 14px',
                     borderRadius: '6px',
                     fontWeight: '600',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    boxShadow: '0 2px 4px rgba(5,150,105,0.2)'
                   }}
                 >
                   <Download size={16} /> Download PDF
                 </button>
                 <button
+                  onClick={handleDownloadExcel}
+                  className="btn"
+                  title="Download Door Sheet & Student Allocation as Excel (.xlsx)"
+                  style={{
+                    background: '#107c41',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    boxShadow: '0 2px 4px rgba(16,124,65,0.2)'
+                  }}
+                >
+                  <FileSpreadsheet size={16} /> Download Excel
+                </button>
+                <button
+                  onClick={handleDownloadWord}
+                  className="btn"
+                  title="Download Door Sheet as Microsoft Word document (.doc)"
+                  style={{
+                    background: '#2b579a',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    boxShadow: '0 2px 4px rgba(43,87,154,0.2)'
+                  }}
+                >
+                  <FileText size={16} /> Download Word
+                </button>
+                <button
                   onClick={handlePrint}
                   className="btn"
+                  title="Print Door Sheet or Save as PDF"
                   style={{
                     background: '#2563eb',
                     color: '#fff',
                     border: 'none',
-                    padding: '8px 18px',
+                    padding: '8px 16px',
                     borderRadius: '6px',
                     fontWeight: '700',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    boxShadow: '0 2px 6px rgba(37,99,235,0.25)'
                   }}
                 >
                   <Printer size={16} /> Print Door Sheet
@@ -2562,22 +2839,24 @@ export default function ExamSeatingArrangement() {
                 )}
               </div>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                 <button
                   onClick={handleSavePlan}
                   disabled={saving}
                   className="btn"
+                  title="Save arrangement to database"
                   style={{
                     background: '#fff',
                     color: '#0f172a',
                     border: '1px solid #cbd5e1',
-                    padding: '8px 16px',
+                    padding: '8px 14px',
                     borderRadius: '6px',
                     fontWeight: '600',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    fontSize: '13px'
                   }}
                 >
                   <Save size={16} color="#0284c7" /> {saving ? "Saving..." : "Save to Database"}
@@ -2585,36 +2864,82 @@ export default function ExamSeatingArrangement() {
                 <button
                   onClick={handleDownloadPdf}
                   className="btn"
+                  title="Download Door Sheet as PDF"
                   style={{
                     background: '#059669',
                     color: '#fff',
                     border: 'none',
-                    padding: '8px 16px',
+                    padding: '8px 14px',
                     borderRadius: '6px',
                     fontWeight: '600',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
                     cursor: 'pointer',
+                    fontSize: '13px',
                     boxShadow: '0 2px 4px rgba(5,150,105,0.2)'
                   }}
                 >
                   <Download size={16} /> Download PDF
                 </button>
                 <button
+                  onClick={handleDownloadExcel}
+                  className="btn"
+                  title="Download Door Sheet & Student Allocation as Excel (.xlsx)"
+                  style={{
+                    background: '#107c41',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    boxShadow: '0 2px 4px rgba(16,124,65,0.2)'
+                  }}
+                >
+                  <FileSpreadsheet size={16} /> Download Excel
+                </button>
+                <button
+                  onClick={handleDownloadWord}
+                  className="btn"
+                  title="Download Door Sheet as Microsoft Word document (.doc)"
+                  style={{
+                    background: '#2b579a',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '8px 14px',
+                    borderRadius: '6px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    boxShadow: '0 2px 4px rgba(43,87,154,0.2)'
+                  }}
+                >
+                  <FileText size={16} /> Download Word
+                </button>
+                <button
                   onClick={handlePrint}
                   className="btn"
+                  title="Print Door Sheet or Save as PDF"
                   style={{
                     background: '#2563eb',
                     color: '#fff',
                     border: 'none',
-                    padding: '8px 18px',
+                    padding: '8px 16px',
                     borderRadius: '6px',
                     fontWeight: '700',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
                     cursor: 'pointer',
+                    fontSize: '13px',
                     boxShadow: '0 2px 6px rgba(37,99,235,0.25)'
                   }}
                 >

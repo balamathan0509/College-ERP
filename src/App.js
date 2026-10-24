@@ -118,6 +118,11 @@ import TimetableEditor from "./pages/dept_admin/TimetableEditor";
 import StudentTimetable from "./pages/student/Timetable";
 import StaffTimetable from "./pages/staff/Timetable";
 
+// Hour Alteration, Period Attendance & Record of Classwork (Logbook)
+import HourAlteration from "./pages/staff/HourAlteration";
+import PeriodAttendance from "./pages/staff/PeriodAttendance";
+import RecordOfClasswork from "./pages/staff/RecordOfClasswork";
+
 // New Student Admission & Coordinator Management
 import NewStudentAdmission from "./pages/dept_admin/NewStudentAdmission";
 import CoordinatorManagement from "./pages/hod/CoordinatorManagement";
@@ -172,6 +177,9 @@ export default function App() {
           <Route path="/staff/leave" element={<ProtectedRoute allowedRole="staff"><StaffLeave /></ProtectedRoute>} />
           <Route path="/staff/students" element={<ProtectedRoute allowedRole="staff"><StaffStudentDetails /></ProtectedRoute>} />
           <Route path="/staff/attendance" element={<ProtectedRoute allowedRole="staff"><StaffAttendance /></ProtectedRoute>} />
+          <Route path="/staff/period-attendance" element={<ProtectedRoute allowedRole={["staff", "hod"]}><PeriodAttendance /></ProtectedRoute>} />
+          <Route path="/staff/hour-alteration" element={<ProtectedRoute allowedRole={["staff", "hod"]}><HourAlteration /></ProtectedRoute>} />
+          <Route path="/staff/classwork-record" element={<ProtectedRoute allowedRole={["staff", "hod", "principal"]}><RecordOfClasswork /></ProtectedRoute>} />
           <Route path="/staff/my-subjects" element={<ProtectedRoute allowedRole={["staff", "hod"]}><MySubjects /></ProtectedRoute>} />
           <Route path="/staff/results" element={<ProtectedRoute allowedRole="staff"><StaffResults /></ProtectedRoute>} />
           <Route path="/staff/timetable" element={<ProtectedRoute allowedRole={["staff", "hod", "dept_admin"]}><StaffTimetable /></ProtectedRoute>} />

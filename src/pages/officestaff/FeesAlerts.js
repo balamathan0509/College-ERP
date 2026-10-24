@@ -6,6 +6,10 @@ import { db } from "../../supabase/supabaseAdapter";
 import { collection, query, where, getDocs, addDoc } from "../../supabase/supabaseAdapter";
 import { notifyStudentFeesPending } from "../../utils/notifications";
 import { COLLEGE_DEPARTMENTS } from "../../utils/collegeConfig";
+import { Download, FileSpreadsheet, FileText } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
+import * as XLSX from 'xlsx';
+import toast, { Toaster } from 'react-hot-toast';
 
 const DEPARTMENTS = COLLEGE_DEPARTMENTS;
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
@@ -83,10 +87,148 @@ export default function FeesAlerts() {
 
   useEffect(() => { fetchPendingStudents(); }, [selectedDept, selectedYear, selectedFeesType]);
 
+  const handleDownloadPdf = () => {
+    if (pendingStudents.length === 0) return;
+    const printContent = document.getElementById("printable-pending-students");
+    if (!printContent) return;
+
+    const filename = `Pending_Fees_${selectedDept}_${selectedYear}_${selectedFeesType}.pdf`.replace(/\s+/g, '_');
+    const opt = {
+      margin: 10,
+      filename: filename,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(printContent).save();
+    toast.success("PDF downloaded successfully!");
+  };
+
+  const handleDownloadExcel = () => {
+    if (pendingStudents.length === 0) return;
+    try {
+      const wb = XLSX.utils.book_new();
+      const rows = [
+        ["RENGANAYAGI VARATHARAJ COLLEGE OF ENGINEERING"],
+        ["OFFICE STAFF - PENDING FEES REPORT"],
+        [`Department: ${selectedDept}`, `Year: ${selectedYear}`, `Fees Type: ${selectedFeesType}`],
+        [`Generated On: ${new Date().toLocaleDateString()}`],
+        [],
+        ["S.No", "Student Name", "Register Number", "Phone", "Student Type", "Department", "Year", "Fees Type", "Status"]
+      ];
+
+      pendingStudents.forEach((s, idx) => {
+        rows.push([
+          idx + 1,
+          s.name || '',
+          s.registerNo || '',
+          s.phone || '',
+          s.studentType === 'hosteller' ? 'Hosteller' : 'Day Scholar',
+          selectedDept,
+          selectedYear,
+          selectedFeesType,
+          "Pending"
+        ]);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [
+        { wch: 8 },
+        { wch: 25 },
+        { wch: 18 },
+        { wch: 16 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 12 },
+        { wch: 18 },
+        { wch: 12 }
+      ];
+      XLSX.utils.book_append_sheet(wb, ws, "Pending Students");
+
+      const filename = `Pending_Fees_${selectedDept}_${selectedYear}_${selectedFeesType}.xlsx`.replace(/\s+/g, '_');
+      XLSX.writeFile(wb, filename);
+      toast.success("Excel (.xlsx) downloaded successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate Excel file.");
+    }
+  };
+
+  const handleDownloadWord = () => {
+    if (pendingStudents.length === 0) return;
+    try {
+      const wordDocHtml = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+              xmlns:w='urn:schemas-microsoft-com:office:word' 
+              xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset="utf-8">
+          <title>Pending Fees - ${selectedFeesType}</title>
+          <style>
+            @page Section1 { size: 8.5in 11in; margin: 0.5in; }
+            div.Section1 { page: Section1; font-family: Arial, sans-serif; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            th, td { border: 1px solid #333; padding: 6px 8px; text-align: left; }
+            th { background: #f2f2f2; }
+          </style>
+        </head>
+        <body>
+          <div class="Section1">
+            <h2 style="text-align: center; margin-bottom: 4px;">RENGANAYAGI VARATHARAJ COLLEGE OF ENGINEERING</h2>
+            <h3 style="text-align: center; margin-top: 0; color: #b91c1c;">PENDING FEES REPORT</h3>
+            <p><strong>Department:</strong> ${selectedDept} &nbsp;|&nbsp; <strong>Year:</strong> ${selectedYear} &nbsp;|&nbsp; <strong>Fees Type:</strong> ${selectedFeesType}</p>
+            <p><strong>Total Pending Students:</strong> ${pendingStudents.length} &nbsp;|&nbsp; <strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 40px;">S.No</th>
+                  <th>Student Name</th>
+                  <th>Register No</th>
+                  <th>Phone</th>
+                  <th>Student Type</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${pendingStudents.map((s, idx) => `
+                  <tr>
+                    <td>${idx + 1}</td>
+                    <td><strong>${s.name}</strong></td>
+                    <td>${s.registerNo}</td>
+                    <td>${s.phone || '-'}</td>
+                    <td>${s.studentType === 'hosteller' ? 'Hosteller' : 'Day Scholar'}</td>
+                    <td style="color: red; font-weight: bold;">Pending</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob(['\ufeff', wordDocHtml], { type: 'application/msword;charset=utf-8' });
+      const filename = `Pending_Fees_${selectedDept}_${selectedYear}_${selectedFeesType}.doc`.replace(/\s+/g, '_');
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      toast.success("Word document (.doc) downloaded successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to generate Word document.");
+    }
+  };
+
   return (
     <div className="dashboard-wrapper">
       <Sidebar />
       <main className="main-content">
+        <Toaster position="top-right" />
         <div className="page-header">
           <h1>📢 Fees Alerts</h1>
           <p>Notify pending students — Office Staff</p>
@@ -151,10 +293,73 @@ export default function FeesAlerts() {
 
             {/* Pending List */}
             <div className="card">
-              <h3 style={{ fontFamily: "Syne", fontSize: 18, marginBottom: 20 }}>
-                ⏳ Pending Students ({pendingStudents.length})
-              </h3>
-              <div style={{ overflowX: "auto" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+                <h3 style={{ fontFamily: "Syne", fontSize: 18, margin: 0 }}>
+                  ⏳ Pending Students ({pendingStudents.length})
+                </h3>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                  <button
+                    onClick={handleDownloadPdf}
+                    style={{
+                      background: "rgba(255,255,255,0.08)",
+                      border: "1px solid rgba(255,255,255,0.2)",
+                      color: "#fff",
+                      padding: "8px 14px",
+                      borderRadius: 6,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                    title="Download Pending Students as PDF"
+                  >
+                    <Download size={15} /> Download PDF
+                  </button>
+                  <button
+                    onClick={handleDownloadExcel}
+                    style={{
+                      background: "#107c41",
+                      border: "none",
+                      color: "#fff",
+                      padding: "8px 14px",
+                      borderRadius: 6,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      boxShadow: "0 2px 4px rgba(16,124,65,0.2)"
+                    }}
+                    title="Download Pending Students as Excel (.xlsx)"
+                  >
+                    <FileSpreadsheet size={15} /> Download Excel
+                  </button>
+                  <button
+                    onClick={handleDownloadWord}
+                    style={{
+                      background: "#2b579a",
+                      border: "none",
+                      color: "#fff",
+                      padding: "8px 14px",
+                      borderRadius: 6,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      boxShadow: "0 2px 4px rgba(43,87,154,0.2)"
+                    }}
+                    title="Download Pending Students as Word (.doc)"
+                  >
+                    <FileText size={15} /> Download Word
+                  </button>
+                </div>
+              </div>
+              <div id="printable-pending-students" style={{ overflowX: "auto" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.1)" }}>

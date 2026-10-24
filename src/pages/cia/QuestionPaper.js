@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar';
 import { db } from "../../supabase/supabaseAdapter";
 import { collection, query, getDocs, where, addDoc, serverTimestamp, doc, getDoc, updateDoc } from "../../supabase/supabaseAdapter";
-import { Search, Printer, CheckCircle, Save, Plus, Trash2, Send, Download } from 'lucide-react';
+import { Search, Printer, CheckCircle, Save, Plus, Trash2, Send, Download, FileSpreadsheet, FileText } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+import * as XLSX from 'xlsx';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -406,6 +407,258 @@ let allocData = {};
     html2pdf().set(opt).from(htmlString).save();
   };
 
+  const handleDownloadExcel = () => {
+    try {
+      toast.loading("Generating Excel spreadsheet...", { id: "excel-toast" });
+      const wb = XLSX.utils.book_new();
+
+      const qpRows = [
+        [headerConfig.collegeName || 'RENGANAYAGI VARATHARAJ COLLEGE OF ENGINEERING'],
+        [headerConfig.collegeAddress || 'Salvarpatti, Sivakasi - 626 128'],
+        [headerConfig.examName || 'QUESTION PAPER'],
+        [],
+        ["Course Instructor:", headerConfig.instructorName || '', "Class / Semester:", headerConfig.classSemester || ''],
+        ["Course Code & Name:", headerConfig.courseCodeName || '', "Academic Year:", headerConfig.academicYear || ''],
+        ["Date of Exam:", headerConfig.examDate || ''],
+        [],
+        ["COURSE OUTCOMES:"],
+        ["CO", "Course Outcomes Description", "BTL Level"]
+      ];
+
+      (courseOutcomes || []).forEach(co => {
+        qpRows.push([co.co, co.description, co.btlLevel]);
+      });
+
+      qpRows.push([]);
+      qpRows.push(["PART A - Answer ALL questions (" + partAHeading + ")"]);
+      qpRows.push(["Q.No", "Question", "BTL, CO"]);
+      partAQuestions.forEach((id, idx) => {
+        const q = questionsPool.find(x => x.id === id);
+        qpRows.push([idx + 1, q?.questionText || "", `${q?.btlLevel || 'UN'}, ${q?.co || 'CO'}`]);
+      });
+
+      qpRows.push([]);
+      qpRows.push(["PART B - Answer ALL questions (" + partBHeading + ")"]);
+      qpRows.push(["Q.No", "Question", "BTL, CO"]);
+      partBQuestions.forEach((pair, idx) => {
+        const qNum = partB_start + idx;
+        const qA = questionsPool.find(x => x.id === pair.a);
+        const qB = questionsPool.find(x => x.id === pair.b);
+        qpRows.push([`${qNum} a)`, qA?.questionText || "", `${qA?.btlLevel || 'UN'}, ${qA?.co || 'CO'}`]);
+        qpRows.push(["", "(OR)", ""]);
+        qpRows.push([`${qNum} b)`, qB?.questionText || "", `${qB?.btlLevel || 'UN'}, ${qB?.co || 'CO'}`]);
+      });
+
+      qpRows.push([]);
+      qpRows.push(["PART C (" + partCHeading + ")"]);
+      qpRows.push(["Q.No", "Question", "BTL, CO"]);
+      partCQuestions.forEach((pair, idx) => {
+        const qNum = partC_start + idx;
+        const qA = questionsPool.find(x => x.id === pair.a);
+        const qB = questionsPool.find(x => x.id === pair.b);
+        qpRows.push([`${qNum} a)`, qA?.questionText || "", `${qA?.btlLevel || 'UN'}, ${qA?.co || 'CO'}`]);
+        qpRows.push(["", "(OR)", ""]);
+        qpRows.push([`${qNum} b)`, qB?.questionText || "", `${qB?.btlLevel || 'UN'}, ${qB?.co || 'CO'}`]);
+      });
+
+      const wsPaper = XLSX.utils.aoa_to_sheet(qpRows);
+      wsPaper['!cols'] = [{ wch: 15 }, { wch: 80 }, { wch: 25 }, { wch: 20 }];
+      XLSX.utils.book_append_sheet(wb, wsPaper, "Question Paper");
+
+      const flatList = [];
+      let sNo = 1;
+      partAQuestions.forEach((id, idx) => {
+        const q = questionsPool.find(x => x.id === id);
+        if (q) {
+          flatList.push({
+            "S.No": sNo++,
+            "Part": "Part A",
+            "Q.No": idx + 1,
+            "Question Text": q.questionText || "",
+            "BTL Level": q.btlLevel || "",
+            "CO": q.co || "",
+            "Marks": 2
+          });
+        }
+      });
+      partBQuestions.forEach((pair, idx) => {
+        const qNum = partB_start + idx;
+        const qA = questionsPool.find(x => x.id === pair.a);
+        const qB = questionsPool.find(x => x.id === pair.b);
+        if (qA) {
+          flatList.push({
+            "S.No": sNo++,
+            "Part": "Part B",
+            "Q.No": `${qNum} a`,
+            "Question Text": qA.questionText || "",
+            "BTL Level": qA.btlLevel || "",
+            "CO": qA.co || "",
+            "Marks": 13
+          });
+        }
+        if (qB) {
+          flatList.push({
+            "S.No": sNo++,
+            "Part": "Part B (OR)",
+            "Q.No": `${qNum} b`,
+            "Question Text": qB.questionText || "",
+            "BTL Level": qB.btlLevel || "",
+            "CO": qB.co || "",
+            "Marks": 13
+          });
+        }
+      });
+      partCQuestions.forEach((pair, idx) => {
+        const qNum = partC_start + idx;
+        const qA = questionsPool.find(x => x.id === pair.a);
+        const qB = questionsPool.find(x => x.id === pair.b);
+        if (qA) {
+          flatList.push({
+            "S.No": sNo++,
+            "Part": "Part C",
+            "Q.No": `${qNum} a`,
+            "Question Text": qA.questionText || "",
+            "BTL Level": qA.btlLevel || "",
+            "CO": qA.co || "",
+            "Marks": 15
+          });
+        }
+        if (qB) {
+          flatList.push({
+            "S.No": sNo++,
+            "Part": "Part C (OR)",
+            "Q.No": `${qNum} b`,
+            "Question Text": qB.questionText || "",
+            "BTL Level": qB.btlLevel || "",
+            "CO": qB.co || "",
+            "Marks": 15
+          });
+        }
+      });
+
+      if (flatList.length > 0) {
+        const wsFlat = XLSX.utils.json_to_sheet(flatList);
+        wsFlat['!cols'] = [
+          { wch: 8 },
+          { wch: 15 },
+          { wch: 10 },
+          { wch: 70 },
+          { wch: 12 },
+          { wch: 10 },
+          { wch: 8 }
+        ];
+        XLSX.utils.book_append_sheet(wb, wsFlat, "Questions List");
+      }
+
+      const safeCourse = (filterCourse || headerConfig.courseCodeName || 'Course').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `Question_Paper_${safeCourse}.xlsx`;
+      XLSX.writeFile(wb, filename);
+
+      toast.success("Excel (.xlsx) downloaded successfully!", { id: "excel-toast" });
+    } catch (err) {
+      console.error("Excel generation error:", err);
+      toast.error("Failed to generate Excel file.", { id: "excel-toast" });
+    }
+  };
+
+  const handleDownloadWord = async () => {
+    const printContent = document.getElementById("printable-paper");
+    if (!printContent) return;
+
+    toast.loading("Preparing Word document...", { id: "word-toast" });
+
+    try {
+      const getBase64 = async (url) => {
+        try {
+          const res = await fetch(url);
+          const blob = await res.blob();
+          return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+          });
+        } catch (e) {
+          return url;
+        }
+      };
+
+      const leftLogo = await getBase64('/logo-left.png');
+      const rightLogo = await getBase64('/logo-right.png');
+
+      let contentHtml = printContent.innerHTML;
+      contentHtml = contentHtml.replace(/\/logo-left\.png/g, leftLogo);
+      contentHtml = contentHtml.replace(/\/logo-right\.png/g, rightLogo);
+
+      const wordDocHtml = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+              xmlns:w='urn:schemas-microsoft-com:office:word' 
+              xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset="utf-8">
+          <title>${headerConfig.examName || 'Exam'} - ${headerConfig.courseCodeName || ''}</title>
+          <!--[if gte mso 9]>
+          <xml>
+            <w:WordDocument>
+              <w:View>Print</w:View>
+              <w:Zoom>100</w:Zoom>
+              <w:DoNotOptimizeForBrowser/>
+            </w:WordDocument>
+          </xml>
+          <![endif]-->
+          <style>
+            @page Section1 {
+              size: 8.5in 11in;
+              margin: 0.5in 0.5in 0.5in 0.5in;
+              mso-header-margin: 0.2in;
+              mso-footer-margin: 0.2in;
+            }
+            div.Section1 {
+              page: Section1;
+              font-family: "Times New Roman", Times, serif;
+              font-size: 11pt;
+              color: #000000;
+            }
+            table {
+              border-collapse: collapse;
+              width: 100%;
+            }
+            th, td {
+              border: 1pt solid black;
+              padding: 4pt 6pt;
+              font-family: "Times New Roman", Times, serif;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="Section1">
+            ${contentHtml}
+          </div>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob(['\ufeff', wordDocHtml], {
+        type: 'application/msword;charset=utf-8'
+      });
+
+      const safeCourse = (filterCourse || headerConfig.courseCodeName || 'Course').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `Question_Paper_${safeCourse}.doc`;
+
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+
+      toast.success("Word document (.doc) downloaded successfully!", { id: "word-toast" });
+    } catch (err) {
+      console.error("Word generation error:", err);
+      toast.error("Failed to generate Word document.", { id: "word-toast" });
+    }
+  };
+
   const partA_start = 1;
   const partB_start = partA_start + partAQuestions.length;
   const partC_start = partB_start + partBQuestions.length;
@@ -609,10 +862,16 @@ let allocData = {};
                     </button>
                   </>
                 )}
-                <button onClick={handleDownloadPdf} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', cursor: 'pointer' }}>
+                <button onClick={handleDownloadPdf} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', cursor: 'pointer', fontWeight: 600 }} title="Download Question Paper as PDF">
                   <Download size={16} /> Download PDF
                 </button>
-                <button onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: '1px solid #6366f1', background: '#6366f1', color: '#fff', cursor: 'pointer', fontWeight: 600 }}>
+                <button onClick={handleDownloadExcel} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: 'none', background: '#107c41', color: '#fff', cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(16,124,65,0.2)' }} title="Download Question Paper as Excel (.xlsx)">
+                  <FileSpreadsheet size={16} /> Download Excel
+                </button>
+                <button onClick={handleDownloadWord} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: 'none', background: '#2b579a', color: '#fff', cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(43,87,154,0.2)' }} title="Download Question Paper as Word (.doc)">
+                  <FileText size={16} /> Download Word
+                </button>
+                <button onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid #6366f1', background: '#6366f1', color: '#fff', cursor: 'pointer', fontWeight: 600 }} title="Print Question Paper">
                   <Printer size={16} /> Print Paper
                 </button>
               </div>
