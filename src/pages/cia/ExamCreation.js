@@ -24,6 +24,8 @@ export default function ExamCreation() {
     programmeCode: '',
     semester: '',
     examType: 'CIA',
+    maxMarks: 50,
+    passMarks: 35,
     status: 'Active'
   });
 
@@ -52,7 +54,30 @@ export default function ExamCreation() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [name]: value };
+      // When examType changes, provide intelligent defaults (Model: 100/75, CIA/Internal: 50/35), but allow custom alteration
+      if (name === 'examType') {
+        if (value === 'Model') {
+          updated.maxMarks = 100;
+          updated.passMarks = 75;
+        } else if (value === 'CIA') {
+          updated.maxMarks = 50;
+          updated.passMarks = 35;
+        } else if (value === 'Practical') {
+          updated.maxMarks = 100;
+          updated.passMarks = 75;
+        }
+      } else if (name === 'maxMarks') {
+        const num = Number(value);
+        if (num === 100 && prev.passMarks === 35) {
+          updated.passMarks = 75;
+        } else if (num === 50 && prev.passMarks === 75) {
+          updated.passMarks = 35;
+        }
+      }
+      return updated;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -82,6 +107,8 @@ export default function ExamCreation() {
 
       const payload = {
         ...formData,
+        maxMarks: Number(formData.maxMarks) || 50,
+        passMarks: Number(formData.passMarks) || 35,
         updatedAt: new Date().toISOString(),
         updatedBy: userProfile?.name || "System"
       };
@@ -107,6 +134,7 @@ export default function ExamCreation() {
   };
 
   const handleEdit = (exam) => {
+    const isModel = (exam.examType === 'Model' || (exam.examName || '').toLowerCase().includes('model'));
     setFormData({
       academicSession: exam.academicSession || '',
       examName: exam.examName || '',
@@ -114,7 +142,9 @@ export default function ExamCreation() {
       programmeName: exam.programmeName || '',
       programmeCode: exam.programmeCode || '',
       semester: exam.semester || '',
-      examType: exam.examType || 'CIA',
+      examType: exam.examType || (isModel ? 'Model' : 'CIA'),
+      maxMarks: exam.maxMarks !== undefined ? Number(exam.maxMarks) : (isModel ? 100 : 50),
+      passMarks: exam.passMarks !== undefined ? Number(exam.passMarks) : (isModel ? 75 : 35),
       status: exam.status || 'Active'
     });
     setEditId(exam.id);
@@ -142,6 +172,8 @@ export default function ExamCreation() {
       programmeCode: '',
       semester: '',
       examType: 'CIA',
+      maxMarks: 50,
+      passMarks: 35,
       status: 'Active'
     });
     setEditId(null);
@@ -210,6 +242,7 @@ export default function ExamCreation() {
                     <th style={{ padding: '16px 20px', color: '#64748b', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>SESSION / MONTH</th>
                     <th style={{ padding: '16px 20px', color: '#64748b', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>DEPT / SEM</th>
                     <th style={{ padding: '16px 20px', color: '#64748b', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>TYPE</th>
+                    <th style={{ padding: '16px 20px', color: '#64748b', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>MARKS (MAX / PASS)</th>
                     <th style={{ padding: '16px 20px', color: '#64748b', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>STATUS</th>
                     <th style={{ padding: '16px 20px', color: '#64748b', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right' }}>ACTION</th>
                   </tr>
@@ -230,6 +263,14 @@ export default function ExamCreation() {
                         <span style={{ padding: '6px 12px', borderRadius: '20px', background: 'rgba(59,130,246,0.1)', color: '#3b82f6', fontSize: 12, fontWeight: '600' }}>
                           {exam.examType}
                         </span>
+                      </td>
+                      <td style={{ padding: '16px 20px' }}>
+                        <div style={{ color: 'var(--text-dark)', fontSize: '14px', fontWeight: '600' }}>
+                          Max: {exam.maxMarks !== undefined ? exam.maxMarks : (exam.examType === 'Model' ? 100 : 50)}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: '4px' }}>
+                          Pass: {exam.passMarks !== undefined ? exam.passMarks : (exam.examType === 'Model' ? 75 : 35)}
+                        </div>
                       </td>
                       <td style={{ padding: '16px 20px' }}>
                         {exam.status === 'Active' ? 
@@ -274,7 +315,7 @@ export default function ExamCreation() {
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Name of Examination *</label>
-                  <input type="text" name="examName" value={formData.examName} onChange={handleInputChange} placeholder="e.g. CIA I" required style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }} />
+                  <input type="text" name="examName" value={formData.examName} onChange={handleInputChange} placeholder="e.g. CIA I / Model Exam" required style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Month & Year *</label>
@@ -301,6 +342,32 @@ export default function ExamCreation() {
                   </select>
                 </div>
                 <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Maximum Marks (Max Mark) *</label>
+                  <input 
+                    type="number" 
+                    name="maxMarks" 
+                    value={formData.maxMarks} 
+                    onChange={handleInputChange} 
+                    placeholder="e.g. 100 or 50" 
+                    min="1" 
+                    required 
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }} 
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Minimum Pass Mark *</label>
+                  <input 
+                    type="number" 
+                    name="passMarks" 
+                    value={formData.passMarks} 
+                    onChange={handleInputChange} 
+                    placeholder="e.g. 50 or 35" 
+                    min="1" 
+                    required 
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }} 
+                  />
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
                   <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Status *</label>
                   <select name="status" value={formData.status} onChange={handleInputChange} required style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }}>
                     <option value="Active">Active</option>

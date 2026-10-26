@@ -1,16 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { db } from "../../supabase/supabaseAdapter";
 import { collection, query, getDocs, addDoc, updateDoc, doc, deleteDoc, where, orderBy } from "../../supabase/supabaseAdapter";
 import { Plus, Edit2, Trash2, Search, CheckCircle, XCircle } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { getStoredCollegeStructure, matchesAcademicSession } from '../../utils/collegeConfig';
 
 export default function ScheduleExamination() {
   const { userProfile } = useAuth();
   const [schedules, setSchedules] = useState([]);
   const [exams, setExams] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [allocations, setAllocations] = useState([]);
+  const [sessionMap, setSessionMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
@@ -41,14 +44,26 @@ export default function ScheduleExamination() {
   useEffect(() => {
     fetchExams();
     fetchSchedules();
-    fetchCourses();
+    fetchCoursesAndAllocations();
   }, []);
 
-  async function fetchCourses() {
+  async function fetchCoursesAndAllocations() {
     try {
-      const snap = await getDocs(collection(db, "courses"));
-      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setCourses(list);
+      const [cSnap, sessSnap, allocSnap] = await Promise.all([
+        getDocs(collection(db, "courses")),
+        getDocs(collection(db, "academic_sessions")).catch(() => ({ docs: [] })),
+        getDocs(collection(db, "course_allocations")).catch(() => ({ docs: [] }))
+      ]);
+
+      const sMap = {};
+      sessSnap.docs.forEach(d => {
+        const data = d.data();
+        if (data && data.name) sMap[d.id] = data.name;
+      });
+      setSessionMap(sMap);
+
+      setCourses(cSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setAllocations(allocSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (err) {
       console.error(err);
     }
@@ -80,10 +95,87 @@ export default function ScheduleExamination() {
     setLoading(false);
   }
 
+  // Selected exam metadata
+  const selectedExam = useMemo(() => {
+    return exams.find(e => e.id === formData.examId) || null;
+  }, [exams, formData.examId]);
+
+  // Dynamic available classes/sections based on selected exam or college structure
+  const availableClasses = useMemo(() => {
+    try {
+      const structure = getStoredCollegeStructure();
+      const prog = selectedExam?.programmeName || filterProgramme || 'B.E CSE';
+      const sem = selectedExam?.semester || filterSemester || '7';
+      const deptKey = (prog || '').replace('B.E ', '').replace('B.Tech ', '').trim() || 'CSE';
+      const semNum = Number(sem) || 7;
+      const yearNum = Math.ceil(semNum / 2) || 4;
+
+      const sections = structure?.sections?.[deptKey]?.[String(yearNum)] || ['Single'];
+      if (sections.includes('Single')) {
+        return [{ value: 'Single Class', label: 'Single Class' }];
+      }
+      return sections.map(s => {
+        const val = s.startsWith('Section') ? s : `Section ${s}`;
+        return { value: val, label: val };
+      });
+    } catch (e) {
+      return [{ value: 'Single Class', label: 'Single Class' }];
+    }
+  }, [selectedExam, filterProgramme, filterSemester]);
+
+  // Filter courses strictly for selected exam session, programme, and semester
+  const selectableCourses = useMemo(() => {
+    if (!selectedExam) return [];
+    const targetSem = String(selectedExam.semester || '').trim();
+    const examSession = selectedExam.academicSession || '';
+    const deptKey = (selectedExam.programmeName || '').replace('B.E ', '').replace('B.Tech ', '').trim();
+
+    // Collect course codes allocated to this exam's academic session and semester
+    const sessionCodes = new Set();
+    allocations.forEach(a => {
+      const aSession = a.academicSession || sessionMap[a.sessionId] || '';
+      if (matchesAcademicSession(aSession, examSession, sessionMap)) {
+        if (String(a.semester || '').trim() === targetSem) {
+          if (!deptKey || (a.department || a.programme || '').includes(deptKey)) {
+            if (a.courseCode) sessionCodes.add(a.courseCode.trim().toUpperCase());
+          }
+        }
+      }
+    });
+
+    return courses.filter(c => {
+      const code = (c.courseCode || '').trim().toUpperCase();
+      const sem = String(c.semester || '').trim();
+      const dept = (c.department || c.programme || '').trim();
+      if (sem !== targetSem) return false;
+      if (deptKey && dept && !dept.includes(deptKey)) return false;
+      return sessionCodes.has(code);
+    });
+  }, [courses, selectedExam, allocations, sessionMap]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => {
       const newData = { ...prev, [name]: value };
+      if (name === 'examId') {
+        const ex = exams.find(x => x.id === value);
+        if (ex) {
+          try {
+            const structure = getStoredCollegeStructure();
+            const deptKey = (ex.programmeName || '').replace('B.E ', '').replace('B.Tech ', '').trim() || 'CSE';
+            const semNum = Number(ex.semester) || 7;
+            const yearNum = Math.ceil(semNum / 2) || 4;
+            const sections = structure?.sections?.[deptKey]?.[String(yearNum)] || ['Single'];
+            if (sections.includes('Single')) {
+              newData.class = 'Single Class';
+            } else if (sections.length > 0) {
+              newData.class = sections[0].startsWith('Section') ? sections[0] : `Section ${sections[0]}`;
+            }
+          } catch (err) {
+            newData.class = 'Single Class';
+          }
+        }
+      }
       if (name === 'courseCode') {
         const selectedCourse = courses.find(c => c.courseCode === value);
         if (selectedCourse) {
@@ -141,6 +233,9 @@ export default function ScheduleExamination() {
         programmeName: selectedExam.programmeName,
         semester: selectedExam.semester,
         examName: selectedExam.examName,
+        examType: selectedExam.examType || 'CIA',
+        maxMarks: Number(selectedExam.maxMarks) || (selectedExam.examType === 'Model' ? 100 : 50),
+        passMarks: Number(selectedExam.passMarks) || (selectedExam.examType === 'Model' ? 75 : 35),
         monthYear: selectedExam.monthYear,
         updatedAt: new Date().toISOString(),
         updatedBy: userProfile?.name || "System"
@@ -357,9 +452,24 @@ export default function ScheduleExamination() {
                 
                 <div>
                   <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Course Code *</label>
-                  <select name="courseCode" value={formData.courseCode} onChange={handleInputChange} required style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }}>
-                    <option value="">Select Course</option>
-                    {courses.map(c => <option key={c.id} value={c.courseCode}>{c.courseCode} - {c.courseName}</option>)}
+                  <select 
+                    name="courseCode" 
+                    value={formData.courseCode} 
+                    onChange={handleInputChange} 
+                    required 
+                    disabled={!formData.examId}
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }}
+                  >
+                    {!formData.examId ? (
+                      <option value="">Select Examination first</option>
+                    ) : selectableCourses.length === 0 ? (
+                      <option value="">No courses allocated for this exam session / semester</option>
+                    ) : (
+                      <>
+                        <option value="">Select Course</option>
+                        {selectableCourses.map(c => <option key={c.id} value={c.courseCode}>{c.courseCode} - {c.courseName}</option>)}
+                      </>
+                    )}
                   </select>
                 </div>
                 <div>
@@ -368,8 +478,22 @@ export default function ScheduleExamination() {
                 </div>
                 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Class *</label>
-                  <input type="text" name="class" value={formData.class} onChange={handleInputChange} placeholder="e.g. CSE-A" required style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }} />
+                  <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Class / Section *</label>
+                  <select 
+                    name="class" 
+                    value={formData.class} 
+                    onChange={handleInputChange} 
+                    required 
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', color: '#0f172a', fontSize: '14px', outline: 'none' }}
+                  >
+                    <option value="">Select Class</option>
+                    {availableClasses.map(c => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                    {formData.class && !availableClasses.some(c => c.value === formData.class) && (
+                      <option value={formData.class}>{formData.class}</option>
+                    )}
+                  </select>
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#475569' }}>Date *</label>

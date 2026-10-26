@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { db } from "../../supabase/supabaseAdapter";
 import { collection, query, getDocs, setDoc, doc, where } from "../../supabase/supabaseAdapter";
 import { Search, ArrowLeft } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { matchesAcademicSession } from '../../utils/collegeConfig';
 
 export default function MarkEntryESE() {
   const { userProfile } = useAuth();
@@ -21,12 +22,87 @@ export default function MarkEntryESE() {
   const [searched, setSearched] = useState(false);
 
   const [students, setStudents] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [sessionMap, setSessionMap] = useState({});
+  const [allocations, setAllocations] = useState([]);
+  const [examSchedules, setExamSchedules] = useState([]);
   const [marksMap, setMarksMap] = useState({});
+  const [gradesMap, setGradesMap] = useState({});
   const [attendanceMap, setAttendanceMap] = useState({});
+
+  const GRADE_OPTIONS = [
+    { grade: 'O', point: 10, label: 'O (Outstanding)', defaultMark: 95 },
+    { grade: 'A+', point: 9, label: 'A+ (Excellent)', defaultMark: 85 },
+    { grade: 'A', point: 8, label: 'A (Very Good)', defaultMark: 75 },
+    { grade: 'B+', point: 7, label: 'B+ (Good)', defaultMark: 65 },
+    { grade: 'B', point: 6, label: 'B (Average)', defaultMark: 55 },
+    { grade: 'C', point: 5, label: 'C (Satisfactory)', defaultMark: 45 },
+    { grade: 'RA', point: 0, label: 'RA (Re-Appearance)', defaultMark: 0 },
+    { grade: 'SA', point: 0, label: 'SA (Shortage of Attendance)', defaultMark: 0 },
+    { grade: 'W', point: 0, label: 'W (Withdrawal)', defaultMark: 0 },
+    { grade: 'AB', point: 0, label: 'AB (Absent)', defaultMark: 0 },
+  ];
 
   const SESSIONS = ["2025-2026", "2026-2027"];
   const PROGRAMMES = ["B.E CSE", "B.E ECE", "B.E EEE", "B.E MECH", "B.Tech IT"];
   const SEMESTERS = ["1", "2", "3", "4", "5", "6", "7", "8"];
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [cSnap, sessSnap, allocSnap, schedSnap] = await Promise.all([
+          getDocs(collection(db, "courses")),
+          getDocs(collection(db, "academic_sessions")).catch(() => ({ docs: [] })),
+          getDocs(collection(db, "course_allocations")).catch(() => ({ docs: [] })),
+          getDocs(collection(db, "cia_exam_schedules")).catch(() => ({ docs: [] }))
+        ]);
+
+        const sMap = {};
+        sessSnap.docs.forEach(d => {
+          const data = d.data();
+          if (data && data.name) sMap[d.id] = data.name;
+        });
+        setSessionMap(sMap);
+
+        setCourses(cSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setAllocations(allocSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setExamSchedules(schedSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.warn("Failed to load data in MarkEntryESE:", e);
+      }
+    }
+    loadData();
+  }, []);
+
+  const selectableCourses = useMemo(() => {
+    if (!filterSession || !filterSemester) return [];
+    const targetSem = String(filterSemester).trim();
+    const deptKey = (filterProgramme || '').replace('B.E ', '').replace('B.Tech ', '').trim();
+
+    const sessionCourseCodes = new Set();
+    allocations.forEach(a => {
+      const aSession = a.academicSession || sessionMap[a.sessionId] || '';
+      if (matchesAcademicSession(aSession, filterSession, sessionMap)) {
+        if (String(a.semester || '').trim() === targetSem) {
+          if (!deptKey || (a.department || a.programme || '').includes(deptKey)) {
+            if (a.courseCode) sessionCourseCodes.add(a.courseCode.trim().toUpperCase());
+          }
+        }
+      }
+    });
+
+    examSchedules.forEach(s => {
+      if (matchesAcademicSession(s.academicSession, filterSession, sessionMap)) {
+        if (String(s.semester || '').trim() === targetSem) {
+          if (!deptKey || (s.programmeName || '').includes(deptKey)) {
+            if (s.courseCode) sessionCourseCodes.add(s.courseCode.trim().toUpperCase());
+          }
+        }
+      }
+    });
+
+    return courses.filter(c => sessionCourseCodes.has((c.courseCode || '').trim().toUpperCase()));
+  }, [filterSession, filterSemester, filterProgramme, courses, allocations, examSchedules, sessionMap]);
 
   const handleSearch = async () => {
     if (!filterSession || !filterProgramme || !filterSemester || !filterCourse) {
@@ -57,6 +133,25 @@ export default function MarkEntryESE() {
         const sSnap = await getDocs(studentQ);
         studentsList = sSnap.docs.map(d => ({ id: d.id, ...d.data() })).slice(0, 10);
       }
+
+      // Filter by academic session
+      if (filterSession) {
+        studentsList = studentsList.filter(s => {
+          const sSession = (s.academicSession || '').trim();
+          if (sSession) return sSession === filterSession;
+          const sBatch = (s.batch || '').replace(/\s+/g, '');
+          if (sBatch.includes('-')) {
+            const [startYear] = sBatch.split('-').map(Number);
+            const semNum = Number(filterSemester) || 7;
+            const yearNum = Math.ceil(semNum / 2);
+            if (startYear && !isNaN(startYear)) {
+              return `${startYear + (yearNum - 1)}-${startYear + yearNum}` === filterSession;
+            }
+          }
+          return false;
+        });
+      }
+
       studentsList.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
       
       // Fetch Existing ESE Marks
@@ -68,11 +163,13 @@ export default function MarkEntryESE() {
       );
       const marksSnap = await getDocs(marksQ);
       const mData = {};
+      const gData = {};
       const attData = {};
       
       marksSnap.docs.forEach(d => {
         const data = d.data();
-        mData[data.studentId] = data.marks;
+        mData[data.studentId] = data.marks !== undefined ? data.marks : '';
+        if (data.grade) gData[data.studentId] = data.grade;
         attData[data.studentId] = data.isAbsent ? 'Absent' : 'Present';
       });
 
@@ -83,6 +180,7 @@ export default function MarkEntryESE() {
 
       setStudents(studentsList);
       setMarksMap(mData);
+      setGradesMap(gData);
       setAttendanceMap(attData);
 
       if (studentsList.length === 0) {
@@ -96,28 +194,69 @@ export default function MarkEntryESE() {
     setLoading(false);
   };
 
-  const handleMarkChange = (studentId, value) => {
-    const num = Number(value);
-    if (value !== '' && (isNaN(num) || num < 0 || num > 100)) return; 
-    setMarksMap(prev => ({ ...prev, [studentId]: value }));
-  };
-
-  const handleAttendanceChange = (studentId, value) => {
-    setAttendanceMap(prev => ({ ...prev, [studentId]: value }));
-    if (value === 'Absent') {
-      setMarksMap(prev => ({ ...prev, [studentId]: 0 }));
-    }
-  };
-
   const calculateGrade = (marks) => {
-    if (marks === undefined || marks === null || marks === '') return { grade: '-', point: 0 };
+    if (marks === undefined || marks === null || marks === '') return { grade: '', point: 0 };
     const m = Number(marks);
     if (m >= 90) return { grade: 'O', point: 10 };
     if (m >= 80) return { grade: 'A+', point: 9 };
     if (m >= 70) return { grade: 'A', point: 8 };
     if (m >= 60) return { grade: 'B+', point: 7 };
     if (m >= 50) return { grade: 'B', point: 6 };
+    if (m >= 45) return { grade: 'C', point: 5 };
     return { grade: 'RA', point: 0 };
+  };
+
+  const getPointForGrade = (g) => {
+    const found = GRADE_OPTIONS.find(opt => opt.grade === g);
+    return found ? found.point : 0;
+  };
+
+  const getGradeColor = (g) => {
+    if (['O', 'A+', 'A'].includes(g)) return '#10b981';
+    if (['B+', 'B', 'C'].includes(g)) return '#3b82f6';
+    if (['RA', 'AB', 'SA', 'W'].includes(g)) return '#ef4444';
+    return 'var(--text-muted)';
+  };
+
+  const handleGradeChange = (studentId, selectedGrade) => {
+    setGradesMap(prev => ({ ...prev, [studentId]: selectedGrade }));
+    const opt = GRADE_OPTIONS.find(o => o.grade === selectedGrade);
+    
+    if (selectedGrade === 'AB') {
+      setAttendanceMap(prev => ({ ...prev, [studentId]: 'Absent' }));
+      setMarksMap(prev => ({ ...prev, [studentId]: 0 }));
+    } else {
+      if (attendanceMap[studentId] === 'Absent') {
+        setAttendanceMap(prev => ({ ...prev, [studentId]: 'Present' }));
+      }
+      if (opt) {
+        setMarksMap(prev => ({ ...prev, [studentId]: opt.defaultMark }));
+      }
+    }
+  };
+
+  const handleMarkChange = (studentId, value) => {
+    const num = Number(value);
+    if (value !== '' && (isNaN(num) || num < 0 || num > 100)) return; 
+    setMarksMap(prev => ({ ...prev, [studentId]: value }));
+    if (value !== '') {
+      const { grade } = calculateGrade(value);
+      setGradesMap(prev => ({ ...prev, [studentId]: grade }));
+    } else {
+      setGradesMap(prev => ({ ...prev, [studentId]: '' }));
+    }
+  };
+
+  const handleAttendanceChange = (studentId, value) => {
+    setAttendanceMap(prev => ({ ...prev, [studentId]: value }));
+    if (value === 'Absent') {
+      setMarksMap(prev => ({ ...prev, [studentId]: 0 }));
+      setGradesMap(prev => ({ ...prev, [studentId]: 'AB' }));
+    } else {
+      if (gradesMap[studentId] === 'AB') {
+        setGradesMap(prev => ({ ...prev, [studentId]: '' }));
+      }
+    }
   };
 
   const handleSaveMarks = async (status = "Draft") => {
@@ -131,8 +270,14 @@ export default function MarkEntryESE() {
         let finalMark = marksMap[student.id];
         let isAbsent = attendanceMap[student.id] === 'Absent';
         
+        let grade = isAbsent ? 'AB' : (gradesMap[student.id] || calculateGrade(finalMark).grade || '-');
+        let point = isAbsent ? 0 : getPointForGrade(grade);
+        
         if (isAbsent) finalMark = 0;
-        const { grade, point } = isAbsent ? { grade: 'AB', point: 0 } : calculateGrade(finalMark);
+        else if ((finalMark === undefined || finalMark === '' || finalMark === null) && grade) {
+          const opt = GRADE_OPTIONS.find(o => o.grade === grade);
+          finalMark = opt ? opt.defaultMark : 0;
+        }
 
         return setDoc(doc(db, "cia_marks", recordId), {
           academicSession: filterSession,
@@ -198,7 +343,27 @@ export default function MarkEntryESE() {
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Course Code *</label>
-                <input type="text" placeholder="e.g. CS101" value={filterCourse} onChange={(e) => setFilterCourse(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }} />
+                <select 
+                  value={filterCourse} 
+                  onChange={(e) => setFilterCourse(e.target.value)} 
+                  disabled={!filterSemester}
+                  style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}
+                >
+                  {!filterSemester ? (
+                    <option value="">Select Semester first</option>
+                  ) : selectableCourses.length === 0 ? (
+                    <option value="">No courses mapped to {filterSession} (Sem {filterSemester})</option>
+                  ) : (
+                    <>
+                      <option value="">Select Course</option>
+                      {selectableCourses.map(c => (
+                        <option key={c.id || c.courseCode} value={c.courseCode}>
+                          {c.courseCode} - {c.courseName}
+                        </option>
+                      ))}
+                    </>
+                  )}
+                </select>
               </div>
             </div>
             
@@ -230,20 +395,31 @@ export default function MarkEntryESE() {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
-                        <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13, width: 60 }}>S.NO</th>
+                        <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13, width: 50 }}>S.NO</th>
                         <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>REGISTER NO</th>
                         <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>STUDENT NAME</th>
                         <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>APPEARED STATUS</th>
+                        <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>ANNA UNIV. GRADE</th>
                         <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>ESE MARKS (Max 100)</th>
-                        <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>GRADE</th>
                         <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>GRADE POINT</th>
                       </tr>
                     </thead>
                     <tbody>
                       {students.map((student, idx) => {
                         const isAbsent = attendanceMap[student.id] === 'Absent';
-                        const mark = isAbsent ? 0 : marksMap[student.id];
-                        const { grade, point } = isAbsent ? { grade: 'AB', point: 0 } : calculateGrade(mark);
+                        const currentMark = marksMap[student.id];
+                        
+                        let displayGrade = '';
+                        if (isAbsent) {
+                          displayGrade = 'AB';
+                        } else if (gradesMap[student.id]) {
+                          displayGrade = gradesMap[student.id];
+                        } else if (currentMark !== undefined && currentMark !== '') {
+                          displayGrade = calculateGrade(currentMark).grade;
+                        }
+                        
+                        const displayPoint = isAbsent ? 0 : getPointForGrade(displayGrade);
+                        const gradeColor = getGradeColor(displayGrade);
 
                         return (
                           <tr key={student.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: isAbsent ? 'rgba(239,68,68,0.05)' : 'transparent' }}>
@@ -254,31 +430,71 @@ export default function MarkEntryESE() {
                               <select 
                                 value={attendanceMap[student.id] || 'Present'}
                                 onChange={(e) => handleAttendanceChange(student.id, e.target.value)}
-                                style={{ padding: '6px', borderRadius: 4, background: 'var(--bg-color)', color: 'var(--text)', border: '1px solid var(--border-color)' }}
+                                style={{ padding: '6px 10px', borderRadius: 6, background: 'var(--bg-color)', color: 'var(--text)', border: '1px solid var(--border-color)', fontSize: 13 }}
                               >
                                 <option value="Present">Appeared</option>
                                 <option value="Absent">Absent</option>
                               </select>
                             </td>
                             <td style={{ padding: '12px 16px' }}>
+                              <select
+                                value={displayGrade}
+                                onChange={(e) => handleGradeChange(student.id, e.target.value)}
+                                disabled={isAbsent}
+                                style={{
+                                  padding: '7px 10px',
+                                  borderRadius: 6,
+                                  background: 'var(--bg-color)',
+                                  color: gradeColor,
+                                  border: `1.5px solid ${displayGrade ? gradeColor : 'var(--border-color)'}`,
+                                  fontWeight: 700,
+                                  fontSize: '13px',
+                                  minWidth: '130px',
+                                  cursor: isAbsent ? 'not-allowed' : 'pointer'
+                                }}
+                              >
+                                <option value="">- Select Grade -</option>
+                                {GRADE_OPTIONS.map(opt => (
+                                  <option key={opt.grade} value={opt.grade} style={{ color: getGradeColor(opt.grade), background: 'var(--card-bg, #1e293b)' }}>
+                                    {opt.label} ({opt.point} pt)
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td style={{ padding: '12px 16px' }}>
                               <input 
                                 type="number" 
-                                value={isAbsent ? '0' : (marksMap[student.id] || '')}
+                                value={isAbsent ? '0' : (currentMark !== undefined ? currentMark : '')}
                                 onChange={(e) => handleMarkChange(student.id, e.target.value)}
                                 disabled={isAbsent}
                                 min="0" max="100"
-                                placeholder="0"
+                                placeholder="0 - 100"
                                 style={{ 
-                                  width: '80px', padding: '8px', borderRadius: 6, 
+                                  width: '90px', padding: '7px 10px', borderRadius: 6, 
                                   border: '1px solid var(--border-color)', 
                                   background: isAbsent ? 'rgba(0,0,0,0.1)' : 'var(--bg-color)', 
                                   color: 'var(--text)',
-                                  opacity: isAbsent ? 0.6 : 1
+                                  opacity: isAbsent ? 0.6 : 1,
+                                  fontSize: '13px'
                                 }}
                               />
                             </td>
-                            <td style={{ padding: '12px 16px', fontWeight: 700, color: grade === 'RA' || grade === 'AB' ? '#ef4444' : '#10b981' }}>{grade}</td>
-                            <td style={{ padding: '12px 16px', fontWeight: 700 }}>{point}</td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minWidth: '32px',
+                                height: '28px',
+                                borderRadius: '6px',
+                                fontWeight: 700,
+                                fontSize: '13px',
+                                background: displayPoint > 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                color: displayPoint > 0 ? '#10b981' : '#ef4444'
+                              }}>
+                                {displayGrade ? displayPoint : '-'}
+                              </span>
+                            </td>
                           </tr>
                         );
                       })}

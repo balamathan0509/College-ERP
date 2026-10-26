@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/Sidebar';
 import { db } from "../../supabase/supabaseAdapter";
 import { collection, query, getDocs, where, orderBy } from "../../supabase/supabaseAdapter";
 import { Search, Download, FileSpreadsheet, Calendar, Users, AlertTriangle, BookOpen } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { getStoredCollegeStructure, matchesAcademicSession } from '../../utils/collegeConfig';
 
 export default function Reports() {
   const [loading, setLoading] = useState(false);
@@ -21,10 +22,104 @@ export default function Reports() {
   const [report2Data, setReport2Data] = useState(null);
   const [report3Data, setReport3Data] = useState(null);
   const [report4Data, setReport4Data] = useState(null);
+  const [courses, setCourses] = useState([]);
+  const [sessionMap, setSessionMap] = useState({});
+  const [allocations, setAllocations] = useState([]);
+  const [examSchedules, setExamSchedules] = useState([]);
 
   const SESSIONS = ["2025-2026", "2026-2027"];
   const PROGRAMMES = ["B.E CSE", "B.E ECE", "B.E EEE", "B.E MECH", "B.Tech IT"];
   const SEMESTERS = ["1", "2", "3", "4", "5", "6", "7", "8"];
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [cSnap, sessSnap, allocSnap, schedSnap] = await Promise.all([
+          getDocs(collection(db, "courses")),
+          getDocs(collection(db, "academic_sessions")).catch(() => ({ docs: [] })),
+          getDocs(collection(db, "course_allocations")).catch(() => ({ docs: [] })),
+          getDocs(collection(db, "cia_exam_schedules")).catch(() => ({ docs: [] }))
+        ]);
+
+        const sMap = {};
+        sessSnap.docs.forEach(d => {
+          const data = d.data();
+          if (data && data.name) sMap[d.id] = data.name;
+        });
+        setSessionMap(sMap);
+
+        setCourses(cSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setAllocations(allocSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setExamSchedules(schedSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.warn("Failed to load data in Reports:", e);
+      }
+    }
+    loadData();
+  }, []);
+
+  // Dynamic available classes/sections based on Programme & Semester
+  const availableClasses = useMemo(() => {
+    try {
+      const structure = getStoredCollegeStructure();
+      const prog = filterProgramme || 'B.E CSE';
+      const sem = filterSemester || '7';
+      const deptKey = (prog || '').replace('B.E ', '').replace('B.Tech ', '').trim() || 'CSE';
+      const semNum = Number(sem) || 7;
+      const yearNum = Math.ceil(semNum / 2) || 4;
+
+      const sections = structure?.sections?.[deptKey]?.[String(yearNum)] || ['Single'];
+      if (sections.includes('Single')) {
+        return [{ value: 'Single Class', label: 'Single Class' }];
+      }
+      return sections.map(s => {
+        const val = s.startsWith('Section') ? s : `Section ${s}`;
+        return { value: val, label: val };
+      });
+    } catch (e) {
+      return [{ value: 'Single Class', label: 'Single Class' }];
+    }
+  }, [filterProgramme, filterSemester]);
+
+  // Dynamic selectable courses strictly mapped by Academic Session, Programme, and Semester
+  const selectableCourses = useMemo(() => {
+    if (!filterSession || !filterSemester) return [];
+
+    const targetSem = String(filterSemester).trim();
+    const deptKey = (filterProgramme || '').replace('B.E ', '').replace('B.Tech ', '').trim();
+
+    // Collect all course codes allocated/scheduled in this session
+    const sessionCourseCodes = new Set();
+
+    // From course_allocations
+    allocations.forEach(a => {
+      const aSession = a.academicSession || sessionMap[a.sessionId] || '';
+      if (matchesAcademicSession(aSession, filterSession, sessionMap)) {
+        if (String(a.semester || '').trim() === targetSem) {
+          if (!deptKey || (a.department || a.programme || '').includes(deptKey)) {
+            if (a.courseCode) sessionCourseCodes.add(a.courseCode.trim().toUpperCase());
+          }
+        }
+      }
+    });
+
+    // From exam schedules
+    examSchedules.forEach(s => {
+      if (matchesAcademicSession(s.academicSession, filterSession, sessionMap)) {
+        if (String(s.semester || '').trim() === targetSem) {
+          if (!deptKey || (s.programmeName || '').includes(deptKey)) {
+            if (s.courseCode) sessionCourseCodes.add(s.courseCode.trim().toUpperCase());
+          }
+        }
+      }
+    });
+
+    // Filter courses matching the session codes
+    return courses.filter(c => {
+      const code = (c.courseCode || '').trim().toUpperCase();
+      return sessionCourseCodes.has(code);
+    });
+  }, [filterSession, filterSemester, filterProgramme, courses, allocations, examSchedules, sessionMap]);
 
   // Helper to fetch students for a class
   const getStudentsForClass = async (programme, semester) => {
@@ -140,35 +235,83 @@ export default function Reports() {
     setLoading(true);
     try {
       const studentsList = await getStudentsForClass(filterProgramme, filterSemester);
-      const marksQ = query(collection(db, "cia_marks"), where("classId", "==", filterClass), where("academicSession", "==", filterSession));
-      const marksSnap = await getDocs(marksQ);
+      const studentIdSet = new Set(studentsList.map(s => s.id));
+
+      const marksSnap = await getDocs(collection(db, "cia_marks"));
       
-      const courseSummaries = {};
+      // Store per course -> per student -> { isAbsent, isPass, entryType }
+      const courseStudentMap = {};
       
       marksSnap.docs.forEach(d => {
         const data = d.data();
-        if (data.entryType !== 'ESE' && data.entryType !== 'CIA') return; // Analyze main ones
+        if (data.entryType !== 'ESE' && data.entryType !== 'CIA') return;
+
+        // Check academic session if present
+        if (data.academicSession && filterSession && data.academicSession !== filterSession) {
+          return;
+        }
+
+        // Match student in this class or match programme & semester
+        const isStudentInClass = studentIdSet.has(data.studentId);
+        const isProgSemMatch = (!data.programmeName || data.programmeName === filterProgramme) && 
+                              (!data.semester || String(data.semester) === String(filterSemester));
         
+        if (!isStudentInClass && !isProgSemMatch) return;
+
+        // If specific section/class filter is applied (not Single Class)
+        if (filterClass && filterClass !== 'Single Class' && data.classId && data.classId !== filterClass) {
+          return;
+        }
+
         const cId = data.courseId;
-        if (!courseSummaries[cId]) {
-          courseSummaries[cId] = { courseId: cId, totalStudents: studentsList.length, present: 0, absent: 0, passed: 0, failed: 0 };
+        const sId = data.studentId;
+        if (!cId || !sId) return;
+
+        if (!courseStudentMap[cId]) {
+          courseStudentMap[cId] = {};
         }
-        
-        if (data.isAbsent) {
-          courseSummaries[cId].absent++;
+
+        // If student already has an entry, prefer ESE over CIA
+        const existing = courseStudentMap[cId][sId];
+        if (existing && existing.entryType === 'ESE' && data.entryType !== 'ESE') {
+          return;
+        }
+
+        const isAbsent = Boolean(data.isAbsent);
+        const mark = Number(data.marks) || 0;
+        let isPass = false;
+        if (data.grade) {
+          isPass = !['RA', 'AB', 'SA', 'W'].includes(data.grade);
         } else {
-          courseSummaries[cId].present++;
-          const mark = Number(data.marks) || 0;
-          const passing = data.entryType === 'ESE' ? 50 : 25; // Dummy threshold
-          if (mark >= passing) courseSummaries[cId].passed++;
-          else courseSummaries[cId].failed++;
+          const passing = data.entryType === 'ESE' ? 50 : (data.passMarks || 25);
+          isPass = mark >= passing;
         }
+
+        courseStudentMap[cId][sId] = {
+          isAbsent,
+          isPass,
+          entryType: data.entryType
+        };
       });
       
-      const records = Object.values(courseSummaries).map(r => ({
-        ...r,
-        passPercentage: r.present > 0 ? ((r.passed / r.present) * 100).toFixed(2) : 0
-      }));
+      const records = Object.entries(courseStudentMap).map(([cId, studentsMap]) => {
+        const studentEntries = Object.values(studentsMap);
+        const present = studentEntries.filter(s => !s.isAbsent).length;
+        const absent = studentEntries.filter(s => s.isAbsent).length;
+        const passed = studentEntries.filter(s => !s.isAbsent && s.isPass).length;
+        const failed = studentEntries.filter(s => !s.isAbsent && !s.isPass).length;
+        const total = studentsList.length || studentEntries.length;
+
+        return {
+          courseId: cId,
+          totalStudents: total,
+          present,
+          absent,
+          passed,
+          failed,
+          passPercentage: present > 0 ? ((passed / present) * 100).toFixed(2) : '0.00'
+        };
+      });
 
       setReport3Data(records);
       if (records.length === 0) toast.error("No summary data found for this class.");
@@ -193,13 +336,17 @@ export default function Reports() {
       const schedules = schedSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       // Find marks
-      const marksQ = query(collection(db, "cia_marks"), where("academicSession", "==", filterSession));
-      const marksSnap = await getDocs(marksQ);
+      const marksSnap = await getDocs(collection(db, "cia_marks"));
       
       const enteredMarksSet = new Set();
       marksSnap.docs.forEach(d => {
         const data = d.data();
-        enteredMarksSet.add(`${data.scheduleId}_${data.studentId}`);
+        if (data.scheduleId && data.studentId) {
+          enteredMarksSet.add(`${data.scheduleId}_${data.studentId}`);
+        }
+        if (data.courseId && data.studentId) {
+          enteredMarksSet.add(`${data.courseId}_${data.studentId}`);
+        }
       });
 
       const defaulters = [];
@@ -211,7 +358,9 @@ export default function Reports() {
 
         const studentsList = await getStudentsForClass(sch.programmeName, sch.semester);
         for (const st of studentsList) {
-          if (!enteredMarksSet.has(`${sch.id}_${st.id}`)) {
+          const hasMark = enteredMarksSet.has(`${sch.id}_${st.id}`) || 
+                          enteredMarksSet.has(`${sch.courseCode}_${st.id}`);
+          if (!hasMark) {
             defaulters.push({
               id: `${sch.id}_${st.id}`,
               studentName: st.name,
@@ -306,13 +455,45 @@ export default function Reports() {
       {showCourse && (
         <div>
           <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Course Code</label>
-          <input type="text" placeholder="e.g. CS101" value={filterCourse} onChange={(e) => setFilterCourse(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }} />
+          <select 
+            value={filterCourse} 
+            onChange={(e) => setFilterCourse(e.target.value)} 
+            disabled={!filterSemester}
+            style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}
+          >
+            {!filterSemester ? (
+              <option value="">Select Semester first</option>
+            ) : selectableCourses.length === 0 ? (
+              <option value="">No courses mapped to {filterSession} (Sem {filterSemester})</option>
+            ) : (
+              <>
+                <option value="">Select Course</option>
+                {selectableCourses.map(c => (
+                  <option key={c.id || c.courseCode} value={c.courseCode}>
+                    {c.courseCode} - {c.courseName}
+                  </option>
+                ))}
+              </>
+            )}
+          </select>
         </div>
       )}
       {showClass && (
         <div>
-          <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Class</label>
-          <input type="text" placeholder="e.g. CSE-A" value={filterClass} onChange={(e) => setFilterClass(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }} />
+          <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Class / Section</label>
+          <select 
+            value={filterClass} 
+            onChange={(e) => setFilterClass(e.target.value)} 
+            style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}
+          >
+            <option value="">Select Class</option>
+            {availableClasses.map(c => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+            {filterClass && !availableClasses.some(c => c.value === filterClass) && (
+              <option value={filterClass}>{filterClass}</option>
+            )}
+          </select>
         </div>
       )}
     </div>
@@ -482,17 +663,25 @@ export default function Reports() {
                       </tr>
                     </thead>
                     <tbody>
-                      {report3Data.map((row, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                          <td style={{ padding: '12px 16px', fontWeight: 600, color: '#6366f1' }}>{row.courseId}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: 600 }}>{row.totalStudents}</td>
-                          <td style={{ padding: '12px 16px', color: '#10b981', fontWeight: 600 }}>{row.present}</td>
-                          <td style={{ padding: '12px 16px', color: '#ef4444', fontWeight: 600 }}>{row.absent}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: 600 }}>{row.passed}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: 600 }}>{row.failed}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: 700, color: row.passPercentage >= 50 ? '#10b981' : '#ef4444' }}>{row.passPercentage}%</td>
+                      {report3Data.length === 0 ? (
+                        <tr>
+                          <td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                            No marks data found for this class / semester.
+                          </td>
                         </tr>
-                      ))}
+                      ) : (
+                        report3Data.map((row, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <td style={{ padding: '12px 16px', fontWeight: 600, color: '#6366f1' }}>{row.courseId}</td>
+                            <td style={{ padding: '12px 16px', fontWeight: 600 }}>{row.totalStudents}</td>
+                            <td style={{ padding: '12px 16px', color: '#10b981', fontWeight: 600 }}>{row.present}</td>
+                            <td style={{ padding: '12px 16px', color: '#ef4444', fontWeight: 600 }}>{row.absent}</td>
+                            <td style={{ padding: '12px 16px', fontWeight: 600 }}>{row.passed}</td>
+                            <td style={{ padding: '12px 16px', fontWeight: 600 }}>{row.failed}</td>
+                            <td style={{ padding: '12px 16px', fontWeight: 700, color: row.passPercentage >= 50 ? '#10b981' : '#ef4444' }}>{row.passPercentage}%</td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -533,16 +722,24 @@ export default function Reports() {
                       </tr>
                     </thead>
                     <tbody>
-                      {report4Data.map((row, idx) => (
-                        <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(239,68,68,0.02)' }}>
-                          <td style={{ padding: '12px 16px' }}>{row.registerNo}</td>
-                          <td style={{ padding: '12px 16px', fontWeight: 600 }}>{row.studentName}</td>
-                          <td style={{ padding: '12px 16px' }}>{row.programme} ({row.semester})</td>
-                          <td style={{ padding: '12px 16px', fontWeight: 600 }}>{row.course}</td>
-                          <td style={{ padding: '12px 16px' }}>{row.examName}</td>
-                          <td style={{ padding: '12px 16px', color: '#ef4444', fontWeight: 600, fontSize: 12 }}>{row.status}</td>
+                      {report4Data.length === 0 ? (
+                        <tr>
+                          <td colSpan="6" style={{ textAlign: 'center', padding: '36px', color: '#10b981', fontWeight: 600 }}>
+                            ✅ All students have marks entered! No missing marks / defaulters found for this selection.
+                          </td>
                         </tr>
-                      ))}
+                      ) : (
+                        report4Data.map((row, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', background: 'rgba(239,68,68,0.02)' }}>
+                            <td style={{ padding: '12px 16px' }}>{row.registerNo}</td>
+                            <td style={{ padding: '12px 16px', fontWeight: 600 }}>{row.studentName}</td>
+                            <td style={{ padding: '12px 16px' }}>{row.programme} ({row.semester})</td>
+                            <td style={{ padding: '12px 16px', fontWeight: 600 }}>{row.course}</td>
+                            <td style={{ padding: '12px 16px' }}>{row.examName}</td>
+                            <td style={{ padding: '12px 16px', color: '#ef4444', fontWeight: 600, fontSize: 12 }}>{row.status}</td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>

@@ -99,7 +99,9 @@ export default function ClassLogModal({ isOpen, onClose, onSuccess }) {
     setCalendarBlockedEvent(null);
     try {
       const dept = alloc.department || alloc.targetDept || alloc.dept || userProfile.dept;
-      const year = alloc.year ? `${alloc.year}${alloc.year.includes("Year") ? "" : "st Year"}` : "";
+      const semNum = Number(alloc.semester) || 0;
+      const calcYear = semNum ? (semNum <= 2 ? "1st Year" : semNum <= 4 ? "2nd Year" : semNum <= 6 ? "3rd Year" : "4th Year") : "";
+      const year = alloc.year ? `${alloc.year}${alloc.year.includes("Year") ? "" : " Year"}` : calcYear;
       
       // Check Academic Calendar for date restriction
       const calData = await getDepartmentCalendar(dept);
@@ -118,8 +120,19 @@ export default function ClassLogModal({ isOpen, onClose, onSuccess }) {
       const snap = await getDocs(studQ);
       let list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      if (alloc.section) {
-        list = list.filter(s => !s.section || s.section === alloc.section);
+      if (year) {
+        list = list.filter(s => !s.year || s.year === year);
+      }
+
+      const isSecValid = alloc.section && 
+                         alloc.section !== "None" && 
+                         alloc.section !== "none" && 
+                         alloc.section !== "Single" && 
+                         alloc.section !== "Single Class" && 
+                         alloc.section !== ".";
+
+      if (isSecValid) {
+        list = list.filter(s => s.section === alloc.section);
       }
       list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 

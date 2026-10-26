@@ -54,6 +54,9 @@ export default function QuestionBank() {
 useEffect(() => {
     if (userProfile?.role === 'staff') {
       fetchAllocations();
+    } else if (userProfile?.role === 'hod') {
+      fetchDeptCourses();
+      fetchQuestions();
     } else {
       fetchQuestions();
     }
@@ -67,19 +70,109 @@ useEffect(() => {
 
   async function fetchAllocations() {
     try {
-      const q = query(collection(db, "subject_allocations"), where("facultyId", "==", userProfile.uid), where("status", "==", "Active"));
-      const snap = await getDocs(q);
-      let allocs = snap.docs.map(doc => ({ id: doc.id, ...doc.data(), isSubstitute: false }));
-      
-      const subQ = query(collection(db, "subject_substitutes"), where("substituteFacultyId", "==", userProfile.uid), where("status", "==", "Active"));
-      const subSnap = await getDocs(subQ);
-      const subs = subSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), isSubstitute: true, subjectId: doc.data().subjectId })); // substitute carries allocation info differently but has allocationId
-      
-      const merged = [...allocs, ...subs];
+      const staffUid = userProfile?.uid || userProfile?.id;
+      const staffName = userProfile?.name;
+
+      // 1. Fetch from subject_allocations
+      let rawSubjectAllocs = [];
+      try {
+        const qSub = query(collection(db, "subject_allocations"), where("facultyId", "==", staffUid), where("status", "==", "Active"));
+        const snap = await getDocs(qSub);
+        rawSubjectAllocs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (e) {
+        console.warn("fetchAllocations subject_allocations error", e);
+      }
+
+      if (rawSubjectAllocs.length === 0 && staffName) {
+        try {
+          const qName = query(collection(db, "subject_allocations"), where("facultyName", "==", staffName), where("status", "==", "Active"));
+          const snap = await getDocs(qName);
+          rawSubjectAllocs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (e) {}
+      }
+
+      // 2. Fetch from course_allocations
+      let rawCourseAllocs = [];
+      try {
+        const qCourse = query(collection(db, "course_allocations"), where("facultyId", "==", staffUid));
+        const snap = await getDocs(qCourse);
+        rawCourseAllocs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (e) {
+        console.warn("fetchAllocations course_allocations error", e);
+      }
+      if (rawCourseAllocs.length === 0 && staffName) {
+        try {
+          const qCourseName = query(collection(db, "course_allocations"), where("facultyName", "==", staffName));
+          const snap = await getDocs(qCourseName);
+          rawCourseAllocs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (e) {}
+      }
+
+      // 3. Fetch from subject_substitutes
+      let rawSubs = [];
+      try {
+        const subQ = query(collection(db, "subject_substitutes"), where("substituteFacultyId", "==", staffUid), where("status", "==", "Active"));
+        const subSnap = await getDocs(subQ);
+        rawSubs = subSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), isSubstitute: true }));
+      } catch (e) {}
+
+      // Normalize all allocations so courseCode and courseName are always present
+      const normalizedMap = new Map();
+
+      const addNormalized = (item, isSub = false) => {
+        const code = (item.courseCode || item.subjectCode || item.subject_code || '').trim().toUpperCase();
+        if (!code) return;
+        const name = (item.courseName || item.subjectName || item.subject_name || '').trim();
+        const key = `${code}_${item.semester || ''}_${item.section || ''}`;
+        
+        if (!normalizedMap.has(key)) {
+          normalizedMap.set(key, {
+            id: item.id || `alloc_${code}`,
+            courseCode: code,
+            courseName: name,
+            department: item.department || item.dept || userProfile?.dept || '',
+            semester: item.semester || '',
+            year: item.year || '',
+            section: item.section || '',
+            programme: item.programme || item.batch || '',
+            isSubstitute: isSub || !!item.isSubstitute,
+            allocationId: item.allocationId || item.id
+          });
+        }
+      };
+
+      rawSubjectAllocs.forEach(a => addNormalized(a, false));
+      rawCourseAllocs.forEach(a => addNormalized(a, false));
+      rawSubs.forEach(a => addNormalized(a, true));
+
+      const merged = Array.from(normalizedMap.values());
       setAllocations(merged);
-      if (merged.length > 0) setSelectedAllocation(merged[0].id);
+      if (merged.length > 0) {
+        setSelectedAllocation(prev => prev && merged.some(m => m.id === prev) ? prev : merged[0].id);
+      }
     } catch (err) {
       console.error("Error fetching allocations", err);
+    }
+  }
+
+  async function fetchDeptCourses() {
+    try {
+      const q = query(collection(db, "course_allocations"), where("department", "==", userProfile.dept));
+      const snap = await getDocs(q);
+      const deptCourses = snap.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id,
+          courseCode: (data.courseCode || data.subjectCode || '').trim().toUpperCase(),
+          courseName: (data.courseName || data.subjectName || '').trim(),
+          department: data.department || userProfile.dept,
+          semester: data.semester || '',
+          programme: data.programme || ''
+        };
+      }).filter(c => c.courseCode);
+      setAllocations(deptCourses);
+    } catch (e) {
+      console.warn("fetchDeptCourses error", e);
     }
   }
 
@@ -89,25 +182,32 @@ useEffect(() => {
       let q = query(collection(db, "cia_question_bank"), orderBy("createdAt", "desc"));
       
       if (userProfile?.role === 'staff') {
-         if (!selectedAllocation) {
+         const alloc = allocations.find(a => a.id === selectedAllocation) || allocations[0];
+         if (alloc && alloc.courseCode) {
+           q = query(collection(db, "cia_question_bank"), where("courseCode", "==", alloc.courseCode));
+         } else if (alloc) {
+           q = query(collection(db, "cia_question_bank"), where("subjectAllocationId", "==", alloc.id));
+         } else {
            setQuestions([]);
            setLoading(false);
            return;
-         }
-         const alloc = allocations.find(a => a.id === selectedAllocation);
-         if (alloc) {
-           if (alloc.isSubstitute) {
-             q = query(collection(db, "cia_question_bank"), where("substituteId", "==", alloc.id));
-           } else {
-             q = query(collection(db, "cia_question_bank"), where("subjectAllocationId", "==", alloc.id));
-           }
          }
       } else if (userProfile?.role === 'hod') {
          q = query(collection(db, "cia_question_bank"), where("department", "==", userProfile.dept));
       }
       
       const snap = await getDocs(q);
-      const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      let list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+      // Strict Semester Isolation:
+      // Questions belonging to a specific semester NEVER show in another semester!
+      if (userProfile?.role === 'staff') {
+        const alloc = allocations.find(a => a.id === selectedAllocation) || allocations[0];
+        if (alloc && alloc.semester) {
+          list = list.filter(item => !item.semester || String(item.semester).trim() === String(alloc.semester).trim());
+        }
+      }
+
       setQuestions(list);
     } catch (err) {
       console.error(err);
@@ -199,6 +299,23 @@ useEffect(() => {
     }
   };
 
+  const handleOpenAddModal = () => {
+    const activeAlloc = allocations.find(a => a.id === selectedAllocation) || allocations[0];
+    setBulkData({
+      courseCode: activeAlloc ? activeAlloc.courseCode : '',
+      courseName: activeAlloc ? activeAlloc.courseName : '',
+      programme: activeAlloc ? activeAlloc.programme : '',
+      semester: activeAlloc ? activeAlloc.semester : '',
+      unit: '1',
+      difficulty: 'Medium',
+      partA: [''],
+      partB: [''],
+      partC: ['']
+    });
+    setModalMode('add');
+    setShowModal(true);
+  };
+
   // --- Handlers for Bulk Add ---
   const handleBulkChange = (e) => {
     const { name, value } = e.target;
@@ -208,6 +325,8 @@ useEffect(() => {
         const alloc = allocations.find(a => a.courseCode === value);
         if (alloc) {
           newData.courseName = alloc.courseName || '';
+          newData.programme = alloc.programme || '';
+          newData.semester = alloc.semester || '';
         } else {
           newData.courseName = '';
         }
@@ -257,10 +376,10 @@ useEffect(() => {
     }
 
     setSaving(true);
-try {
+    try {
       let allocData = {};
       if (userProfile?.role === 'staff') {
-        const alloc = allocations.find(a => a.id === selectedAllocation);
+        const alloc = allocations.find(a => a.courseCode === bulkData.courseCode) || allocations.find(a => a.id === selectedAllocation);
         if (!alloc) {
            toast.error("No active subject assignment selected.");
            setSaving(false);
@@ -268,7 +387,7 @@ try {
         }
         if (alloc.isSubstitute) {
            allocData.substituteId = alloc.id;
-           allocData.subjectAllocationId = alloc.allocationId;
+           allocData.subjectAllocationId = alloc.allocationId || alloc.id;
         } else {
            allocData.subjectAllocationId = alloc.id;
         }
@@ -318,11 +437,18 @@ try {
       await Promise.all(promises);
       toast.success(`Successfully added ${promises.length} questions to the bank`);
       
+      const savedCourseCode = bulkData.courseCode;
       setShowModal(false);
       setBulkData({
         courseCode: '', courseName: '', programme: '', semester: '', unit: '1', difficulty: 'Medium', partA: [''], partB: [''], partC: ['']
       });
-      fetchQuestions();
+
+      const matchingAlloc = allocations.find(a => a.courseCode === savedCourseCode);
+      if (matchingAlloc && matchingAlloc.id !== selectedAllocation) {
+        setSelectedAllocation(matchingAlloc.id);
+      } else {
+        fetchQuestions();
+      }
     } catch (err) {
       console.error(err);
       toast.error("Error saving bulk questions");
@@ -620,13 +746,13 @@ try {
             <button className="btn-secondary" onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', cursor: 'pointer', fontWeight: 600 }} title="Print Question Bank">
               <Printer size={16} /> Print Bank
             </button>
-            <button className="btn-primary" onClick={() => { setModalMode('add'); setShowModal(true); }}>
+            <button className="btn-primary" onClick={handleOpenAddModal}>
               <Plus size={16} /> Add Questions
             </button>
           </div>
         </div>
 
-{userProfile?.role === 'staff' && allocations.length > 0 && (
+        {userProfile?.role === 'staff' && allocations.length > 0 && (
           <div className="card" style={{ marginBottom: 20, padding: '15px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
               <span style={{ fontWeight: 600, color: 'var(--text)' }}>Subject Context:</span>
@@ -637,7 +763,7 @@ try {
               >
                 {allocations.map(a => (
                   <option key={a.id} value={a.id}>
-                    {a.isSubstitute ? '[Substitute] ' : ''}{a.courseCode} {a.courseName} - {a.department} (Yr: {a.year}, Sem: {a.semester}, Sec: {a.section || 'All'})
+                    {a.isSubstitute ? '[Substitute] ' : ''}{a.courseCode} - {a.courseName} ({a.department}{a.semester ? `, Sem: ${a.semester}` : ''}{a.section && a.section !== 'None' ? `, Sec: ${a.section}` : ''})
                   </option>
                 ))}
               </select>
@@ -850,8 +976,10 @@ try {
                       <label style={{ display: 'block', marginBottom: 6, fontSize: 12, color: 'var(--text-muted)' }}>Course Code *</label>
                       <select name="courseCode" value={bulkData.courseCode} onChange={handleBulkChange} required style={{ width: '100%', padding: '8px', borderRadius: 6, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', fontSize: 13 }}>
                         <option value="">Select Course</option>
-                        {Array.from(new Set(allocations.map(a => a.courseCode))).map(code => (
-                          <option key={code} value={code}>{code}</option>
+                        {allocations.map(a => (
+                          <option key={a.id || a.courseCode} value={a.courseCode}>
+                            {a.courseCode} - {a.courseName} (Sem {a.semester}{a.section && a.section !== 'None' ? `, Sec ${a.section}` : ''})
+                          </option>
                         ))}
                       </select>
                     </div>

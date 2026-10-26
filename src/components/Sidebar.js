@@ -53,9 +53,16 @@ const studentNav = [
 const staffNav = [
   { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/staff" },
   { icon: <Calendar size={18} />, label: "My Timetable", path: "/staff/timetable" },
-  { icon: <CheckSquare size={18} />, label: "Period Attendance", path: "/staff/period-attendance" },
-  { icon: <ArrowLeftRight size={18} />, label: "Hour Alteration", path: "/staff/hour-alteration" },
-  { icon: <BookOpen size={18} />, label: "Classwork Logbook", path: "/staff/classwork-record" },
+  { 
+    icon: <BookOpen size={18} />, 
+    label: "Logbook", 
+    isSubmenu: true,
+    children: [
+      { label: "Period Attendance", path: "/staff/period-attendance" },
+      { label: "Hour Alteration", path: "/staff/hour-alteration" },
+      { label: "Classwork Logbook", path: "/staff/classwork-record" }
+    ]
+  },
   { icon: <DoorOpen size={18} />, label: "Gate Pass", path: "/staff/gatepass" },
   { icon: <ClipboardList size={18} />, label: "Leave", path: "/staff/leave" },
   { icon: <CheckSquare size={18} />, label: "Class Incharge Att.", path: "/staff/attendance" },
@@ -346,6 +353,13 @@ export default function Sidebar() {
       if (path.startsWith('/config/general/')) state['General Configuration'] = true;
       if (path.startsWith('/config/cia/')) state['CIA Configuration'] = true;
     }
+    if (
+      path.startsWith('/staff/period-attendance') ||
+      path.startsWith('/staff/hour-alteration') ||
+      path.startsWith('/staff/classwork-record')
+    ) {
+      state.Logbook = true;
+    }
     return state;
   });
   const [reviewCount, setReviewCount] = useState(0);
@@ -361,12 +375,19 @@ export default function Sidebar() {
       if (path.startsWith('/cia/')) next.CIA = true;
       if (path.startsWith('/academics/')) next.Academics = true;
       if (path.startsWith('/academics/lms/')) next.LMS = true;
-      if (path.startsWith('/academics/lms/')) next.LMS = true;
+      if (path.startsWith('/Academics/lms/')) next.LMS = true;
       if (path.startsWith('/hod/attendance') || path.startsWith('/reports/daily-attendance') || path.startsWith('/hod/class-incharge')) next.Attendance = true;
       if (path.startsWith('/config/')) {
         next.Configuration = true;
         if (path.startsWith('/config/general/')) next['General Configuration'] = true;
         if (path.startsWith('/config/cia/')) next['CIA Configuration'] = true;
+      }
+      if (
+        path.startsWith('/staff/period-attendance') ||
+        path.startsWith('/staff/hour-alteration') ||
+        path.startsWith('/staff/classwork-record')
+      ) {
+        next.Logbook = true;
       }
       return next;
     });
@@ -485,19 +506,26 @@ export default function Sidebar() {
 
       <div className="sidebar-nav-header">CONFIGURATION</div>
       <nav className="sidebar-nav">
-        {navItems.map((item) => (
-          <React.Fragment key={item.label}>
-            <div
-              className={`nav-item ${(!item.isSubmenu && location.pathname === item.path) || (item.isSubmenu && location.pathname.startsWith(`/${item.label.toLowerCase()}/`)) ? "active" : ""}`}
-              onClick={() => {
-                if (item.isSubmenu) {
-                  setExpandedMenus(prev => ({ ...prev, [item.label]: !prev[item.label] }));
-                } else {
-                  handleNavClick(item.path);
-                }
-              }}
-              style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-            >
+        {navItems.map((item) => {
+          const isItemActive = (!item.isSubmenu && location.pathname === item.path) ||
+            (item.isSubmenu && (
+              location.pathname.startsWith(`/${item.label.toLowerCase()}/`) ||
+              item.children?.some(c => c.path === location.pathname || (c.isNestedSubmenu && c.children?.some(sc => sc.path === location.pathname)))
+            ));
+
+          return (
+            <React.Fragment key={item.label}>
+              <div
+                className={`nav-item ${isItemActive ? "active" : ""}`}
+                onClick={() => {
+                  if (item.isSubmenu) {
+                    setExpandedMenus(prev => ({ ...prev, [item.label]: !prev[item.label] }));
+                  } else {
+                    handleNavClick(item.path);
+                  }
+                }}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              >
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <span className="nav-icon">{item.icon}</span>
                 <span>
@@ -566,7 +594,8 @@ export default function Sidebar() {
               </div>
             )}
           </React.Fragment>
-        ))}
+          );
+        })}
       </nav>
 
 

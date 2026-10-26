@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../supabase/supabaseAdapter";
-import { collection, query, where, getDocs, doc, setDoc } from "../../supabase/supabaseAdapter";
+import { collection, query, where, getDocs, doc, getDoc, setDoc, addDoc } from "../../supabase/supabaseAdapter";
+import { normalizeYear, fetchDayPeriodAttendance, PERIOD_NUMBERS } from "../../utils/periodAttendanceUtils";
 import toast, { Toaster } from "react-hot-toast";
 import { CheckSquare, Users, CheckCircle2, XCircle, Briefcase, Clock, ArrowRight, ArrowLeftRight, FileText } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -44,6 +45,7 @@ export default function PeriodAttendance() {
   const [fetchingStudents, setFetchingStudents] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [dayPeriodsMap, setDayPeriodsMap] = useState({});
 
   // Month name calculation
   const dateObj = new Date(date);
@@ -183,8 +185,12 @@ export default function PeriodAttendance() {
   useEffect(() => {
     if (activeSlot && activeSlot.dept) {
       fetchStudentsAndAttendance(activeSlot);
+      fetchDayPeriodAttendance(activeSlot.dept, activeSlot.year, activeSlot.section, date).then(res => {
+        setDayPeriodsMap(res || {});
+      });
     } else {
       setStudents([]);
+      setDayPeriodsMap({});
     }
   }, [activeSlot, date]);
 
@@ -227,17 +233,35 @@ export default function PeriodAttendance() {
       setStudents(list);
 
       // 2. Fetch existing period attendance record
-      const attQ = query(
-        collection(db, "period_attendance"),
-        where("date", "==", date),
-        where("period", "==", Number(slot.period)),
-        where("dept", "==", slot.dept)
-      );
-      const attSnap = await getDocs(attQ);
+      const docId = `${slot.dept}_${slot.year}_${slot.section}_${date}_period_${slot.period}`.replace(/\s+/g, "_");
+      let existingRecords = null;
 
-      if (!attSnap.empty) {
-        const records = attSnap.docs[0].data().records || {};
-        setAttendance(records);
+      try {
+        const directSnap = await getDoc(doc(db, "period_attendance", docId));
+        if (directSnap.exists() && directSnap.data()?.records) {
+          existingRecords = directSnap.data().records;
+        }
+      } catch (_) {}
+
+      if (!existingRecords) {
+        const attQ = query(
+          collection(db, "period_attendance"),
+          where("date", "==", date),
+          where("period", "==", Number(slot.period)),
+          where("dept", "==", slot.dept)
+        );
+        const attSnap = await getDocs(attQ);
+        if (!attSnap.empty) {
+          existingRecords = attSnap.docs[0].data()?.records || null;
+        }
+      }
+
+      if (existingRecords) {
+        const defaultMap = { ...existingRecords };
+        list.forEach(s => {
+          if (!defaultMap[s.id]) defaultMap[s.id] = "P";
+        });
+        setAttendance(defaultMap);
         setSaved(true);
       } else {
         // Default all students to "P" (Present)
@@ -295,17 +319,90 @@ export default function PeriodAttendance() {
         presentCount,
         absentCount,
         odCount,
-        markedBy: userProfile.uid,
-        markedByName: userProfile.name,
+        markedBy: userProfile?.uid || userProfile?.id || "faculty",
+        markedByName: userProfile?.name || "Faculty",
         updatedAt: new Date().toISOString()
       };
 
       await setDoc(doc(db, "period_attendance", docId), payload, { merge: true });
       toast.success(`Period ${activeSlot.period} Attendance saved successfully!`);
       setSaved(true);
+
+      // Refresh day's 8 periods
+      fetchDayPeriodAttendance(activeSlot.dept, activeSlot.year, activeSlot.section, date).then(res => {
+        setDayPeriodsMap(res || {});
+      });
+
+      // 1. Notify HOD of activeSlot.dept
+      try {
+        const hodQ = query(
+          collection(db, "users"),
+          where("role", "==", "hod"),
+          where("dept", "==", activeSlot.dept)
+        );
+        const hodSnap = await getDocs(hodQ);
+        hodSnap.docs.forEach(async (hDoc) => {
+          await addDoc(collection(db, "notifications"), {
+            userId: hDoc.id,
+            title: `Period ${activeSlot.period} Attendance Marked`,
+            body: `${userProfile?.name || "Faculty"} marked Period ${activeSlot.period} (${activeSlot.subject_code}) for ${activeSlot.dept} ${activeSlot.year} (Sec ${activeSlot.section}). Present: ${presentCount}, Absent: ${absentCount}, OD: ${odCount}.`,
+            data: {
+              type: "PERIOD_ATTENDANCE",
+              dept: activeSlot.dept,
+              year: activeSlot.year,
+              section: activeSlot.section,
+              period: activeSlot.period,
+              date: date
+            },
+            read: false,
+            createdAt: new Date().toISOString()
+          });
+        });
+      } catch (notifyHodErr) {
+        console.warn("Could not notify HOD:", notifyHodErr);
+      }
+
+      // 2. Notify Class Incharge of this class
+      try {
+        const inchargeQ = query(
+          collection(db, "class_incharges"),
+          where("dept", "==", activeSlot.dept)
+        );
+        const inchargeSnap = await getDocs(inchargeQ);
+        const normalizedTargetYear = normalizeYear(activeSlot.year);
+        const matchingIncharges = inchargeSnap.docs.filter(d => {
+          const incData = d.data();
+          const incYear = normalizeYear(incData.year);
+          return incYear === normalizedTargetYear && 
+            (!activeSlot.section || activeSlot.section === "None" || activeSlot.section === "." || incData.section === "." || incData.section === activeSlot.section);
+        });
+
+        matchingIncharges.forEach(async (incDoc) => {
+          const facultyId = incDoc.data().facultyId;
+          if (facultyId && facultyId !== userProfile?.uid) {
+            await addDoc(collection(db, "notifications"), {
+              userId: facultyId,
+              title: `Period ${activeSlot.period} Attendance Marked (${activeSlot.subject_code})`,
+              body: `${userProfile?.name || "Faculty"} marked Period ${activeSlot.period} for your class (${activeSlot.dept} ${activeSlot.year} - Sec ${activeSlot.section}). Present: ${presentCount}, Absent: ${absentCount}, OD: ${odCount}.`,
+              data: {
+                type: "PERIOD_ATTENDANCE",
+                dept: activeSlot.dept,
+                year: activeSlot.year,
+                section: activeSlot.section,
+                period: activeSlot.period,
+                date: date
+              },
+              read: false,
+              createdAt: new Date().toISOString()
+            });
+          }
+        });
+      } catch (notifyIncErr) {
+        console.warn("Could not notify Class Incharge:", notifyIncErr);
+      }
     } catch (err) {
       console.error(err);
-      toast.error("Failed to save period attendance.");
+      toast.error(err?.message || "Failed to save period attendance.");
     }
     setSaving(false);
   }
@@ -574,6 +671,57 @@ export default function PeriodAttendance() {
               </div>
             ) : (
               <>
+                {/* 8-Period Tracker for this Class Today */}
+                <div style={{
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid var(--border)",
+                  borderRadius: 12,
+                  padding: "14px 18px",
+                  marginBottom: 20
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
+                      Today's 8-Period Status for {activeSlot.dept} Year {activeSlot.year} ({date})
+                    </span>
+                    <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>
+                      {Object.values(dayPeriodsMap).filter(Boolean).length} of 8 periods marked by faculty
+                    </span>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: 8 }}>
+                    {PERIOD_NUMBERS.map(pNum => {
+                      const pData = dayPeriodsMap[pNum];
+                      const isCurrent = Number(activeSlot.period) === pNum;
+                      return (
+                        <div
+                          key={pNum}
+                          style={{
+                            padding: "8px 6px",
+                            borderRadius: 8,
+                            textAlign: "center",
+                            background: isCurrent
+                              ? "rgba(16, 185, 129, 0.15)"
+                              : pData
+                              ? "rgba(37, 99, 235, 0.08)"
+                              : "rgba(0,0,0,0.03)",
+                            border: isCurrent
+                              ? "2px solid #10b981"
+                              : pData
+                              ? "1px solid rgba(37, 99, 235, 0.3)"
+                              : "1px dashed var(--border)"
+                          }}
+                        >
+                          <div style={{ fontSize: 11, fontWeight: 700, color: isCurrent ? "#059669" : pData ? "#2563eb" : "var(--text-muted)" }}>
+                            Period {pNum} {isCurrent && "★ (Active)"}
+                          </div>
+                          <div style={{ fontSize: 10, marginTop: 3, fontWeight: 600, color: pData ? "#16a34a" : "var(--text-muted)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+                            {pData ? `${pData.markedByName || "Marked"}` : "Pending"}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* Header info matching Photo 2 */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, flexWrap: "wrap", gap: 14 }}>
                   <div>

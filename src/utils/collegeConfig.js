@@ -211,3 +211,19 @@ export function getAllCollegeClasses() {
 
   return classList;
 }
+
+/**
+ * Helper to match a record's session or sessionId to a target academic session string (e.g. "2026-2027")
+ * @param {string} recordSessionOrId - e.g. "2026-2027", "2026 - 2027 (ODD)", or "sess_123"
+ * @param {string} targetSession - e.g. "2026-2027" or "2025-2026"
+ * @param {Record<string, string>} [sessionMap] - mapping of sessionId to session name
+ */
+export function matchesAcademicSession(recordSessionOrId, targetSession, sessionMap = {}) {
+  if (!targetSession) return true;
+  // If record has no explicit session, fallback to college's current active session
+  const resolved = sessionMap[recordSessionOrId] || recordSessionOrId || '2026-2027';
+  const cleanTarget = String(targetSession).replace(/\s+/g, '').toLowerCase();
+  const cleanResolved = String(resolved).replace(/\s+/g, '').toLowerCase();
+
+  return cleanResolved.includes(cleanTarget) || cleanTarget.includes(cleanResolved);
+}

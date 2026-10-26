@@ -84,18 +84,88 @@ useEffect(() => {
 
   async function fetchAllocations() {
     try {
-      const q = query(collection(db, "subject_allocations"), where("facultyId", "==", userProfile.uid), where("status", "==", "Active"));
-      const snap = await getDocs(q);
-      let allocs = snap.docs.map(doc => ({ id: doc.id, ...doc.data(), isSubstitute: false }));
-      
-      const subQ = query(collection(db, "subject_substitutes"), where("substituteFacultyId", "==", userProfile.uid), where("status", "==", "Active"));
-      const subSnap = await getDocs(subQ);
-      const subs = subSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), isSubstitute: true, subjectId: doc.data().subjectId }));
-      
-      const merged = [...allocs, ...subs];
+      const staffUid = userProfile?.uid || userProfile?.id;
+      const staffName = userProfile?.name;
+
+      // 1. Fetch from subject_allocations
+      let rawSubjectAllocs = [];
+      try {
+        const qSub = query(collection(db, "subject_allocations"), where("facultyId", "==", staffUid), where("status", "==", "Active"));
+        const snap = await getDocs(qSub);
+        rawSubjectAllocs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (e) {}
+
+      if (rawSubjectAllocs.length === 0 && staffName) {
+        try {
+          const qName = query(collection(db, "subject_allocations"), where("facultyName", "==", staffName), where("status", "==", "Active"));
+          const snap = await getDocs(qName);
+          rawSubjectAllocs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (e) {}
+      }
+
+      // 2. Fetch from course_allocations
+      let rawCourseAllocs = [];
+      try {
+        const qCourse = query(collection(db, "course_allocations"), where("facultyId", "==", staffUid));
+        const snap = await getDocs(qCourse);
+        rawCourseAllocs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (e) {}
+
+      if (rawCourseAllocs.length === 0 && staffName) {
+        try {
+          const qCourseName = query(collection(db, "course_allocations"), where("facultyName", "==", staffName));
+          const snap = await getDocs(qCourseName);
+          rawCourseAllocs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (e) {}
+      }
+
+      // 3. Fetch from subject_substitutes
+      let rawSubs = [];
+      try {
+        const subQ = query(collection(db, "subject_substitutes"), where("substituteFacultyId", "==", staffUid), where("status", "==", "Active"));
+        const subSnap = await getDocs(subQ);
+        rawSubs = subSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), isSubstitute: true }));
+      } catch (e) {}
+
+      // Normalize all
+      const normalizedMap = new Map();
+
+      const addNormalized = (item, isSub = false) => {
+        const code = (item.courseCode || item.subjectCode || item.subject_code || '').trim().toUpperCase();
+        if (!code) return;
+        const name = (item.courseName || item.subjectName || item.subject_name || '').trim();
+        const key = `${code}_${item.semester || ''}_${item.section || ''}`;
+
+        if (!normalizedMap.has(key)) {
+          normalizedMap.set(key, {
+            id: item.id || `alloc_${code}`,
+            courseCode: code,
+            courseName: name,
+            department: item.department || item.dept || userProfile?.dept || '',
+            semester: item.semester || '',
+            year: item.year || '',
+            section: item.section || '',
+            programme: item.programme || item.batch || '',
+            isSubstitute: isSub || !!item.isSubstitute,
+            allocationId: item.allocationId || item.id
+          });
+        }
+      };
+
+      rawSubjectAllocs.forEach(a => addNormalized(a, false));
+      rawCourseAllocs.forEach(a => addNormalized(a, false));
+      rawSubs.forEach(a => addNormalized(a, true));
+
+      const merged = Array.from(normalizedMap.values());
       setAllocations(merged);
+
+      // Add staff's courses to courses state
+      const myCourseCodes = merged.map(m => m.courseCode).filter(Boolean);
+      setCourses(prev => Array.from(new Set([...prev, ...myCourseCodes])));
+
       if (merged.length > 0 && !editId) {
-         setSelectedAllocation(merged[0].id);
+        setSelectedAllocation(merged[0].id);
+        setFilterCourse(merged[0].courseCode);
       }
     } catch (err) {
       console.error("Error fetching allocations", err);
@@ -108,9 +178,10 @@ useEffect(() => {
       const snapBank = await getDocs(qBank);
       const uniqueCourses = new Set();
       snapBank.docs.forEach(d => {
-        if (d.data().courseCode) uniqueCourses.add(d.data().courseCode);
+        const c = d.data().courseCode;
+        if (c) uniqueCourses.add(c);
       });
-      setCourses(Array.from(uniqueCourses));
+      setCourses(prev => Array.from(new Set([...prev, ...Array.from(uniqueCourses)])));
     } catch (err) {
       console.error(err);
     }
@@ -166,7 +237,14 @@ async function loadPoolByCourse(course) {
       }
 
       const snap = await getDocs(q);
-      const qList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      let qList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Strict Semester Isolation
+      const alloc = allocations.find(a => a.id === selectedAllocation) || allocations.find(a => a.courseCode === course);
+      if (alloc && alloc.semester) {
+        qList = qList.filter(d => !d.semester || String(d.semester).trim() === String(alloc.semester).trim());
+      }
+
       setQuestionsPool(qList);
       setPoolLoaded(true);
     } catch (err) {
@@ -718,7 +796,7 @@ let allocData = {};
               >
                 {allocations.map(a => (
                   <option key={a.id} value={a.id}>
-                    {a.isSubstitute ? '[Substitute] ' : ''}{a.courseCode} {a.courseName} - {a.department} (Yr: {a.year}, Sem: {a.semester}, Sec: {a.section || 'All'})
+                    {a.isSubstitute ? '[Substitute] ' : ''}{a.courseCode} - {a.courseName} ({a.department}{a.semester ? `, Sem: ${a.semester}` : ''}{a.section && a.section !== 'None' ? `, Sec: ${a.section}` : ''})
                   </option>
                 ))}
               </select>
