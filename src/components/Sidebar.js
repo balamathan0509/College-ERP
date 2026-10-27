@@ -60,7 +60,16 @@ const staffNav = [
     children: [
       { label: "Period Attendance", path: "/staff/period-attendance" },
       { label: "Hour Alteration", path: "/staff/hour-alteration" },
-      { label: "Classwork Logbook", path: "/staff/classwork-record" }
+      { label: "Classwork Logbook", path: "/staff/classwork-record" },
+      { label: "Course Contents & Plan", path: "/academics/lms/course-contents" },
+      { label: "Plan Completion", path: "/academics/lms/plan-completion" },
+      { label: "Plan Feedback", path: "/academics/lms/plan-feedback" },
+      { label: "Assignments", path: "/academics/lms/assignments" },
+      { label: "Mark Attendance", path: "/academics/lms/mark-attendance" },
+      { label: "Academic Activities", path: "/academics/lms/academic-activities" },
+      { label: "Research Repository", path: "/academics/lms/research-repository" },
+      { label: "Self Appraisal", path: "/academics/lms/self-appraisal" },
+      { label: "Faculty Participation", path: "/academics/lms/faculty-participation" }
     ]
   },
   { icon: <DoorOpen size={18} />, label: "Gate Pass", path: "/staff/gatepass" },
@@ -97,25 +106,8 @@ const staffNav = [
       { label: "Course Allocation", path: "/academics/course-allocation" },
       { label: "My Subjects", path: "/staff/my-subjects" },
       { label: "Course Enrollment", path: "/academics/course-enrollment" },
-
       { label: "Faculty Profile", path: "/academics/faculty-profile" },
-      { label: "Academic Reports", path: "/academics/reports" },
-      { 
-        label: "LMS",
-        isNestedSubmenu: true,
-        children: [
-          { label: "Course Contents & Plan", path: "/academics/lms/course-contents" },
-
-          { label: "Plan Completion", path: "/academics/lms/plan-completion" },
-          { label: "Plan Feedback", path: "/academics/lms/plan-feedback" },
-          { label: "Assignments", path: "/academics/lms/assignments" },
-          { label: "Mark Attendance", path: "/academics/lms/mark-attendance" },
-          { label: "Academic Activities", path: "/academics/lms/academic-activities" },
-          { label: "Research Repository", path: "/academics/lms/research-repository" },
-          { label: "Self Appraisal", path: "/academics/lms/self-appraisal" },
-          { label: "Faculty Participation", path: "/academics/lms/faculty-participation" }
-        ]
-      }
+      { label: "Academic Reports", path: "/academics/reports" }
     ]
   }
 ];
@@ -344,9 +336,7 @@ export default function Sidebar() {
     const state = {};
     const path = window.location.pathname;
     if (path.startsWith('/cia/')) state.CIA = true;
-    if (path.startsWith('/academics/')) state.Academics = true;
-    if (path.startsWith('/academics/lms/')) state.LMS = true;
-    if (path.startsWith('/Academics/lms/')) state.LMS = true;
+    if (path.startsWith('/academics/') && !path.startsWith('/academics/lms/')) state.Academics = true;
     if (path.startsWith('/hod/attendance') || path.startsWith('/reports/daily-attendance') || path.startsWith('/hod/class-incharge')) state.Attendance = true;
     if (path.startsWith('/config/')) {
       state.Configuration = true;
@@ -356,7 +346,9 @@ export default function Sidebar() {
     if (
       path.startsWith('/staff/period-attendance') ||
       path.startsWith('/staff/hour-alteration') ||
-      path.startsWith('/staff/classwork-record')
+      path.startsWith('/staff/classwork-record') ||
+      path.startsWith('/academics/lms/') ||
+      path.startsWith('/Academics/lms/')
     ) {
       state.Logbook = true;
     }
@@ -373,9 +365,7 @@ export default function Sidebar() {
     setExpandedMenus(prev => {
       const next = { ...prev };
       if (path.startsWith('/cia/')) next.CIA = true;
-      if (path.startsWith('/academics/')) next.Academics = true;
-      if (path.startsWith('/academics/lms/')) next.LMS = true;
-      if (path.startsWith('/Academics/lms/')) next.LMS = true;
+      if (path.startsWith('/academics/') && !path.startsWith('/academics/lms/')) next.Academics = true;
       if (path.startsWith('/hod/attendance') || path.startsWith('/reports/daily-attendance') || path.startsWith('/hod/class-incharge')) next.Attendance = true;
       if (path.startsWith('/config/')) {
         next.Configuration = true;
@@ -385,7 +375,9 @@ export default function Sidebar() {
       if (
         path.startsWith('/staff/period-attendance') ||
         path.startsWith('/staff/hour-alteration') ||
-        path.startsWith('/staff/classwork-record')
+        path.startsWith('/staff/classwork-record') ||
+        path.startsWith('/academics/lms/') ||
+        path.startsWith('/Academics/lms/')
       ) {
         next.Logbook = true;
       }
@@ -418,7 +410,7 @@ export default function Sidebar() {
   const isDeptAdmin = role === "dept_admin" || role === "hod" || isSuperAdmin || userProfile?.isDeptAdmin === true;
 
   // Filter Academics submenu:
-  // Regular staff get only what they need: Academic Calendar, My Subjects, Faculty Profile, LMS
+  // Regular staff get only what they need: Academic Calendar, My Subjects, Faculty Profile
   // Department Admin (dept_admin / HOD / SuperAdmin) gets everything: Course Allocation, Course Enrollment, Academic Reports, etc.
   const academicsChildren = [
     { label: "Academic Calendar", path: "/academics/academic-calendar" },
@@ -427,22 +419,7 @@ export default function Sidebar() {
     { label: "My Timetable", path: "/staff/timetable" },
     ...(isDeptAdmin ? [{ label: "Course Enrollment", path: "/academics/course-enrollment" }] : []),
     { label: "Faculty Profile", path: "/academics/faculty-profile" },
-    ...(isDeptAdmin ? [{ label: "Academic Reports", path: "/academics/reports" }] : []),
-    { 
-      label: "LMS",
-      isNestedSubmenu: true,
-      children: [
-        { label: "Course Contents & Plan", path: "/academics/lms/course-contents" },
-        { label: "Plan Completion", path: "/academics/lms/plan-completion" },
-        { label: "Plan Feedback", path: "/academics/lms/plan-feedback" },
-        { label: "Assignments", path: "/academics/lms/assignments" },
-        { label: "Mark Attendance", path: "/academics/lms/mark-attendance" },
-        { label: "Academic Activities", path: "/academics/lms/academic-activities" },
-        { label: "Research Repository", path: "/academics/lms/research-repository" },
-        { label: "Self Appraisal", path: "/academics/lms/self-appraisal" },
-        { label: "Faculty Participation", path: "/academics/lms/faculty-participation" }
-      ]
-    }
+    ...(isDeptAdmin ? [{ label: "Academic Reports", path: "/academics/reports" }] : [])
   ];
 
   const tailoredStaffNav = staffNav.map(item => {
