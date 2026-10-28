@@ -73,6 +73,8 @@ import MyQuestionPapers from "./pages/cia/MyQuestionPapers";
 import HodQuestionPaperReview from "./pages/cia/HodQuestionPaperReview";
 import PrincipalQuestionPaperReview from "./pages/cia/PrincipalQuestionPaperReview";
 import StudentQuestionPapers from "./pages/student/StudentQuestionPapers";
+import StudentQuestionBank from "./pages/student/StudentQuestionBank";
+import ClassQuestionBanks from "./pages/cia/ClassQuestionBanks";
 
 // Academics Pages
 import AcademicCalendar from "./pages/academics/AcademicCalendar";
@@ -168,6 +170,7 @@ export default function App() {
           <Route path="/student/complaints" element={<ProtectedRoute allowedRole="student"><ComplaintsPage /></ProtectedRoute>} />
           <Route path="/student/fines" element={<ProtectedRoute allowedRole="student"><StudentFines /></ProtectedRoute>} />
           <Route path="/student/question-papers" element={<ProtectedRoute allowedRole="student"><StudentQuestionPapers /></ProtectedRoute>} />
+          <Route path="/student/question-bank" element={<ProtectedRoute allowedRole="student"><StudentQuestionBank /></ProtectedRoute>} />
           <Route path="/student/seating-arrangement" element={<ProtectedRoute allowedRole="student"><ExamSeatingArrangement /></ProtectedRoute>} />
           <Route path="/student/help" element={<ProtectedRoute allowedRole="student"><HelpCenter /></ProtectedRoute>} />
 
@@ -176,6 +179,7 @@ export default function App() {
           <Route path="/staff/gatepass" element={<ProtectedRoute allowedRole="staff"><StaffGatePass /></ProtectedRoute>} />
           <Route path="/staff/leave" element={<ProtectedRoute allowedRole="staff"><StaffLeave /></ProtectedRoute>} />
           <Route path="/staff/students" element={<ProtectedRoute allowedRole="staff"><StaffStudentDetails /></ProtectedRoute>} />
+          <Route path="/staff/class-question-bank" element={<ProtectedRoute allowedRole={["staff", "hod"]}><StudentQuestionBank /></ProtectedRoute>} />
           <Route path="/staff/attendance" element={<ProtectedRoute allowedRole="staff"><StaffAttendance /></ProtectedRoute>} />
           <Route path="/staff/period-attendance" element={<ProtectedRoute allowedRole={["staff", "hod"]}><PeriodAttendance /></ProtectedRoute>} />
           <Route path="/staff/hour-alteration" element={<ProtectedRoute allowedRole={["staff", "hod"]}><HourAlteration /></ProtectedRoute>} />
@@ -200,7 +204,9 @@ export default function App() {
           <Route path="/cia/attendance" element={<ProtectedRoute allowedRole="exam_cell"><MarkAttendance /></ProtectedRoute>} />
 
           {/* Staff CIA Routes */}
-          <Route path="/cia/question-bank" element={<ProtectedRoute allowedRole="staff"><QuestionBank /></ProtectedRoute>} />
+          <Route path="/cia/question-bank" element={<ProtectedRoute allowedRole={["staff", "dept_admin"]}><QuestionBank /></ProtectedRoute>} />
+          <Route path="/cia/class-question-banks" element={<ProtectedRoute allowedRole={["staff", "dept_admin", "hod", "admin"]}><ClassQuestionBanks /></ProtectedRoute>} />
+          <Route path="/staff/class-question-bank" element={<ProtectedRoute allowedRole={["staff", "dept_admin", "hod", "admin"]}><ClassQuestionBanks /></ProtectedRoute>} />
           <Route path="/cia/my-papers" element={<ProtectedRoute allowedRole="staff"><MyQuestionPapers /></ProtectedRoute>} />
           <Route path="/cia/question-paper" element={<ProtectedRoute allowedRole="staff"><QuestionPaper /></ProtectedRoute>} />
           <Route path="/cia/mark-entry" element={<ProtectedRoute allowedRole="staff"><MarkEntryCIA /></ProtectedRoute>} />

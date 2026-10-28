@@ -47,6 +47,7 @@ const studentNav = [
   { icon: <MessageSquareWarning size={18} />, label: "Complaints", path: "/student/complaints" },
   { icon: <AlertOctagon size={18} />, label: "Fines", path: "/student/fines" },
   { icon: <FileText size={18} />, label: "Question Papers", path: "/student/question-papers" },
+  { icon: <BookOpen size={18} />, label: "Question Bank", path: "/student/question-bank" },
   { icon: <Grid size={18} />, label: "Exam Seating Plan", path: "/student/seating-arrangement" }
 ];
 
@@ -66,6 +67,7 @@ const staffNav = [
   { icon: <DoorOpen size={18} />, label: "Gate Pass", path: "/staff/gatepass" },
   { icon: <ClipboardList size={18} />, label: "Leave", path: "/staff/leave" },
   { icon: <CheckSquare size={18} />, label: "Class Incharge Att.", path: "/staff/attendance" },
+  { icon: <BookOpen size={18} />, label: "Class Question Banks", path: "/cia/class-question-banks" },
   { icon: <Award size={18} />, label: "Results", path: "/staff/results" },
   { icon: <Briefcase size={18} />, label: "Placements", path: "/staff/placements" },
   { icon: <Bell size={18} />, label: "Alerts", path: "/staff/alerts" },
@@ -77,6 +79,7 @@ const staffNav = [
     isSubmenu: true,
     children: [
       { label: "Question Bank", path: "/cia/question-bank" },
+      { label: "Class Question Banks", path: "/cia/class-question-banks" },
       { label: "My Question Papers", path: "/cia/my-papers" },
       { label: "Question Paper", path: "/cia/question-paper" },
       { label: "Exam Seating Plan", path: "/cia/seating-arrangement" },
@@ -470,9 +473,11 @@ export default function Sidebar() {
     role === "management" ? managementNav :
     role === "principal" ? principalNav : [];
 
-  if (role === "staff" && isClassIncharge) {
+  if ((role === "staff" || role === "dept_admin") && isClassIncharge) {
     // Insert "Student Details" right after Dashboard (index 1)
-    navItems.splice(1, 0, { icon: <Users size={18} />, label: "Student Details", path: "/staff/students" });
+    if (!navItems.some(i => i.path === "/staff/students")) {
+      navItems.splice(1, 0, { icon: <Users size={18} />, label: "Student Details", path: "/staff/students" });
+    }
   }
 
   async function handleLogout() {

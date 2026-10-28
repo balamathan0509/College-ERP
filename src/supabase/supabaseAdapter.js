@@ -29,11 +29,17 @@ function generateId() {
 // Global dummy db object for API compatibility
 export const db = { _type: "supabase_db" };
 
+// Table alias map for virtual/dynamic collections that map to pre-existing Supabase document tables
+const TABLE_ALIASES = {
+  "cia_published_question_banks": "ciaTypesConfig"
+};
+
 export function collection(dbRef, tableName) {
   if (typeof dbRef === "string" && !tableName) {
     tableName = dbRef;
   }
-  return { _type: "collection", tableName };
+  const resolvedTable = TABLE_ALIASES[tableName] || tableName;
+  return { _type: "collection", tableName: resolvedTable, originalName: tableName };
 }
 
 export function doc(dbOrColl, tableNameOrId, optionalId) {
@@ -45,8 +51,9 @@ export function doc(dbOrColl, tableNameOrId, optionalId) {
     tableName = tableNameOrId;
     id = optionalId;
   }
+  const resolvedTable = TABLE_ALIASES[tableName] || tableName;
   if (!id) id = generateId();
-  return { _type: "doc", tableName, id };
+  return { _type: "doc", tableName: resolvedTable, id, originalName: tableName };
 }
 
 export function query(collectionRef, ...constraints) {

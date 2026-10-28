@@ -7,6 +7,22 @@ import { useNavigate } from 'react-router-dom';
 import { FileText, Edit, Eye, Clock, CheckCircle, XCircle } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
+// Helper: Safe date parsing
+const getTime = (val) => {
+  if (!val) return 0;
+  if (typeof val?.toMillis === 'function') return val.toMillis();
+  if (typeof val?.toDate === 'function') return val.toDate().getTime();
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+};
+
+const formatDate = (val) => {
+  if (!val) return '-';
+  if (typeof val?.toDate === 'function') return val.toDate().toLocaleDateString();
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? '-' : d.toLocaleDateString();
+};
+
 export default function MyQuestionPapers() {
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,12 +44,8 @@ export default function MyQuestionPapers() {
       );
       const snap = await getDocs(q);
       const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      // Sort by createdAt descending manually since orderBy requires an index
-      list.sort((a, b) => {
-        const tA = a.createdAt?.toMillis() || 0;
-        const tB = b.createdAt?.toMillis() || 0;
-        return tB - tA;
-      });
+      // Sort by createdAt descending safely
+      list.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt));
       setPapers(list);
     } catch (err) {
       console.error(err);
@@ -100,7 +112,7 @@ export default function MyQuestionPapers() {
                         <td style={{ padding: '12px 10px' }}>
                           {p.department ? `${p.department} Y${p.year} S${p.semester} ${p.section ? 'Sec ' + p.section : ''}` : p.headerConfig?.classSemester}
                         </td>
-                        <td style={{ padding: '12px 10px' }}>{p.createdAt?.toDate().toLocaleDateString() || '-'}</td>
+                        <td style={{ padding: '12px 10px' }}>{formatDate(p.createdAt)}</td>
                         <td style={{ padding: '12px 10px' }}>{getStatusBadge(p.status || 'DRAFT')}</td>
                         <td style={{ padding: '12px 10px' }}>
                           <button 

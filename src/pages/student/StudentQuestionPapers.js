@@ -36,9 +36,14 @@ export default function StudentQuestionPapers() {
       const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       
       list.sort((a, b) => {
-        const tA = a.createdAt?.toMillis() || 0;
-        const tB = b.createdAt?.toMillis() || 0;
-        return tB - tA;
+        const getTime = (val) => {
+          if (!val) return 0;
+          if (typeof val?.toMillis === 'function') return val.toMillis();
+          if (typeof val?.toDate === 'function') return val.toDate().getTime();
+          const d = new Date(val);
+          return isNaN(d.getTime()) ? 0 : d.getTime();
+        };
+        return getTime(b.createdAt) - getTime(a.createdAt);
       });
       setPapers(list);
     } catch (err) {
@@ -66,21 +71,52 @@ export default function StudentQuestionPapers() {
   const handlePrint = () => {
     const printContent = document.getElementById("printable-paper");
     if (!printContent) return;
+
+    const clone = printContent.cloneNode(true);
+    clone.style.border = 'none';
+    clone.style.maxWidth = '100%';
+    clone.style.width = '100%';
+    clone.style.margin = '0';
+    clone.style.padding = '0';
+
     const iframe = document.createElement('iframe');
     iframe.style.display = 'none';
     document.body.appendChild(iframe);
     iframe.contentDocument.write(`
       <html><head><title>Question Paper</title>
       <style>
-        @page { size: A4 portrait; margin: 15mm; }
-        body { font-family: "Times New Roman", Times, serif; font-size: 12pt; color: #000; margin: 0; padding: 0; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #000; padding: 6px; text-align: left; vertical-align: top; color: #000 !important; }
+        @page { size: A4 portrait; margin: 8mm 10mm; }
+        * { box-sizing: border-box; }
+        body { font-family: "Times New Roman", Times, serif; font-size: 10.5pt; color: #000; margin: 0; padding: 0; }
+        .page-border {
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          border: 2px solid #000;
+          pointer-events: none;
+          box-sizing: border-box;
+        }
+        .content-wrap {
+          padding: 4px 6px;
+        }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+        tbody.question-pair { page-break-inside: avoid !important; break-inside: avoid !important; }
+        .page-break-before { page-break-before: always !important; break-before: page !important; }
+        th, td { border: 1px solid #000; padding: 3px 5px; text-align: left; vertical-align: top; color: #000 !important; font-size: 10pt; }
+        .no-border-table td, .no-border-table th { border: none !important; color: #000 !important; }
+        .header-info { width: 100%; border: none; margin-bottom: 8px; }
+        .header-info td { border: none; padding: 3px 4px; }
         .text-center { text-align: center; }
         .font-bold { font-weight: bold; }
-        .outer-border { border: 3px solid #000; padding: 10px; margin-bottom: 5px; }
+        .part-title { text-align: center; font-weight: bold; margin: 8px 0 4px 0; color: #000; page-break-after: avoid !important; break-after: avoid !important; }
+        .signature-block { page-break-inside: avoid !important; break-inside: avoid !important; }
+        .distribution-table { page-break-inside: avoid !important; break-inside: avoid !important; }
       </style></head>
-      <body><div class="outer-border">${printContent.innerHTML}</div></body></html>
+      <body>
+        <div class="page-border"></div>
+        <div class="content-wrap">${clone.innerHTML}</div>
+      </body></html>
     `);
     iframe.contentDocument.close();
     iframe.contentWindow.focus();
@@ -110,13 +146,34 @@ export default function StudentQuestionPapers() {
     const leftLogo = await getBase64('/logo-left.png');
     const rightLogo = await getBase64('/logo-right.png');
 
-    let html = printContent.outerHTML;
+    // Clone printContent so the outer border does not get sliced across pages
+    const clone = printContent.cloneNode(true);
+    clone.style.border = 'none';
+    clone.style.maxWidth = '100%';
+    clone.style.width = '100%';
+    clone.style.margin = '0';
+    clone.style.padding = '0';
+
+    let html = clone.outerHTML;
     html = html.replace(/\/logo-left\.png/g, leftLogo);
     html = html.replace(/\/logo-right\.png/g, rightLogo);
 
-    // Wrap in exactly 720px container to match A4 printable width and prevent clipping
+    // Wrap in container with proper page-break and typography styling
     const htmlString = `
-      <div style="width: 720px; box-sizing: border-box; background: #fff; color: #000; margin: 0; padding: 0;">
+      <style>
+        * { box-sizing: border-box; }
+        body { font-family: "Times New Roman", Times, serif; font-size: 10.5pt; color: #000; margin: 0; padding: 0; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+        tbody.question-pair { page-break-inside: avoid !important; break-inside: avoid !important; }
+        .page-break-before { page-break-before: always !important; break-before: page !important; }
+        th, td { border: 1px solid #000; padding: 3px 5px; text-align: left; vertical-align: top; color: #000 !important; font-size: 10pt; }
+        .part-title { text-align: center; font-weight: bold; margin: 8px 0 4px 0; color: #000; page-break-after: avoid !important; break-after: avoid !important; }
+        .signature-block { page-break-inside: avoid !important; break-inside: avoid !important; }
+        .distribution-table { page-break-inside: avoid !important; break-inside: avoid !important; }
+      </style>
+      <div style="width: 710px; box-sizing: border-box; background: #fff; color: #000; margin: 0 auto; padding: 2px 4px;">
         ${html}
       </div>
     `;
@@ -124,14 +181,36 @@ export default function StudentQuestionPapers() {
     const filename = viewingPaper?.headerConfig?.courseCodeName ? `Question_Paper_${viewingPaper.headerConfig.courseCodeName}.pdf` : `Question_Paper.pdf`;
 
     const opt = {
-      margin:       10,
+      margin:       [8, 8, 8, 8],
       filename:     filename,
       image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, windowWidth: 720 },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      html2canvas:  { scale: 2, useCORS: true, letterRendering: true, scrollY: 0 },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak:    { mode: ['css', 'legacy'], before: '.page-break-before', avoid: ['tbody.question-pair', 'tr', '.signature-block', '.distribution-table'] }
     };
 
-    html2pdf().set(opt).from(htmlString).save();
+    html2pdf()
+      .set(opt)
+      .from(htmlString)
+      .toPdf()
+      .get('pdf')
+      .then((pdf) => {
+        const totalPages = pdf.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+          pdf.setPage(i);
+          // Draw neat outer border on EVERY page!
+          pdf.setDrawColor(0, 0, 0);
+          pdf.setLineWidth(0.6);
+          pdf.rect(6, 6, 210 - 12, 297 - 12);
+
+          if (totalPages > 1) {
+            pdf.setFont('times', 'normal');
+            pdf.setFontSize(9);
+            pdf.setTextColor(0, 0, 0);
+            pdf.text(`Page ${i} of ${totalPages}`, 105, 293, { align: 'center' });
+          }
+        }
+      })
   };
 
   const handleDownloadExcel = () => {
@@ -404,16 +483,10 @@ export default function StudentQuestionPapers() {
                 <ArrowLeft size={16} /> Back to List
               </button>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                <button onClick={handleDownloadPdf} disabled={poolLoading} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', cursor: 'pointer', fontWeight: 600 }} title="Download Question Paper as PDF">
+                <button onClick={handleDownloadPdf} disabled={poolLoading} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 6, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: 500, fontSize: '13px' }} title="Download Question Paper as PDF">
                   <Download size={16} /> Download PDF
                 </button>
-                <button onClick={handleDownloadExcel} disabled={poolLoading} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: 'none', background: '#107c41', color: '#fff', cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(16,124,65,0.2)' }} title="Download Question Paper as Excel (.xlsx)">
-                  <FileSpreadsheet size={16} /> Download Excel
-                </button>
-                <button onClick={handleDownloadWord} disabled={poolLoading} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: 'none', background: '#2b579a', color: '#fff', cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(43,87,154,0.2)' }} title="Download Question Paper as Word (.doc)">
-                  <FileText size={16} /> Download Word
-                </button>
-                <button onClick={handlePrint} disabled={poolLoading} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid #6366f1', background: '#6366f1', color: '#fff', cursor: 'pointer', fontWeight: 600 }} title="Print Question Paper">
+                <button onClick={handlePrint} disabled={poolLoading} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 6, border: 'none', background: '#405189', color: '#fff', cursor: 'pointer', fontWeight: 500, fontSize: '13px' }} title="Print Question Paper">
                   <Printer size={16} /> Print Paper
                 </button>
               </div>
@@ -423,114 +496,265 @@ export default function StudentQuestionPapers() {
                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Loading paper contents...</div>
             ) : (
               <div style={{ background: '#fff', color: '#000', padding: '20px 40px', borderRadius: 8, overflowX: 'auto', display: 'flex', justifyContent: 'center' }}>
-                <div id="printable-paper" style={{ fontFamily: '"Times New Roman", Times, serif', width: '100%', maxWidth: '800px', margin: '0 auto', fontSize: '13px', border: '3px solid #000', padding: '15px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 15, color: '#000', gap: 15 }}>
-                    <div style={{ fontWeight: 'bold' }}>Register Number</div>
-                    <div style={{ display: 'flex' }}>{[1,2,3,4,5,6,7,8,9,10,11,12].map(i => <div key={i} style={{ width: 20, height: 20, border: '1px solid #000', borderRight: i === 12 ? '1px solid #000' : 'none' }}></div>)}</div>
-                  </div>
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, color: '#000' }}>
-                    <div style={{ width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><img src="/logo-left.png" alt="Left Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} /></div>
-                    <div style={{ textAlign: 'center', flex: 1, padding: '0 15px' }}>
-                      <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#b91c1c' }}>{viewingPaper.headerConfig?.collegeName || 'RENGANAYAGI VARATHARAJ COLLEGE OF ENGINEERING'}</div>
-                      <div style={{ fontSize: '14px', marginBottom: 10 }}>{viewingPaper.headerConfig?.collegeAddress || 'Salvarpatti, Sivakasi - 626 128'}</div>
-                      <div style={{ display: 'inline-block', border: '1px solid #1e3a8a', borderRadius: '15px', padding: '5px 20px', fontWeight: 'bold', color: '#1e3a8a', marginBottom: 5 }}>{viewingPaper.headerConfig?.examName}</div>
-                    </div>
-                    <div style={{ width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><img src="/logo-right.png" alt="Right Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} /></div>
-                  </div>
+                {(() => {
+                  const is100Marks = (viewingPaper?.partAQuestions?.length || 0) >= 8 || (viewingPaper?.partBQuestions?.length || 0) >= 4 || viewingPaper?.headerConfig?.examName?.toLowerCase()?.includes('model') || viewingPaper?.headerConfig?.examName?.toLowerCase()?.includes('semester') || viewingPaper?.headings?.partB?.includes('5 × 13');
+                  const partA_start = 1;
+                  const partB_start = partA_start + (viewingPaper.partAQuestions?.length || 5);
+                  const partC_start = partB_start + (viewingPaper.partBQuestions?.length || 2);
 
-                  <table style={{ width: '100%', border: 'none', marginBottom: 15, color: '#000' }}>
-                    <tbody>
-                      <tr><td style={{ border: 'none', padding: '4px 0', width: '60%', color: '#000' }}>Name of the Course Instructor: <span style={{ fontWeight: 'bold', color: '#000' }}>{viewingPaper.headerConfig?.instructorName}</span></td><td style={{ border: 'none', padding: '4px 0', width: '40%', color: '#000' }}>Class / Semester: <span style={{ fontWeight: 'bold', color: '#000' }}>{viewingPaper.headerConfig?.classSemester}</span></td></tr>
-                      <tr><td style={{ border: 'none', padding: '4px 0', color: '#000' }}>Course Code & Name: <span style={{ fontWeight: 'bold', color: '#000' }}>{viewingPaper.headerConfig?.courseCodeName}</span></td><td style={{ border: 'none', padding: '4px 0', color: '#000' }}>Academic Year: <span style={{ fontWeight: 'bold', color: '#000' }}>{viewingPaper.headerConfig?.academicYear}</span></td></tr>
-                      <tr><td colSpan="2" style={{ border: 'none', padding: '4px 0', color: '#000' }}>Date of Exam: <span style={{ fontWeight: 'bold', color: '#000' }}>{viewingPaper.headerConfig?.examDate}</span></td></tr>
-                    </tbody>
-                  </table>
-                  
-                  <div style={{ textAlign: 'center', marginBottom: 15, color: '#000' }}><div>Answer <span style={{ fontWeight: 'bold' }}>ALL</span> the questions</div><div style={{ fontWeight: 'bold' }}>{viewingPaper.headings?.partA || 'PART – A (5 × 2 = 10 Marks)'}</div></div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20, color: '#000' }}>
-                    <tbody>
-                      {viewingPaper.partAQuestions?.map((id, idx) => { 
-                        const q = questionsPool.find(x => x.id === id); 
-                        if(!q) return null;
-                        return (
-                          <tr key={idx}>
-                            <td style={{ border: '1px solid #000', padding: '6px', width: '30px', verticalAlign: 'top', color: '#000' }}>{idx + 1}</td>
-                            <td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', textAlign: 'justify', color: '#000' }}>{q.questionText}</td>
-                            <td style={{ border: '1px solid #000', padding: '6px', width: '80px', verticalAlign: 'top', textAlign: 'center', color: '#000' }}>{q.btlLevel || 'UN'},{q.co || 'CO3'}</td>
+                  return (
+                    <div id="printable-paper" style={{ fontFamily: '"Times New Roman", Times, serif', width: '100%', maxWidth: '800px', margin: '0 auto', fontSize: '11.5px', border: '2px solid #000', padding: '12px 14px', boxSizing: 'border-box' }}>
+                      {/* 1. Register Number */}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 10, color: '#000', gap: 12 }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '11px' }}>Register Number:</div>
+                        <div style={{ display: 'flex' }}>
+                          {[1,2,3,4,5,6,7,8,9,10,11,12].map(i => (
+                            <div key={i} style={{ width: 19, height: 19, border: '1px solid #000', borderRight: i === 12 ? '1px solid #000' : 'none' }}></div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* 2. Official Header */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, color: '#000' }}>
+                        <div style={{ width: '75px', height: '75px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <img src="/logo-left.png" alt="Left Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} />
+                        </div>
+                        <div style={{ textAlign: 'center', flex: 1, padding: '0 10px' }}>
+                          <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#800000', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            {viewingPaper.headerConfig?.collegeName || 'RENGANAYAGI VARATHARAJ COLLEGE OF ENGINEERING'}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#333', marginBottom: 6 }}>
+                            {viewingPaper.headerConfig?.collegeAddress || 'Salvarpatti, Sivakasi - 626 128'}
+                          </div>
+                          <div style={{ display: 'inline-block', border: '1.5px solid #1e3a8a', borderRadius: '15px', padding: '3px 18px', fontWeight: 'bold', fontSize: '12px', color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            {viewingPaper.headerConfig?.examName || 'EXAMINATION'}
+                          </div>
+                        </div>
+                        <div style={{ width: '75px', height: '75px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <img src="/logo-right.png" alt="Right Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} />
+                        </div>
+                      </div>
+
+                      {/* 3. Metadata Table */}
+                      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8, color: '#000', fontSize: '11px' }}>
+                        <tbody>
+                          <tr>
+                            <td style={{ border: '1px solid #000', padding: '3px 6px', width: '55%' }}>
+                              Name of Course Instructor: <span style={{ fontWeight: 'bold' }}>{viewingPaper.headerConfig?.instructorName || '-'}</span>
+                            </td>
+                            <td style={{ border: '1px solid #000', padding: '3px 6px', width: '45%' }}>
+                              Class / Semester: <span style={{ fontWeight: 'bold' }}>{viewingPaper.headerConfig?.classSemester || '-'}</span>
+                            </td>
                           </tr>
-                        ); 
-                      })}
-                    </tbody>
-                  </table>
+                          <tr>
+                            <td style={{ border: '1px solid #000', padding: '3px 6px' }}>
+                              Course Code & Name: <span style={{ fontWeight: 'bold' }}>{viewingPaper.headerConfig?.courseCodeName || '-'}</span>
+                            </td>
+                            <td style={{ border: '1px solid #000', padding: '3px 6px' }}>
+                              Academic Year: <span style={{ fontWeight: 'bold' }}>{viewingPaper.headerConfig?.academicYear || '-'}</span>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style={{ border: '1px solid #000', padding: '3px 6px' }}>
+                              Date & Session: <span style={{ fontWeight: 'bold' }}>{viewingPaper.headerConfig?.examDate || '-'}</span>
+                            </td>
+                            <td style={{ border: '1px solid #000', padding: '3px 6px' }}>
+                              Max. Marks: <span style={{ fontWeight: 'bold' }}>{is100Marks ? '100' : '50'}</span> &nbsp;|&nbsp; Duration: <span style={{ fontWeight: 'bold' }}>{is100Marks ? '3 Hours' : '90 Mins'}</span>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
 
-                  <div style={{ textAlign: 'center', fontWeight: 'bold', marginBottom: 10, color: '#000' }}>{viewingPaper.headings?.partB || 'PART – B (2 × 13 = 26 Marks)'}</div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20, color: '#000' }}>
-                    <tbody>
-                      {viewingPaper.partBQuestions?.map((pair, idx) => { 
-                        const qNum = (viewingPaper.partAQuestions?.length || 5) + 1 + idx; 
-                        const qA = questionsPool.find(x => x.id === pair.a); 
-                        const qB = questionsPool.find(x => x.id === pair.b); 
-                        if(!qA && !qB) return null;
-                        return (
-                          <React.Fragment key={idx}>
-                            {qA && (
-                              <tr>
-                                <td style={{ border: '1px solid #000', padding: '6px', width: '30px', verticalAlign: 'top', color: '#000' }}>{qNum} a)</td>
-                                <td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', textAlign: 'justify', color: '#000' }}>{qA.questionText}</td>
-                                <td style={{ border: '1px solid #000', padding: '6px', width: '80px', verticalAlign: 'top', textAlign: 'center', color: '#000' }}>{qA.btlLevel || 'UN'},{qA.co || 'CO3'}</td>
+                      {/* 4. Course Outcomes (if available) */}
+                      {viewingPaper.courseOutcomes && viewingPaper.courseOutcomes.length > 0 && (
+                        <>
+                          <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: 2, color: '#000' }}>COURSE OUTCOMES:</div>
+                          <div style={{ fontSize: '10.5px', marginBottom: 3, color: '#000', fontStyle: 'italic' }}>At the end of the course the students will be able to:</div>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8, color: '#000', fontSize: '10.5px' }}>
+                            <thead>
+                              <tr style={{ background: '#f3f4f6', fontWeight: 'bold' }}>
+                                <th style={{ border: '1px solid #000', padding: '3px 5px', width: '45px', textAlign: 'center' }}>CO</th>
+                                <th style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'left' }}>Course Outcomes Description</th>
+                                <th style={{ border: '1px solid #000', padding: '3px 5px', width: '70px', textAlign: 'center' }}>BTL Level</th>
                               </tr>
-                            )}
-                            {qA && qB && (
-                              <tr><td colSpan="3" style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', fontWeight: 'bold', color: '#000' }}>(OR)</td></tr>
-                            )}
-                            {qB && (
-                              <tr>
-                                <td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', color: '#000' }}>{qNum} b)</td>
-                                <td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', textAlign: 'justify', color: '#000' }}>{qB.questionText}</td>
-                                <td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', textAlign: 'center', color: '#000' }}>{qB.btlLevel || 'UN'},{qB.co || 'CO3'}</td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        ); 
-                      })}
-                    </tbody>
-                  </table>
+                            </thead>
+                            <tbody>
+                              {viewingPaper.courseOutcomes.map((co, i) => (
+                                <tr key={i} style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                                  <td style={{ border: '1px solid #000', padding: '2px 5px', textAlign: 'center', fontWeight: 'bold' }}>{co.co}</td>
+                                  <td style={{ border: '1px solid #000', padding: '2px 6px' }}>{co.description}</td>
+                                  <td style={{ border: '1px solid #000', padding: '2px 5px', textAlign: 'center' }}>{co.btlLevel}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </>
+                      )}
 
-                  <div style={{ textAlign: 'center', fontWeight: 'bold', marginBottom: 10, color: '#000' }}>{viewingPaper.headings?.partC || 'PART – C (1 × 14 = 14 Marks)'}</div>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 30, color: '#000' }}>
-                    <tbody>
-                      {viewingPaper.partCQuestions?.map((pair, idx) => { 
-                        const qNum = (viewingPaper.partAQuestions?.length || 5) + (viewingPaper.partBQuestions?.length || 2) + 1 + idx; 
-                        const qA = questionsPool.find(x => x.id === pair.a); 
-                        const qB = questionsPool.find(x => x.id === pair.b); 
-                        if(!qA && !qB) return null;
-                        return (
-                          <React.Fragment key={idx}>
-                            {qA && (
-                              <tr>
-                                <td style={{ border: '1px solid #000', padding: '6px', width: '30px', verticalAlign: 'top', color: '#000' }}>{qNum} a)</td>
-                                <td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', textAlign: 'justify', color: '#000' }}>{qA.questionText}</td>
-                                <td style={{ border: '1px solid #000', padding: '6px', width: '80px', verticalAlign: 'top', textAlign: 'center', color: '#000' }}>{qA.btlLevel || 'UN'},{qA.co || 'CO3'}</td>
+                      {/* 5. Course Assessment Matrix (if available) */}
+                      {viewingPaper.cam && viewingPaper.cam.length > 0 && (
+                        <>
+                          <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: 2, color: '#000' }}>COURSE ASSESSMENT MATRIX:</div>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8, textAlign: 'center', color: '#000', fontSize: '9.5px' }}>
+                            <thead>
+                              <tr style={{ background: '#f3f4f6', fontWeight: 'bold' }}>
+                                <th style={{ border: '1px solid #000', padding: '2px', width: '40px' }}>CO</th>
+                                {['PO1','PO2','PO3','PO4','PO5','PO6','PO7','PO8','PO9','PO10','PO11','PO12','PSO1','PSO2','PSO3'].map(p => (
+                                  <th key={p} style={{ border: '1px solid #000', padding: '2px 1px' }}>{p.replace(/\d+/, '')}<br/>{p.match(/\d+/)[0]}</th>
+                                ))}
                               </tr>
-                            )}
-                            {qA && qB && (
-                              <tr><td colSpan="3" style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', fontWeight: 'bold', color: '#000' }}>(OR)</td></tr>
-                            )}
-                            {qB && (
-                              <tr>
-                                <td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', color: '#000' }}>{qNum} b)</td>
-                                <td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', textAlign: 'justify', color: '#000' }}>{qB.questionText}</td>
-                                <td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', textAlign: 'center', color: '#000' }}>{qB.btlLevel || 'UN'},{qB.co || 'CO3'}</td>
+                            </thead>
+                            <tbody>
+                              {viewingPaper.cam.map((c, i) => (
+                                <tr key={i} style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                                  <td style={{ border: '1px solid #000', padding: '2px', fontWeight: 'bold' }}>{c.co}</td>
+                                  {['po1','po2','po3','po4','po5','po6','po7','po8','po9','po10','po11','po12','pso1','pso2','pso3'].map(p => (
+                                    <td key={p} style={{ border: '1px solid #000', padding: '2px 1px' }}>{c[p]}</td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </>
+                      )}
+                      
+                      {/* 6. PART – A (Questions 1 to 10 - Fits on Page 1) */}
+                      <div style={{ textAlign: 'center', marginTop: '6px', marginBottom: '4px', color: '#000' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '12px' }}>{viewingPaper.headings?.partA || 'PART – A (10 × 2 = 20 Marks)'}</div>
+                        <div style={{ fontSize: '10.5px', fontStyle: 'italic' }}>Answer ALL Questions</div>
+                      </div>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8, color: '#000', fontSize: '10.5px' }}>
+                        <thead>
+                          <tr style={{ background: '#f3f4f6', fontWeight: 'bold' }}>
+                            <th style={{ width: '38px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>Q.No</th>
+                            <th style={{ textAlign: 'center', border: '1px solid #000', padding: '3px 6px' }}>Questions</th>
+                            <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>Marks</th>
+                            <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>CO</th>
+                            <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>BTL</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {viewingPaper.partAQuestions?.map((id, idx) => { 
+                            const q = questionsPool.find(x => x.id === id); 
+                            if(!q) return null;
+                            return (
+                              <tr key={idx} style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                                <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'top' }}>{idx + 1}</td>
+                                <td style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'justify', verticalAlign: 'top', lineHeight: '1.25' }}>{q.questionText}</td>
+                                <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>2</td>
+                                <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{q.co || 'CO1'}</td>
+                                <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{q.btlLevel || 'UN'}</td>
                               </tr>
-                            )}
-                          </React.Fragment>
-                        ); 
-                      })}
-                    </tbody>
-                  </table>
-                  
-                </div>
+                            ); 
+                          })}
+                        </tbody>
+                      </table>
+
+                      {/* 7. PART – B & PART – C (Clean Page 2 Break for 100 Marks, or Continuation for 50 Marks) */}
+                      <div className={is100Marks ? "page-break-before" : ""} style={{ pageBreakBefore: is100Marks ? 'always' : 'auto', breakBefore: is100Marks ? 'page' : 'auto', marginTop: is100Marks ? '10px' : '10px' }}>
+                        
+                        {/* Part B Header */}
+                        <div style={{ textAlign: 'center', marginBottom: '4px', color: '#000' }}>
+                          <div style={{ fontWeight: 'bold', fontSize: '12px' }}>{viewingPaper.headings?.partB || 'PART – B (5 × 13 = 65 Marks)'}</div>
+                          <div style={{ fontSize: '10.5px', fontStyle: 'italic' }}>Answer ALL Questions (Either / Or Choice)</div>
+                        </div>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '8px', color: '#000', fontSize: '10.5px' }}>
+                          <thead>
+                            <tr style={{ background: '#f3f4f6', fontWeight: 'bold' }}>
+                              <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>Q.No</th>
+                              <th style={{ textAlign: 'center', border: '1px solid #000', padding: '3px 6px' }}>Questions</th>
+                              <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>Marks</th>
+                              <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>CO</th>
+                              <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>BTL</th>
+                            </tr>
+                          </thead>
+                          {viewingPaper.partBQuestions?.map((pair, idx) => { 
+                            const qNum = partB_start + idx; 
+                            const qA = questionsPool.find(x => x.id === pair.a); 
+                            const qB = questionsPool.find(x => x.id === pair.b); 
+                            if(!qA && !qB) return null;
+                            const marksVal = qA?.marks || (viewingPaper.headings?.partB?.includes('16') ? 16 : 13);
+                            return (
+                              <tbody key={idx} className="question-pair" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                                {qA && (
+                                  <tr>
+                                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'top' }}>{qNum} (a)</td>
+                                    <td style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'justify', verticalAlign: 'top', lineHeight: '1.25' }}>{qA.questionText}</td>
+                                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{marksVal}</td>
+                                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{qA.co || 'CO2'}</td>
+                                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{qA.btlLevel || 'UN'}</td>
+                                  </tr>
+                                )}
+                                {qA && qB && (
+                                  <tr><td colSpan="5" style={{ border: '1px solid #000', padding: '2px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px', background: '#fafafa', letterSpacing: '2px' }}>(OR)</td></tr>
+                                )}
+                                {qB && (
+                                  <tr>
+                                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'top' }}>{qNum} (b)</td>
+                                    <td style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'justify', verticalAlign: 'top', lineHeight: '1.25' }}>{qB.questionText}</td>
+                                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{marksVal}</td>
+                                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{qB.co || 'CO2'}</td>
+                                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{qB.btlLevel || 'UN'}</td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            ); 
+                          })}
+                        </table>
+
+                        {/* Part C Header */}
+                        <div style={{ textAlign: 'center', marginTop: '6px', marginBottom: '4px', color: '#000' }}>
+                          <div style={{ fontWeight: 'bold', fontSize: '12px' }}>{viewingPaper.headings?.partC || 'PART – C (1 × 15 = 15 Marks)'}</div>
+                          <div style={{ fontSize: '10.5px', fontStyle: 'italic' }}>Answer ALL Questions (Either / Or Choice)</div>
+                        </div>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '8px', color: '#000', fontSize: '10.5px' }}>
+                          <thead>
+                            <tr style={{ background: '#f3f4f6', fontWeight: 'bold' }}>
+                              <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>Q.No</th>
+                              <th style={{ textAlign: 'center', border: '1px solid #000', padding: '3px 6px' }}>Questions</th>
+                              <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>Marks</th>
+                              <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>CO</th>
+                              <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>BTL</th>
+                            </tr>
+                          </thead>
+                          {viewingPaper.partCQuestions?.map((pair, idx) => { 
+                            const qNum = partC_start + idx; 
+                            const qA = questionsPool.find(x => x.id === pair.a); 
+                            const qB = questionsPool.find(x => x.id === pair.b); 
+                            if(!qA && !qB) return null;
+                            const marksVal = qA?.marks || (viewingPaper.headings?.partC?.includes('15') ? 15 : 14);
+                            return (
+                              <tbody key={idx} className="question-pair" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                                {qA && (
+                                  <tr>
+                                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'top' }}>{qNum} (a)</td>
+                                    <td style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'justify', verticalAlign: 'top', lineHeight: '1.25' }}>{qA.questionText}</td>
+                                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{marksVal}</td>
+                                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{qA.co || 'CO5'}</td>
+                                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{qA.btlLevel || 'CR'}</td>
+                                  </tr>
+                                )}
+                                {qA && qB && (
+                                  <tr><td colSpan="5" style={{ border: '1px solid #000', padding: '2px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px', background: '#fafafa', letterSpacing: '2px' }}>(OR)</td></tr>
+                                )}
+                                {qB && (
+                                  <tr>
+                                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'top' }}>{qNum} (b)</td>
+                                    <td style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'justify', verticalAlign: 'top', lineHeight: '1.25' }}>{qB.questionText}</td>
+                                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{marksVal}</td>
+                                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{qB.co || 'CO5'}</td>
+                                    <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{qB.btlLevel || 'CR'}</td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            ); 
+                          })}
+                        </table>
+                        
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </div>

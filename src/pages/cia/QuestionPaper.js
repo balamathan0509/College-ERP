@@ -1,13 +1,70 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar';
 import { db } from "../../supabase/supabaseAdapter";
-import { collection, query, getDocs, where, addDoc, serverTimestamp, doc, getDoc, updateDoc } from "../../supabase/supabaseAdapter";
-import { Search, Printer, CheckCircle, Save, Plus, Trash2, Send, Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { collection, query, getDocs, where, addDoc, serverTimestamp, doc, getDoc, updateDoc, orderBy } from "../../supabase/supabaseAdapter";
+import { Search, Printer, CheckCircle, Save, Plus, Trash2, Send, Download, FileSpreadsheet, FileText, Calendar, BookOpen, Award, RefreshCw, Sparkles, RotateCcw } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import * as XLSX from 'xlsx';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+
+// Helper: Convert semester number to Roman Year / Roman Sem (e.g., 7 -> IV / VII)
+const toRomanSem = (semVal) => {
+  const s = parseInt(semVal, 10);
+  if (!s || isNaN(s)) return semVal ? String(semVal) : '';
+  const romanMap = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V', 6: 'VI', 7: 'VII', 8: 'VIII' };
+  const yearNum = Math.ceil(s / 2);
+  const romanYear = romanMap[yearNum] || yearNum;
+  const romanSem = romanMap[s] || s;
+  return `${romanYear} / ${romanSem}`;
+};
+
+// Helper: Format instructor name & department / designation
+const getInstructorString = (profile, alloc) => {
+  const name = profile?.name || '';
+  const dept = alloc?.department || profile?.dept || '';
+  const desig = profile?.designation || (profile?.role === 'staff' ? 'AP' : '');
+  if (desig && dept) {
+    return `${name}, ${desig}/${dept}`.trim();
+  } else if (dept) {
+    return `${name}, ${dept}`.trim();
+  }
+  return name;
+};
+
+// Helper: Format exam date & session (e.g., 2026-09-09 + FN -> 09.09.2026 (FN))
+const formatExamDate = (dateStr, sessionStr) => {
+  if (!dateStr) return '';
+  const parts = String(dateStr).split('-');
+  let formatted = dateStr;
+  if (parts.length === 3) {
+    formatted = `${parts[2]}.${parts[1]}.${parts[0]}`;
+  }
+  if (sessionStr) {
+    formatted += ` (${sessionStr.toUpperCase()})`;
+  }
+  return formatted;
+};
+
+// Helper: Academic year with ODD/EVEN semester detection
+const getAcademicYearString = (academicSession, semVal) => {
+  if (!academicSession) return '';
+  const s = parseInt(semVal, 10);
+  const oddEven = (s && s % 2 === 0) ? 'EVEN' : 'ODD';
+  return `${academicSession} (${oddEven})`;
+};
+
+// Helper: Format exam display name cleanly and officially
+const formatExamDisplayName = (name) => {
+  if (!name) return 'EXAMINATION';
+  const n = String(name).trim();
+  if (n.toLowerCase() === 'model' || n.toLowerCase() === 'model exam') return 'MODEL EXAMINATION';
+  if (n.toLowerCase() === 'cia 1' || n.toLowerCase() === 'internal 1' || n.toLowerCase() === 'internal test 1') return 'INTERNAL TEST I';
+  if (n.toLowerCase() === 'cia 2' || n.toLowerCase() === 'internal 2' || n.toLowerCase() === 'internal test 2') return 'INTERNAL TEST II';
+  if (n.toLowerCase() === 'cia 3' || n.toLowerCase() === 'internal 3' || n.toLowerCase() === 'internal test 3') return 'INTERNAL TEST III';
+  return n.toUpperCase();
+};
 
 export default function QuestionPaper() {
   const [searchParams] = useSearchParams();
@@ -24,16 +81,22 @@ export default function QuestionPaper() {
   const [poolLoaded, setPoolLoaded] = useState(false);
   const [allocations, setAllocations] = useState([]);
   const [selectedAllocation, setSelectedAllocation] = useState('');
+
+  // Exam Cell Integration State
+  const [examsList, setExamsList] = useState([]);
+  const [schedulesList, setSchedulesList] = useState([]);
+  const [selectedExamId, setSelectedExamId] = useState('');
+  const [selectedScheduleId, setSelectedScheduleId] = useState('');
   
   const [headerConfig, setHeaderConfig] = useState({
     collegeName: 'RENGANAYAGI VARATHARAJ COLLEGE OF ENGINEERING',
     collegeAddress: 'Salvarpatti, Sivakasi - 626 128',
-    examName: 'INTERNAL TEST III',
-    instructorName: 'B.RAMYA, AP/EEE',
-    classSemester: 'IV / VII',
-    courseCodeName: 'GE3752 - TOTAL QUALITY MANAGEMENT',
-    academicYear: '2026 - 2027 (ODD)',
-    examDate: '09.09.2026 (FN)'
+    examName: '',
+    instructorName: '',
+    classSemester: '',
+    courseCodeName: '',
+    academicYear: '',
+    examDate: ''
   });
 
   const [courseOutcomes, setCourseOutcomes] = useState([
@@ -62,7 +125,71 @@ export default function QuestionPaper() {
   
   const isReadOnly = editId && paperStatus !== 'DRAFT' && paperStatus !== 'RETURNED_TO_STAFF';
 
-useEffect(() => {
+  // Fetch Exam Cell examinations and schedules
+  async function fetchExamCellData() {
+    try {
+      const [eSnap, sSnap] = await Promise.all([
+        getDocs(query(collection(db, "cia_examinations"), orderBy("createdAt", "desc"))).catch(() => ({ docs: [] })),
+        getDocs(query(collection(db, "cia_exam_schedules"), orderBy("createdAt", "desc"))).catch(() => ({ docs: [] }))
+      ]);
+      const eList = eSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const sList = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setExamsList(eList);
+      setSchedulesList(sList);
+    } catch (err) {
+      console.error("Error fetching Exam Cell data:", err);
+    }
+  }
+
+  // Handle Exam Cell selection: Map exam metadata and configure 50M vs 100M question patterns
+  const handleSelectExam = (examId, scheduleId = null, currentAlloc = null) => {
+    const exam = examsList.find(e => e.id === examId);
+    if (!exam) return;
+
+    setSelectedExamId(examId);
+    setSelectedScheduleId(scheduleId || '');
+
+    const alloc = currentAlloc || allocations.find(a => a.id === selectedAllocation);
+    const targetCourse = alloc ? alloc.courseCode : filterCourse;
+
+    const schedule = scheduleId 
+      ? schedulesList.find(s => s.id === scheduleId)
+      : schedulesList.find(s => s.examId === examId && String(s.courseCode || '').trim().toUpperCase() === String(targetCourse || '').trim().toUpperCase());
+
+    const examDateFormatted = schedule ? formatExamDate(schedule.date, schedule.session) : '';
+    const acadYear = getAcademicYearString(exam.academicSession || '', alloc?.semester || exam.semester);
+    const formattedExamName = formatExamDisplayName(exam.examName);
+
+    setHeaderConfig(prev => ({
+      ...prev,
+      examName: formattedExamName || prev.examName || '',
+      examDate: examDateFormatted || prev.examDate || '',
+      academicYear: acadYear || prev.academicYear || ''
+    }));
+
+    // Dynamic slot configuration based on 50 Marks (CIA/Internal) vs 100 Marks (Model/EndSem)
+    const isModel = Number(exam.maxMarks) === 100 || exam.examType === 'Model';
+    if (isModel) {
+      setPartAHeading('PART – A (10 × 2 = 20 Marks)');
+      setPartBHeading('PART – B (5 × 13 = 65 Marks)');
+      setPartCHeading('PART – C (1 × 15 = 15 Marks)');
+
+      setPartAQuestions(prev => prev.length < 10 ? [...prev, ...Array(10 - prev.length).fill(null)] : prev);
+      setPartBQuestions(prev => prev.length < 5 ? [...prev, ...Array(5 - prev.length).fill(null).map(() => ({ a: null, b: null }))] : prev);
+      setPartCQuestions(prev => prev.length < 1 ? [{ a: null, b: null }] : prev);
+    } else {
+      setPartAHeading('PART – A (5 × 2 = 10 Marks)');
+      setPartBHeading('PART – B (2 × 13 = 26 Marks)');
+      setPartCHeading('PART – C (1 × 14 = 14 Marks)');
+
+      setPartAQuestions(prev => prev.length < 5 ? [...prev, ...Array(5 - prev.length).fill(null)] : (prev.length > 5 ? prev.slice(0, 5) : prev));
+      setPartBQuestions(prev => prev.length < 2 ? [...prev, ...Array(2 - prev.length).fill(null).map(() => ({ a: null, b: null }))] : (prev.length > 2 ? prev.slice(0, 2) : prev));
+      setPartCQuestions(prev => prev.length < 1 ? [{ a: null, b: null }] : (prev.length > 1 ? prev.slice(0, 1) : prev));
+    }
+  };
+
+  useEffect(() => {
+    fetchExamCellData();
     if (userProfile?.role === 'staff') {
       fetchAllocations();
     } else {
@@ -73,14 +200,38 @@ useEffect(() => {
     }
   }, [editId, userProfile]);
 
+  // Synchronize Subject Context with Header Config, Question Bank, and Exam Schedules
   useEffect(() => {
-    if (userProfile?.role === 'staff' && selectedAllocation) {
+    if (userProfile?.role === 'staff' && selectedAllocation && allocations.length > 0) {
       const alloc = allocations.find(a => a.id === selectedAllocation);
       if (alloc) {
         setFilterCourse(alloc.courseCode);
+        loadPoolByCourse(alloc.courseCode);
+
+        const classSem = toRomanSem(alloc.semester);
+        const instructorStr = getInstructorString(userProfile, alloc);
+
+        setHeaderConfig(prev => ({
+          ...prev,
+          courseCodeName: `${alloc.courseCode} - ${alloc.courseName || ''}`.trim(),
+          classSemester: classSem || prev.classSemester,
+          instructorName: instructorStr || prev.instructorName
+        }));
+
+        // Auto-match Exam Cell schedule for this subject
+        if (schedulesList.length > 0 && examsList.length > 0) {
+          const matchedSchedule = schedulesList.find(s => 
+            String(s.courseCode || '').trim().toUpperCase() === String(alloc.courseCode || '').trim().toUpperCase()
+          );
+          if (matchedSchedule) {
+            handleSelectExam(matchedSchedule.examId, matchedSchedule.id, alloc);
+          } else if (examsList.length > 0 && !selectedExamId) {
+            handleSelectExam(examsList[0].id, null, alloc);
+          }
+        }
       }
     }
-  }, [selectedAllocation]);
+  }, [selectedAllocation, allocations, schedulesList, examsList]);
 
   async function fetchAllocations() {
     try {
@@ -274,9 +425,95 @@ async function loadPoolByCourse(course) {
     }
   };
 
-  const partA_pool = questionsPool.filter(q => String(q.marks) === '2');
-  const partB_pool = questionsPool.filter(q => String(q.marks) === '13');
-  const partC_pool = questionsPool.filter(q => String(q.marks) === '14');
+  const partA_pool = questionsPool.filter(q => String(q.marks) === '2' || q.section === 'A' || q.part === 'A');
+  const partB_pool = questionsPool.filter(q => String(q.marks) === '13' || String(q.marks) === '16' || q.section === 'B' || q.part === 'B');
+  const partC_pool = questionsPool.filter(q => String(q.marks) === '14' || String(q.marks) === '15' || q.section === 'C' || q.part === 'C');
+
+  // Intelligent Auto-Generate / Auto-Fill from Question Bank
+  const handleAutoGenerate = () => {
+    if (!questionsPool || questionsPool.length === 0) {
+      toast.error("No questions found in the Question Bank for this course. Please add questions first.");
+      return;
+    }
+
+    const usedIds = new Set();
+    const shuffle = (arr) => [...arr].sort(() => Math.random() - 0.5);
+
+    const poolA = shuffle(partA_pool);
+    const poolB = shuffle(partB_pool);
+    const poolC = shuffle(partC_pool);
+
+    // 1. Auto-fill Part A (e.g. 10 questions for Model Exam, 5 for Internal)
+    let filledA = 0;
+    const newPartA = partAQuestions.map((_, idx) => {
+      // Prioritize unit distribution (e.g. Q1-2: Unit 1, Q3-4: Unit 2, etc.)
+      const preferredUnit = String(Math.floor(idx / 2) + 1);
+      const q = poolA.find(item => !usedIds.has(item.id) && String(item.unit || '') === preferredUnit)
+             || poolA.find(item => !usedIds.has(item.id));
+      if (q) {
+        usedIds.add(q.id);
+        filledA++;
+        return q.id;
+      }
+      return null;
+    });
+
+    // 2. Auto-fill Part B (pairs with either/or)
+    let filledB = 0;
+    const newPartB = partBQuestions.map((_, idx) => {
+      // Prioritize same unit for each pair (Pair 0 -> Unit 1, Pair 1 -> Unit 2, etc.)
+      const preferredUnit = String(idx + 1);
+      
+      let qA = poolB.find(item => !usedIds.has(item.id) && String(item.unit || '') === preferredUnit);
+      if (!qA) qA = poolB.find(item => !usedIds.has(item.id));
+      if (qA) { usedIds.add(qA.id); filledB++; }
+
+      let qB = poolB.find(item => !usedIds.has(item.id) && String(item.unit || '') === preferredUnit);
+      if (!qB) qB = poolB.find(item => !usedIds.has(item.id));
+      if (qB) { usedIds.add(qB.id); filledB++; }
+
+      return {
+        a: qA ? qA.id : null,
+        b: qB ? qB.id : null
+      };
+    });
+
+    // 3. Auto-fill Part C (pairs with either/or)
+    let filledC = 0;
+    const newPartC = partCQuestions.map(() => {
+      const qA = poolC.find(item => !usedIds.has(item.id));
+      if (qA) { usedIds.add(qA.id); filledC++; }
+
+      const qB = poolC.find(item => !usedIds.has(item.id));
+      if (qB) { usedIds.add(qB.id); filledC++; }
+
+      return {
+        a: qA ? qA.id : null,
+        b: qB ? qB.id : null
+      };
+    });
+
+    setPartAQuestions(newPartA);
+    setPartBQuestions(newPartB);
+    setPartCQuestions(newPartC);
+
+    const totalFilled = filledA + filledB + filledC;
+    const totalSlots = partAQuestions.length + (partBQuestions.length * 2) + (partCQuestions.length * 2);
+
+    if (totalFilled === totalSlots) {
+      toast.success(`✨ Auto-generated all ${totalFilled} questions successfully!`);
+    } else {
+      toast.success(`⚡ Auto-filled ${totalFilled} of ${totalSlots} questions from Question Bank.`);
+    }
+  };
+
+  // Clear all question selections
+  const handleClearAllSlots = () => {
+    setPartAQuestions(partAQuestions.map(() => null));
+    setPartBQuestions(partBQuestions.map(() => ({ a: null, b: null })));
+    setPartCQuestions(partCQuestions.map(() => ({ a: null, b: null })));
+    toast.success("Question selections cleared.");
+  };
 
   const isDisabled = (id, currentVal) => {
     if (!id) return false;
@@ -315,7 +552,13 @@ async function loadPoolByCourse(course) {
     };
     partAQuestions.filter(Boolean).forEach(id => addMarks(id, 2));
     partBQuestions.forEach(p => { if (p.a) addMarks(p.a, 13); });
-    partCQuestions.forEach(p => { if (p.a) addMarks(p.a, 14); });
+    partCQuestions.forEach(p => { 
+      if (p.a) {
+        const qA = questionsPool.find(x => x.id === p.a);
+        const marks = qA?.marks ? Number(qA.marks) : (partCHeading.includes('15') ? 15 : 14);
+        addMarks(p.a, marks);
+      }
+    });
     return dist;
   };
 
@@ -413,25 +656,52 @@ let allocData = {};
   const handlePrint = () => {
     const printContent = document.getElementById("printable-paper");
     if (!printContent) return;
+
+    const clone = printContent.cloneNode(true);
+    clone.style.border = 'none';
+    clone.style.maxWidth = '100%';
+    clone.style.width = '100%';
+    clone.style.margin = '0';
+    clone.style.padding = '0';
+
     const iframe = document.createElement('iframe');
     iframe.style.display = 'none';
     document.body.appendChild(iframe);
     iframe.contentDocument.write(`
       <html><head><title>Question Paper</title>
       <style>
-        @page { size: A4 portrait; margin: 15mm; }
-        body { font-family: "Times New Roman", Times, serif; font-size: 12pt; color: #000; margin: 0; padding: 0; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #000; padding: 6px; text-align: left; vertical-align: top; color: #000 !important; }
+        @page { size: A4 portrait; margin: 8mm 10mm; }
+        * { box-sizing: border-box; }
+        body { font-family: "Times New Roman", Times, serif; font-size: 10.5pt; color: #000; margin: 0; padding: 0; }
+        .page-border {
+          position: fixed;
+          top: 0; left: 0; right: 0; bottom: 0;
+          border: 2px solid #000;
+          pointer-events: none;
+          box-sizing: border-box;
+        }
+        .content-wrap {
+          padding: 4px 6px;
+        }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+        tbody.question-pair { page-break-inside: avoid !important; break-inside: avoid !important; }
+        .page-break-before { page-break-before: always !important; break-before: page !important; }
+        th, td { border: 1px solid #000; padding: 3px 5px; text-align: left; vertical-align: top; color: #000 !important; font-size: 10pt; }
         .no-border-table td, .no-border-table th { border: none !important; color: #000 !important; }
-        .header-info { width: 100%; border: none; margin-bottom: 10px; }
-        .header-info td { border: none; padding: 4px; }
+        .header-info { width: 100%; border: none; margin-bottom: 8px; }
+        .header-info td { border: none; padding: 3px 4px; }
         .text-center { text-align: center; }
         .font-bold { font-weight: bold; }
-        .outer-border { border: 3px solid #000; padding: 10px; margin-bottom: 5px; }
-        .reg-box { width: 25px; height: 25px; border: 1px solid #000; display: inline-block; }
+        .part-title { text-align: center; font-weight: bold; margin: 8px 0 4px 0; color: #000; page-break-after: avoid !important; break-after: avoid !important; }
+        .signature-block { page-break-inside: avoid !important; break-inside: avoid !important; }
+        .distribution-table { page-break-inside: avoid !important; break-inside: avoid !important; }
       </style></head>
-      <body><div class="outer-border">${printContent.innerHTML}</div></body></html>
+      <body>
+        <div class="page-border"></div>
+        <div class="content-wrap">${clone.innerHTML}</div>
+      </body></html>
     `);
     iframe.contentDocument.close();
     iframe.contentWindow.focus();
@@ -461,13 +731,34 @@ let allocData = {};
     const leftLogo = await getBase64('/logo-left.png');
     const rightLogo = await getBase64('/logo-right.png');
 
-    let html = printContent.outerHTML;
+    // Clone printContent so the outer border does not get sliced across pages
+    const clone = printContent.cloneNode(true);
+    clone.style.border = 'none';
+    clone.style.maxWidth = '100%';
+    clone.style.width = '100%';
+    clone.style.margin = '0';
+    clone.style.padding = '0';
+
+    let html = clone.outerHTML;
     html = html.replace(/\/logo-left\.png/g, leftLogo);
     html = html.replace(/\/logo-right\.png/g, rightLogo);
 
-    // Wrap in exactly 720px container to match A4 printable width and prevent clipping
+    // Wrap in container with proper page-break and typography styling
     const htmlString = `
-      <div style="width: 720px; box-sizing: border-box; background: #fff; color: #000; margin: 0; padding: 0;">
+      <style>
+        * { box-sizing: border-box; }
+        body { font-family: "Times New Roman", Times, serif; font-size: 10.5pt; color: #000; margin: 0; padding: 0; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+        tbody.question-pair { page-break-inside: avoid !important; break-inside: avoid !important; }
+        .page-break-before { page-break-before: always !important; break-before: page !important; }
+        th, td { border: 1px solid #000; padding: 3px 5px; text-align: left; vertical-align: top; color: #000 !important; font-size: 10pt; }
+        .part-title { text-align: center; font-weight: bold; margin: 8px 0 4px 0; color: #000; page-break-after: avoid !important; break-after: avoid !important; }
+        .signature-block { page-break-inside: avoid !important; break-inside: avoid !important; }
+        .distribution-table { page-break-inside: avoid !important; break-inside: avoid !important; }
+      </style>
+      <div style="width: 710px; box-sizing: border-box; background: #fff; color: #000; margin: 0 auto; padding: 2px 4px;">
         ${html}
       </div>
     `;
@@ -475,14 +766,37 @@ let allocData = {};
     const filename = filterCourse ? `Question_Paper_${filterCourse}.pdf` : `Question_Paper.pdf`;
 
     const opt = {
-      margin:       10,
+      margin:       [8, 8, 8, 8],
       filename:     filename,
       image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, windowWidth: 720 },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      html2canvas:  { scale: 2, useCORS: true, letterRendering: true, scrollY: 0 },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak:    { mode: ['css', 'legacy'], before: '.page-break-before', avoid: ['tbody.question-pair', 'tr', '.signature-block', '.distribution-table'] }
     };
 
-    html2pdf().set(opt).from(htmlString).save();
+    html2pdf()
+      .set(opt)
+      .from(htmlString)
+      .toPdf()
+      .get('pdf')
+      .then((pdf) => {
+        const totalPages = pdf.internal.getNumberOfPages();
+        for (let i = 1; i <= totalPages; i++) {
+          pdf.setPage(i);
+          // Draw neat outer border on EVERY page!
+          pdf.setDrawColor(0, 0, 0);
+          pdf.setLineWidth(0.6);
+          pdf.rect(6, 6, 210 - 12, 297 - 12);
+
+          if (totalPages > 1) {
+            pdf.setFont('times', 'normal');
+            pdf.setFontSize(9);
+            pdf.setTextColor(0, 0, 0);
+            pdf.text(`Page ${i} of ${totalPages}`, 105, 293, { align: 'center' });
+          }
+        }
+      })
+      .save();
   };
 
   const handleDownloadExcel = () => {
@@ -590,6 +904,7 @@ let allocData = {};
         const qNum = partC_start + idx;
         const qA = questionsPool.find(x => x.id === pair.a);
         const qB = questionsPool.find(x => x.id === pair.b);
+        const cMarks = (qA && qA.marks) ? Number(qA.marks) : (partCHeading.includes('15') ? 15 : 14);
         if (qA) {
           flatList.push({
             "S.No": sNo++,
@@ -598,7 +913,7 @@ let allocData = {};
             "Question Text": qA.questionText || "",
             "BTL Level": qA.btlLevel || "",
             "CO": qA.co || "",
-            "Marks": 15
+            "Marks": cMarks
           });
         }
         if (qB) {
@@ -609,7 +924,7 @@ let allocData = {};
             "Question Text": qB.questionText || "",
             "BTL Level": qB.btlLevel || "",
             "CO": qB.co || "",
-            "Marks": 15
+            "Marks": cMarks
           });
         }
       });
@@ -740,6 +1055,7 @@ let allocData = {};
   const partA_start = 1;
   const partB_start = partA_start + partAQuestions.length;
   const partC_start = partB_start + partBQuestions.length;
+  const is100Marks = partAQuestions.length >= 8 || partBQuestions.length >= 4 || headerConfig?.examName?.toLowerCase()?.includes('model') || headerConfig?.examName?.toLowerCase()?.includes('semester') || partBHeading?.includes('5 × 13');
 
   return (
     <div className='dashboard-wrapper'>
@@ -769,62 +1085,208 @@ let allocData = {};
             </div>
 
             <div className="card" style={{ marginBottom: 20, opacity: isReadOnly ? 0.7 : 1, pointerEvents: isReadOnly ? 'none' : 'auto' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 15, marginBottom: 20 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, alignItems: 'flex-end' }}>
+                
+                {/* 1. Subject / Course Selector */}
+                {userProfile?.role === 'staff' && allocations.length > 0 ? (
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                      Allocated Subject (Staff) *
+                    </label>
+                    <select 
+                      value={selectedAllocation} 
+                      onChange={(e) => setSelectedAllocation(e.target.value)}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', fontSize: 13 }}
+                    >
+                      {allocations.map(a => (
+                        <option key={a.id} value={a.id}>
+                          {a.isSubstitute ? '[Substitute] ' : ''}{a.courseCode} - {a.courseName} ({a.department}{a.semester ? `, Sem: ${a.semester}` : ''}{a.section && a.section !== 'None' ? `, Sec: ${a.section}` : ''})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                      Course Code *
+                    </label>
+                    <select 
+                      value={filterCourse} 
+                      onChange={(e) => {
+                        const code = e.target.value;
+                        setFilterCourse(code);
+                        loadPoolByCourse(code);
+                        setHeaderConfig(prev => ({ ...prev, courseCodeName: code }));
+                        const matched = schedulesList.find(s => String(s.courseCode || '').trim().toUpperCase() === code.trim().toUpperCase());
+                        if (matched) handleSelectExam(matched.examId, matched.id);
+                      }} 
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', fontSize: 13 }}
+                    >
+                      <option value="">Select Course</option>
+                      {courses.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                )}
+
+                {/* 2. Exam Selector */}
                 <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Course Code *</label>
-                  <select value={filterCourse} onChange={(e) => setFilterCourse(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}>
-                    <option value="">Select Course</option>
-                    {courses.map(c => <option key={c} value={c}>{c}</option>)}
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                    Examination *
+                  </label>
+                  <select
+                    value={selectedExamId}
+                    onChange={(e) => handleSelectExam(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', fontSize: 13 }}
+                  >
+                    <option value="">Select Examination</option>
+                    {examsList.map(e => {
+                      const targetCourse = filterCourse || allocations.find(a => a.id === selectedAllocation)?.courseCode;
+                      const sch = schedulesList.find(s => s.examId === e.id && String(s.courseCode || '').trim().toUpperCase() === String(targetCourse || '').trim().toUpperCase());
+                      const marks = e.maxMarks || (e.examType === 'Model' ? 100 : 50);
+                      const name = formatExamDisplayName(e.examName);
+                      const schDateParts = sch?.date ? sch.date.split('-').reverse().join('.') : '';
+                      const dateStr = schDateParts ? `${schDateParts}${sch?.session ? ' ' + sch.session.toUpperCase() : ''}, ` : '';
+                      return (
+                        <option key={e.id} value={e.id}>
+                          {name} ({dateStr}{marks} Marks)
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                  <button onClick={handleLoadPool} className="btn-primary" disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 24px', height: '42px' }}>
-                    <Search size={16} /> {loading ? 'Loading...' : 'Load Bank'}
+
+                {/* 3. Actions / Reload */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button 
+                    onClick={() => {
+                      if (filterCourse) {
+                        setLoading(true);
+                        loadPoolByCourse(filterCourse).then(() => {
+                          setLoading(false);
+                          toast.success("Question bank refreshed!");
+                        });
+                      } else {
+                        toast.error("Please select a subject first.");
+                      }
+                    }} 
+                    className="btn-primary" 
+                    disabled={loading} 
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 18px', height: '42px', fontSize: 13, borderRadius: 6 }}
+                  >
+                    <RefreshCw size={15} /> {loading ? 'Loading...' : 'Refresh Bank'}
                   </button>
+                  {poolLoaded && (
+                    <span style={{ fontSize: 12, color: questionsPool.length > 0 ? '#10b981' : '#f59e0b', fontWeight: 500 }}>
+                      {questionsPool.length > 0 ? `${questionsPool.length} Questions Loaded` : 'No questions yet'}
+                    </span>
+                  )}
                 </div>
+
               </div>
-
-
-        {userProfile?.role === 'staff' && !editId && allocations.length > 0 && (
-          <div className="card" style={{ marginBottom: 20, padding: '15px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-              <span style={{ fontWeight: 600, color: 'var(--text)' }}>Subject Context:</span>
-              <select 
-                value={selectedAllocation} 
-                onChange={(e) => setSelectedAllocation(e.target.value)}
-                style={{ flex: 1, padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}
-              >
-                {allocations.map(a => (
-                  <option key={a.id} value={a.id}>
-                    {a.isSubstitute ? '[Substitute] ' : ''}{a.courseCode} - {a.courseName} ({a.department}{a.semester ? `, Sem: ${a.semester}` : ''}{a.section && a.section !== 'None' ? `, Sec: ${a.section}` : ''})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-
             </div>
 
             {poolLoaded && (
               <div className="card" style={{ marginBottom: 20, opacity: isReadOnly ? 0.7 : 1, pointerEvents: isReadOnly ? 'none' : 'auto' }}>
-                <h2 style={{ marginTop: 0, marginBottom: 20, color: '#6366f1' }}>Configuration & Selection</h2>
-                
-                <div style={{ display: 'flex', gap: 20, marginBottom: 30, padding: 15, background: 'rgba(255,255,255,0.03)', borderRadius: 8 }}>
-                  <div style={{ color: isFormComplete() ? '#10b981' : '#f59e0b', fontWeight: 'bold' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <h2 style={{ margin: 0, color: '#4f46e5', fontSize: 17 }}>Configuration & Selection</h2>
+                    <button
+                      type="button"
+                      onClick={handleAutoGenerate}
+                      disabled={questionsPool.length === 0}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        padding: '6px 14px',
+                        background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 6,
+                        fontWeight: 600,
+                        fontSize: 12,
+                        cursor: questionsPool.length === 0 ? 'not-allowed' : 'pointer',
+                        boxShadow: '0 2px 4px rgba(79, 70, 229, 0.25)'
+                      }}
+                      title="Auto-fill all question slots from Question Bank"
+                    >
+                      <Sparkles size={14} /> Auto-Generate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleClearAllSlots}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '6px 10px',
+                        background: 'transparent',
+                        color: 'var(--text-muted)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: 6,
+                        fontSize: 12,
+                        cursor: 'pointer'
+                      }}
+                      title="Clear all question selections"
+                    >
+                      <RotateCcw size={12} /> Clear Slots
+                    </button>
+                  </div>
+                  <div style={{ color: isFormComplete() ? '#10b981' : '#f59e0b', fontWeight: 600, fontSize: 13 }}>
                     {isFormComplete() ? 'All Sections Complete ✓' : 'Incomplete Sections'}
                   </div>
                 </div>
 
+                {/* Pattern & Exam Details Bar */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 25, padding: '10px 16px', background: 'rgba(99, 102, 241, 0.05)', borderRadius: 6, border: '1px solid rgba(99, 102, 241, 0.15)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 13, letterSpacing: '0.3px' }}>
+                      {headerConfig.examName || 'EXAMINATION'}
+                    </span>
+                    <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: '#4f46e5', color: '#fff', fontWeight: 600 }}>
+                      {partCHeading.includes('15') || partBHeading.includes('65') ? '100 Marks (Model Exam)' : '50 Marks (CIA Internal)'}
+                    </span>
+                    {headerConfig.examDate && (
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        Exam Date: <strong style={{ color: 'var(--text)' }}>{headerConfig.examDate}</strong>
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    Pattern: Part A ({partAQuestions.length} Qs) · Part B ({partBQuestions.length} Pairs) · Part C ({partCQuestions.length} Pair)
+                  </div>
+                </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 30 }}>
-                  <div style={{ padding: 15, border: '1px solid var(--border-color)', borderRadius: 8 }}>
-                    <h3 style={{ marginTop: 0 }}>Header Config</h3>
-                    {Object.keys(headerConfig).map(key => (
-                      <div key={key} style={{ marginBottom: 10 }}>
-                        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)' }}>{key}</label>
-                        <input type="text" value={headerConfig[key]} onChange={e => setHeaderConfig({...headerConfig, [key]: e.target.value})} style={{ width: '100%', padding: '6px', borderRadius: 4, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }} />
-                      </div>
-                    ))}
+                  <div style={{ padding: 18, border: '1px solid var(--border-color)', borderRadius: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+                      <h3 style={{ margin: 0, fontSize: 15 }}>Header Configuration</h3>
+                      <span style={{ fontSize: 11, color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: 4, fontWeight: 500 }}>Auto-mapped ✓</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {[
+                        { key: 'collegeName', label: 'College Name' },
+                        { key: 'collegeAddress', label: 'College Address' },
+                        { key: 'examName', label: 'Examination (from Exam Cell)' },
+                        { key: 'courseCodeName', label: 'Course Code & Subject Name' },
+                        { key: 'classSemester', label: 'Class / Semester' },
+                        { key: 'instructorName', label: 'Course Instructor' },
+                        { key: 'academicYear', label: 'Academic Year' },
+                        { key: 'examDate', label: 'Date of Exam & Session' }
+                      ].map(({ key, label }) => (
+                        <div key={key}>
+                          <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-muted)', marginBottom: 3 }}>
+                            {label}
+                          </label>
+                          <input 
+                            type="text" 
+                            value={headerConfig[key] || ''} 
+                            onChange={e => setHeaderConfig({...headerConfig, [key]: e.target.value})} 
+                            style={{ width: '100%', padding: '7px 10px', borderRadius: 6, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', fontSize: 13 }} 
+                          />
+                        </div>
+                      ))}
+                    </div>
                   </div>
                   
                   <div>
@@ -940,83 +1402,301 @@ let allocData = {};
                     </button>
                   </>
                 )}
-                <button onClick={handleDownloadPdf} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', cursor: 'pointer', fontWeight: 600 }} title="Download Question Paper as PDF">
+                <button onClick={handleDownloadPdf} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 6, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: 500, fontSize: '13px' }} title="Download Question Paper as PDF">
                   <Download size={16} /> Download PDF
                 </button>
-                <button onClick={handleDownloadExcel} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: 'none', background: '#107c41', color: '#fff', cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(16,124,65,0.2)' }} title="Download Question Paper as Excel (.xlsx)">
-                  <FileSpreadsheet size={16} /> Download Excel
-                </button>
-                <button onClick={handleDownloadWord} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: 'none', background: '#2b579a', color: '#fff', cursor: 'pointer', fontWeight: 600, boxShadow: '0 2px 4px rgba(43,87,154,0.2)' }} title="Download Question Paper as Word (.doc)">
-                  <FileText size={16} /> Download Word
-                </button>
-                <button onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8, border: '1px solid #6366f1', background: '#6366f1', color: '#fff', cursor: 'pointer', fontWeight: 600 }} title="Print Question Paper">
+                <button onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 6, border: 'none', background: '#405189', color: '#fff', cursor: 'pointer', fontWeight: 500, fontSize: '13px' }} title="Print Question Paper">
                   <Printer size={16} /> Print Paper
                 </button>
               </div>
             </div>
             
             <div style={{ background: '#fff', color: '#000', padding: '20px 40px', borderRadius: 8, overflowX: 'auto', display: 'flex', justifyContent: 'center' }}>
-              <div id="printable-paper" style={{ fontFamily: '"Times New Roman", Times, serif', width: '100%', maxWidth: '800px', margin: '0 auto', fontSize: '13px', border: '3px solid #000', padding: '15px' }}>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 15, color: '#000', gap: 15 }}>
-                  <div style={{ fontWeight: 'bold' }}>Register Number</div>
-                  <div style={{ display: 'flex' }}>{[1,2,3,4,5,6,7,8,9,10,11,12].map(i => <div key={i} style={{ width: 20, height: 20, border: '1px solid #000', borderRight: i === 12 ? '1px solid #000' : 'none' }}></div>)}</div>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, color: '#000' }}>
-                  <div style={{ width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><img src="/logo-left.png" alt="Left Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} /></div>
-                  <div style={{ textAlign: 'center', flex: 1, padding: '0 15px' }}>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#b91c1c' }}>{headerConfig.collegeName}</div>
-                    <div style={{ fontSize: '14px', marginBottom: 10 }}>{headerConfig.collegeAddress}</div>
-                    <div style={{ display: 'inline-block', border: '1px solid #1e3a8a', borderRadius: '15px', padding: '5px 20px', fontWeight: 'bold', color: '#1e3a8a', marginBottom: 5 }}>{headerConfig.examName}</div>
+              <div id="printable-paper" style={{ fontFamily: '"Times New Roman", Times, serif', width: '100%', maxWidth: '800px', margin: '0 auto', fontSize: '11.5px', border: '2px solid #000', padding: '12px 14px', boxSizing: 'border-box' }}>
+                
+                {/* 1. Register Number */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 10, color: '#000', gap: 12 }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '11px' }}>Register Number:</div>
+                  <div style={{ display: 'flex' }}>
+                    {[1,2,3,4,5,6,7,8,9,10,11,12].map(i => (
+                      <div key={i} style={{ width: 19, height: 19, border: '1px solid #000', borderRight: i === 12 ? '1px solid #000' : 'none' }}></div>
+                    ))}
                   </div>
-                  <div style={{ width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><img src="/logo-right.png" alt="Right Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} /></div>
                 </div>
-                <table style={{ width: '100%', border: 'none', marginBottom: 15, color: '#000' }}>
+
+                {/* 2. Official Header with College Logos */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, color: '#000' }}>
+                  <div style={{ width: '75px', height: '75px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img src="/logo-left.png" alt="Left Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} />
+                  </div>
+                  <div style={{ textAlign: 'center', flex: 1, padding: '0 10px' }}>
+                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#800000', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      {headerConfig.collegeName || 'RENGANAYAGI VARATHARAJ COLLEGE OF ENGINEERING'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#333', marginBottom: 6 }}>
+                      {headerConfig.collegeAddress || 'Salvarpatti, Sivakasi - 626 128'}
+                    </div>
+                    <div style={{ display: 'inline-block', border: '1.5px solid #1e3a8a', borderRadius: '15px', padding: '3px 18px', fontWeight: 'bold', fontSize: '12px', color: '#1e3a8a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      {headerConfig.examName || 'EXAMINATION'}
+                    </div>
+                  </div>
+                  <div style={{ width: '75px', height: '75px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img src="/logo-right.png" alt="Right Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} />
+                  </div>
+                </div>
+
+                {/* 3. Examination Metadata Table */}
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8, color: '#000', fontSize: '11px' }}>
                   <tbody>
-                    <tr><td style={{ border: 'none', padding: '4px 0', width: '60%', color: '#000' }}>Name of the Course Instructor: <span style={{ fontWeight: 'bold', color: '#000' }}>{headerConfig.instructorName}</span></td><td style={{ border: 'none', padding: '4px 0', width: '40%', color: '#000' }}>Class / Semester: <span style={{ fontWeight: 'bold', color: '#000' }}>{headerConfig.classSemester}</span></td></tr>
-                    <tr><td style={{ border: 'none', padding: '4px 0', color: '#000' }}>Course Code & Name: <span style={{ fontWeight: 'bold', color: '#000' }}>{headerConfig.courseCodeName}</span></td><td style={{ border: 'none', padding: '4px 0', color: '#000' }}>Academic Year: <span style={{ fontWeight: 'bold', color: '#000' }}>{headerConfig.academicYear}</span></td></tr>
-                    <tr><td colSpan="2" style={{ border: 'none', padding: '4px 0', color: '#000' }}>Date of Exam: <span style={{ fontWeight: 'bold', color: '#000' }}>{headerConfig.examDate}</span></td></tr>
+                    <tr>
+                      <td style={{ border: '1px solid #000', padding: '3px 6px', width: '55%' }}>
+                        Name of Course Instructor: <span style={{ fontWeight: 'bold' }}>{headerConfig.instructorName || '-'}</span>
+                      </td>
+                      <td style={{ border: '1px solid #000', padding: '3px 6px', width: '45%' }}>
+                        Class / Semester: <span style={{ fontWeight: 'bold' }}>{headerConfig.classSemester || '-'}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ border: '1px solid #000', padding: '3px 6px' }}>
+                        Course Code & Name: <span style={{ fontWeight: 'bold' }}>{headerConfig.courseCodeName || '-'}</span>
+                      </td>
+                      <td style={{ border: '1px solid #000', padding: '3px 6px' }}>
+                        Academic Year: <span style={{ fontWeight: 'bold' }}>{headerConfig.academicYear || '-'}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={{ border: '1px solid #000', padding: '3px 6px' }}>
+                        Date & Session: <span style={{ fontWeight: 'bold' }}>{headerConfig.examDate || '-'}</span>
+                      </td>
+                      <td style={{ border: '1px solid #000', padding: '3px 6px' }}>
+                        Max. Marks: <span style={{ fontWeight: 'bold' }}>{is100Marks ? '100' : '50'}</span> &nbsp;|&nbsp; Duration: <span style={{ fontWeight: 'bold' }}>{is100Marks ? '3 Hours' : '90 Mins'}</span>
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
-                <div style={{ fontWeight: 'bold', marginBottom: 5, color: '#000' }}>COURSE OUTCOMES:</div><div style={{ marginBottom: 5, color: '#000' }}>At the end of the course the students will be able to</div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 15, color: '#000' }}>
-                  <thead><tr><th style={{ border: '1px solid #000', padding: 5, background: '#e5e7eb', width: '10%', color: '#000' }}>CO</th><th style={{ border: '1px solid #000', padding: 5, background: '#e5e7eb', color: '#000' }}>Course outcomes</th><th style={{ border: '1px solid #000', padding: 5, background: '#e5e7eb', width: '15%', color: '#000' }}>BTL Level</th></tr></thead>
-                  <tbody>{courseOutcomes.map((co, i) => (<tr key={i}><td style={{ border: '1px solid #000', padding: 5, textAlign: 'center', color: '#000' }}>{co.co}</td><td style={{ border: '1px solid #000', padding: 5, color: '#000' }}>{co.description}</td><td style={{ border: '1px solid #000', padding: 5, textAlign: 'center', color: '#000' }}>{co.btlLevel}</td></tr>))}</tbody>
+
+                {/* 4. Course Outcomes */}
+                <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: 2, color: '#000' }}>COURSE OUTCOMES:</div>
+                <div style={{ fontSize: '10.5px', marginBottom: 3, color: '#000', fontStyle: 'italic' }}>At the end of the course the students will be able to:</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8, color: '#000', fontSize: '10.5px' }}>
+                  <thead>
+                    <tr style={{ background: '#f3f4f6', fontWeight: 'bold' }}>
+                      <th style={{ border: '1px solid #000', padding: '3px 5px', width: '45px', textAlign: 'center' }}>CO</th>
+                      <th style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'left' }}>Course Outcomes Description</th>
+                      <th style={{ border: '1px solid #000', padding: '3px 5px', width: '70px', textAlign: 'center' }}>BTL Level</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {courseOutcomes.map((co, i) => (
+                      <tr key={i} style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                        <td style={{ border: '1px solid #000', padding: '2px 5px', textAlign: 'center', fontWeight: 'bold' }}>{co.co}</td>
+                        <td style={{ border: '1px solid #000', padding: '2px 6px' }}>{co.description}</td>
+                        <td style={{ border: '1px solid #000', padding: '2px 5px', textAlign: 'center' }}>{co.btlLevel}</td>
+                      </tr>
+                    ))}
+                  </tbody>
                 </table>
-                <div style={{ fontWeight: 'bold', marginBottom: 5, color: '#000' }}>COURSE ASSESSMENT MATRIX</div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 15, textAlign: 'center', color: '#000' }}>
-                  <thead><tr style={{ background: '#e5e7eb' }}><th style={{ border: '1px solid #000', padding: 4, color: '#000' }}>CO</th>{['PO1','PO2','PO3','PO4','PO5','PO6','PO7','PO8','PO9','PO10','PO11','PO12','PSO1','PSO2','PSO3'].map(p => (<th key={p} style={{ border: '1px solid #000', padding: 4, color: '#000' }}>{p.replace(/\d+/, '')}<br/>{p.match(/\d+/)[0]}</th>))}</tr></thead>
-                  <tbody>{cam.map((c, i) => (<tr key={i}><td style={{ border: '1px solid #000', padding: 4, fontWeight: 'bold', color: '#000' }}>{c.co}</td>{['po1','po2','po3','po4','po5','po6','po7','po8','po9','po10','po11','po12','pso1','pso2','pso3'].map(p => (<td key={p} style={{ border: '1px solid #000', padding: 4, color: '#000' }}>{c[p]}</td>))}</tr>))}</tbody>
+
+                {/* 5. Course Assessment Matrix */}
+                <div style={{ fontWeight: 'bold', fontSize: '11px', marginBottom: 2, color: '#000' }}>COURSE ASSESSMENT MATRIX:</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8, textAlign: 'center', color: '#000', fontSize: '9.5px' }}>
+                  <thead>
+                    <tr style={{ background: '#f3f4f6', fontWeight: 'bold' }}>
+                      <th style={{ border: '1px solid #000', padding: '2px', width: '40px' }}>CO</th>
+                      {['PO1','PO2','PO3','PO4','PO5','PO6','PO7','PO8','PO9','PO10','PO11','PO12','PSO1','PSO2','PSO3'].map(p => (
+                        <th key={p} style={{ border: '1px solid #000', padding: '2px 1px' }}>{p.replace(/\d+/, '')}<br/>{p.match(/\d+/)[0]}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cam.map((c, i) => (
+                      <tr key={i} style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                        <td style={{ border: '1px solid #000', padding: '2px', fontWeight: 'bold' }}>{c.co}</td>
+                        {['po1','po2','po3','po4','po5','po6','po7','po8','po9','po10','po11','po12','pso1','pso2','pso3'].map(p => (
+                          <td key={p} style={{ border: '1px solid #000', padding: '2px 1px' }}>{c[p]}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
                 </table>
-                <div style={{ textAlign: 'center', marginBottom: 15, color: '#000' }}><div>Answer <span style={{ fontWeight: 'bold' }}>ALL</span> the questions</div><div style={{ fontWeight: 'bold' }}>{partAHeading}</div></div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20, color: '#000' }}>
-                  <tbody>{partAQuestions.map((id, idx) => { const q = questionsPool.find(x => x.id === id); return (<tr key={idx}><td style={{ border: '1px solid #000', padding: '6px', width: '30px', verticalAlign: 'top', color: '#000' }}>{idx + 1}</td><td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', textAlign: 'justify', color: '#000' }}>{q?.questionText}</td><td style={{ border: '1px solid #000', padding: '6px', width: '80px', verticalAlign: 'top', textAlign: 'center', color: '#000' }}>{q?.btlLevel || 'UN'},{q?.co || 'CO3'}</td></tr>); })}</tbody>
+
+                {/* 6. PART – A (Questions 1 to 10 - Fits fully on Page 1) */}
+                <div style={{ textAlign: 'center', marginTop: '6px', marginBottom: '4px', color: '#000' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '12px' }}>{partAHeading}</div>
+                  <div style={{ fontSize: '10.5px', fontStyle: 'italic' }}>Answer ALL Questions</div>
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 8, color: '#000', fontSize: '10.5px' }}>
+                  <thead>
+                    <tr style={{ background: '#f3f4f6', fontWeight: 'bold' }}>
+                      <th style={{ width: '38px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>Q.No</th>
+                      <th style={{ textAlign: 'center', border: '1px solid #000', padding: '3px 6px' }}>Questions</th>
+                      <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>Marks</th>
+                      <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>CO</th>
+                      <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>BTL</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {partAQuestions.map((id, idx) => {
+                      const q = questionsPool.find(x => x.id === id);
+                      return (
+                        <tr key={idx} style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                          <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'top' }}>{idx + 1}</td>
+                          <td style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'justify', verticalAlign: 'top', lineHeight: '1.25' }}>{q?.questionText || '-'}</td>
+                          <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>2</td>
+                          <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{q?.co || 'CO1'}</td>
+                          <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{q?.btlLevel || 'UN'}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
                 </table>
-                <div style={{ textAlign: 'center', fontWeight: 'bold', marginBottom: 10, color: '#000' }}>{partBHeading}</div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20, color: '#000' }}>
-                  <tbody>{partBQuestions.map((pair, idx) => { const qNum = partB_start + idx; const qA = questionsPool.find(x => x.id === pair.a); const qB = questionsPool.find(x => x.id === pair.b); return (<React.Fragment key={idx}><tr><td style={{ border: '1px solid #000', padding: '6px', width: '30px', verticalAlign: 'top', color: '#000' }}>{qNum} a)</td><td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', textAlign: 'justify', color: '#000' }}>{qA?.questionText}</td><td style={{ border: '1px solid #000', padding: '6px', width: '80px', verticalAlign: 'top', textAlign: 'center', color: '#000' }}>{qA?.btlLevel || 'UN'},{qA?.co || 'CO3'}</td></tr><tr><td colSpan="3" style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', fontWeight: 'bold', color: '#000' }}>(OR)</td></tr><tr><td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', color: '#000' }}>{qNum} b)</td><td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', textAlign: 'justify', color: '#000' }}>{qB?.questionText}</td><td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', textAlign: 'center', color: '#000' }}>{qB?.btlLevel || 'UN'},{qB?.co || 'CO3'}</td></tr></React.Fragment>) })}</tbody>
-                </table>
-                <div style={{ textAlign: 'center', fontWeight: 'bold', marginBottom: 10, color: '#000' }}>{partCHeading}</div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 30, color: '#000' }}>
-                  <tbody>{partCQuestions.map((pair, idx) => { const qNum = partC_start + idx; const qA = questionsPool.find(x => x.id === pair.a); const qB = questionsPool.find(x => x.id === pair.b); return (<React.Fragment key={idx}><tr><td style={{ border: '1px solid #000', padding: '6px', width: '30px', verticalAlign: 'top', color: '#000' }}>{qNum} a)</td><td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', textAlign: 'justify', color: '#000' }}>{qA?.questionText}</td><td style={{ border: '1px solid #000', padding: '6px', width: '80px', verticalAlign: 'top', textAlign: 'center', color: '#000' }}>{qA?.btlLevel || 'UN'},{qA?.co || 'CO3'}</td></tr><tr><td colSpan="3" style={{ border: '1px solid #000', padding: '6px', textAlign: 'center', fontWeight: 'bold', color: '#000' }}>(OR)</td></tr><tr><td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', color: '#000' }}>{qNum} b)</td><td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', textAlign: 'justify', color: '#000' }}>{qB?.questionText}</td><td style={{ border: '1px solid #000', padding: '6px', verticalAlign: 'top', textAlign: 'center', color: '#000' }}>{qB?.btlLevel || 'UN'},{qB?.co || 'CO3'}</td></tr></React.Fragment>) })}</tbody>
-                </table>
-                <table style={{ width: '70%', margin: '0 auto', borderCollapse: 'collapse', marginBottom: 40, textAlign: 'center', color: '#000' }}>
-                  <thead><tr style={{ background: '#e5e7eb' }}><th style={{ border: '1px solid #000', padding: 4, color: '#000' }}>CO</th><th style={{ border: '1px solid #000', padding: 4, color: '#000' }}>RE</th><th style={{ border: '1px solid #000', padding: 4, color: '#000' }}>UN</th><th style={{ border: '1px solid #000', padding: 4, color: '#000' }}>AP</th><th style={{ border: '1px solid #000', padding: 4, color: '#000' }}>AN</th><th style={{ border: '1px solid #000', padding: 4, color: '#000' }}>CR</th><th style={{ border: '1px solid #000', padding: 4, color: '#000' }}>Total</th></tr></thead>
-                  <tbody>{Object.entries(calculateDistribution()).map(([coName, dist]) => (<tr key={coName}><td style={{ border: '1px solid #000', padding: 4, fontWeight: 'bold', color: '#000' }}>{coName}</td><td style={{ border: '1px solid #000', padding: 4, color: '#000' }}>{dist.RE || '-'}</td><td style={{ border: '1px solid #000', padding: 4, color: '#000' }}>{dist.UN || '-'}</td><td style={{ border: '1px solid #000', padding: 4, color: '#000' }}>{dist.AP || '-'}</td><td style={{ border: '1px solid #000', padding: 4, color: '#000' }}>{dist.AN || '-'}</td><td style={{ border: '1px solid #000', padding: 4, color: '#000' }}>{dist.CR || '-'}</td><td style={{ border: '1px solid #000', padding: 4, color: '#000' }}>{dist.Total || '-'}</td></tr>))}</tbody>
-                </table>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 40px', fontWeight: 'bold', marginTop: 50, color: '#000', textAlign: 'center' }}>
-                  <div style={{ flex: 1 }}>COURSE INSTRUCTOR</div>
-                  <div style={{ flex: 1 }}>
-                    HOD
-                    {['SUBMITTED_TO_PRINCIPAL', 'APPROVED'].includes(paperStatus) && (
-                      <div style={{ color: '#10b981', fontSize: '14px', marginTop: '10px' }}>APPROVED</div>
-                    )}
+
+                {/* 7. PART – B & PART – C (Clean Page 2 Break for 100 Marks, or Continuation for 50 Marks) */}
+                <div className={is100Marks ? "page-break-before" : ""} style={{ pageBreakBefore: is100Marks ? 'always' : 'auto', breakBefore: is100Marks ? 'page' : 'auto', marginTop: is100Marks ? '10px' : '10px' }}>
+                  
+                  {/* Part B Header */}
+                  <div style={{ textAlign: 'center', marginBottom: '4px', color: '#000' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '12px' }}>{partBHeading}</div>
+                    <div style={{ fontSize: '10.5px', fontStyle: 'italic' }}>Answer ALL Questions (Either / Or Choice)</div>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    PRINCIPAL
-                    {['APPROVED'].includes(paperStatus) && (
-                      <div style={{ color: '#10b981', fontSize: '14px', marginTop: '10px' }}>APPROVED</div>
-                    )}
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '8px', color: '#000', fontSize: '10.5px' }}>
+                    <thead>
+                      <tr style={{ background: '#f3f4f6', fontWeight: 'bold' }}>
+                        <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>Q.No</th>
+                        <th style={{ textAlign: 'center', border: '1px solid #000', padding: '3px 6px' }}>Questions</th>
+                        <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>Marks</th>
+                        <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>CO</th>
+                        <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>BTL</th>
+                      </tr>
+                    </thead>
+                    {partBQuestions.map((pair, idx) => {
+                      const qNum = partB_start + idx;
+                      const qA = questionsPool.find(x => x.id === pair.a);
+                      const qB = questionsPool.find(x => x.id === pair.b);
+                      const marksVal = qA?.marks || (partBHeading.includes('16') ? 16 : 13);
+                      return (
+                        <tbody key={idx} className="question-pair" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                          <tr>
+                            <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'top' }}>{qNum} (a)</td>
+                            <td style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'justify', verticalAlign: 'top', lineHeight: '1.25' }}>{qA?.questionText || '-'}</td>
+                            <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{marksVal}</td>
+                            <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{qA?.co || 'CO2'}</td>
+                            <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{qA?.btlLevel || 'UN'}</td>
+                          </tr>
+                          <tr>
+                            <td colSpan="5" style={{ border: '1px solid #000', padding: '2px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px', background: '#fafafa', letterSpacing: '2px' }}>(OR)</td>
+                          </tr>
+                          <tr>
+                            <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'top' }}>{qNum} (b)</td>
+                            <td style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'justify', verticalAlign: 'top', lineHeight: '1.25' }}>{qB?.questionText || '-'}</td>
+                            <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{marksVal}</td>
+                            <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{qB?.co || 'CO2'}</td>
+                            <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{qB?.btlLevel || 'UN'}</td>
+                          </tr>
+                        </tbody>
+                      );
+                    })}
+                  </table>
+
+                  {/* Part C Header */}
+                  <div style={{ textAlign: 'center', marginTop: '6px', marginBottom: '4px', color: '#000' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '12px' }}>{partCHeading}</div>
+                    <div style={{ fontSize: '10.5px', fontStyle: 'italic' }}>Answer ALL Questions (Either / Or Choice)</div>
                   </div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '8px', color: '#000', fontSize: '10.5px' }}>
+                    <thead>
+                      <tr style={{ background: '#f3f4f6', fontWeight: 'bold' }}>
+                        <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>Q.No</th>
+                        <th style={{ textAlign: 'center', border: '1px solid #000', padding: '3px 6px' }}>Questions</th>
+                        <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>Marks</th>
+                        <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>CO</th>
+                        <th style={{ width: '45px', textAlign: 'center', border: '1px solid #000', padding: '3px 4px' }}>BTL</th>
+                      </tr>
+                    </thead>
+                    {partCQuestions.map((pair, idx) => {
+                      const qNum = partC_start + idx;
+                      const qA = questionsPool.find(x => x.id === pair.a);
+                      const qB = questionsPool.find(x => x.id === pair.b);
+                      const marksVal = qA?.marks || (partCHeading.includes('15') ? 15 : 14);
+                      return (
+                        <tbody key={idx} className="question-pair" style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                          <tr>
+                            <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'top' }}>{qNum} (a)</td>
+                            <td style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'justify', verticalAlign: 'top', lineHeight: '1.25' }}>{qA?.questionText || '-'}</td>
+                            <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{marksVal}</td>
+                            <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{qA?.co || 'CO5'}</td>
+                            <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{qA?.btlLevel || 'CR'}</td>
+                          </tr>
+                          <tr>
+                            <td colSpan="5" style={{ border: '1px solid #000', padding: '2px', textAlign: 'center', fontWeight: 'bold', fontSize: '10px', background: '#fafafa', letterSpacing: '2px' }}>(OR)</td>
+                          </tr>
+                          <tr>
+                            <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', fontWeight: 'bold', verticalAlign: 'top' }}>{qNum} (b)</td>
+                            <td style={{ border: '1px solid #000', padding: '3px 6px', textAlign: 'justify', verticalAlign: 'top', lineHeight: '1.25' }}>{qB?.questionText || '-'}</td>
+                            <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{marksVal}</td>
+                            <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{qB?.co || 'CO5'}</td>
+                            <td style={{ border: '1px solid #000', padding: '3px 4px', textAlign: 'center', verticalAlign: 'top' }}>{qB?.btlLevel || 'CR'}</td>
+                          </tr>
+                        </tbody>
+                      );
+                    })}
+                  </table>
+
+                  {/* 8. Course Outcome & Bloom's Taxonomy Distribution */}
+                  <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: '10.5px', margin: '8px 0 3px 0', color: '#000' }}>
+                    COURSE OUTCOME & BLOOM'S TAXONOMY DISTRIBUTION
+                  </div>
+                  <table className="distribution-table" style={{ width: '80%', margin: '0 auto 8px auto', borderCollapse: 'collapse', textAlign: 'center', color: '#000', pageBreakInside: 'avoid', breakInside: 'avoid', fontSize: '10px' }}>
+                    <thead>
+                      <tr style={{ background: '#f3f4f6', fontWeight: 'bold' }}>
+                        <th style={{ border: '1px solid #000', padding: '3px' }}>CO</th>
+                        <th style={{ border: '1px solid #000', padding: '3px' }}>RE</th>
+                        <th style={{ border: '1px solid #000', padding: '3px' }}>UN</th>
+                        <th style={{ border: '1px solid #000', padding: '3px' }}>AP</th>
+                        <th style={{ border: '1px solid #000', padding: '3px' }}>AN</th>
+                        <th style={{ border: '1px solid #000', padding: '3px' }}>CR</th>
+                        <th style={{ border: '1px solid #000', padding: '3px' }}>Total Marks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(calculateDistribution()).map(([coName, dist]) => (
+                        <tr key={coName} style={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
+                          <td style={{ border: '1px solid #000', padding: '2px 4px', fontWeight: 'bold' }}>{coName}</td>
+                          <td style={{ border: '1px solid #000', padding: '2px 4px' }}>{dist.RE || '-'}</td>
+                          <td style={{ border: '1px solid #000', padding: '2px 4px' }}>{dist.UN || '-'}</td>
+                          <td style={{ border: '1px solid #000', padding: '2px 4px' }}>{dist.AP || '-'}</td>
+                          <td style={{ border: '1px solid #000', padding: '2px 4px' }}>{dist.AN || '-'}</td>
+                          <td style={{ border: '1px solid #000', padding: '2px 4px' }}>{dist.CR || '-'}</td>
+                          <td style={{ border: '1px solid #000', padding: '2px 4px', fontWeight: 'bold' }}>{dist.Total || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {/* 9. Signatures Block */}
+                  <div className="signature-block" style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 25px 0 25px', fontWeight: 'bold', marginTop: '16px', color: '#000', textAlign: 'center', pageBreakInside: 'avoid', breakInside: 'avoid', fontSize: '11px' }}>
+                    <div style={{ flex: 1 }}>
+                      <div>COURSE INSTRUCTOR</div>
+                      <div style={{ marginTop: 28, fontSize: '10px', color: '#666', fontWeight: 'normal' }}>(Signature with Date)</div>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div>HOD</div>
+                      {['SUBMITTED_TO_PRINCIPAL', 'APPROVED'].includes(paperStatus) ? (
+                        <div style={{ color: '#10b981', fontSize: '12px', marginTop: '6px' }}>✓ APPROVED</div>
+                      ) : (
+                        <div style={{ marginTop: 28, fontSize: '10px', color: '#666', fontWeight: 'normal' }}>(Signature with Date)</div>
+                      )}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div>PRINCIPAL</div>
+                      {['APPROVED'].includes(paperStatus) ? (
+                        <div style={{ color: '#10b981', fontSize: '12px', marginTop: '6px' }}>✓ APPROVED</div>
+                      ) : (
+                        <div style={{ marginTop: 28, fontSize: '10px', color: '#666', fontWeight: 'normal' }}>(Signature with Date)</div>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </div>
