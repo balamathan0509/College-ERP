@@ -154,6 +154,7 @@ const hodNav = [
       { label: "Academic Calendar", path: "/academics/academic-calendar" },
       { label: "Timetable Management", path: "/hod/timetable" },
       { label: "New Student Add", path: "/dept_admin/new-admission" },
+      { label: "Promote Student", path: "/config/general/promote-student" },
       { label: "Coordinator Management", path: "/hod/coordinators" },
       { label: "Student Details", path: "/config/general/student" },
       { label: "Staff Details", path: "/config/general/faculty" },
@@ -163,19 +164,7 @@ const hodNav = [
       { label: "Period Attendance", path: "/staff/period-attendance" },
       { label: "Classwork Logbook", path: "/staff/classwork-record" },
       { label: "Hour Alterations", path: "/staff/hour-alteration" },
-
-      { label: "Reports", path: "/academics/reports" },
-      {
-        label: "CIA Configuration",
-        isNestedSubmenu: true,
-        children: [
-          { label: "Question Format", path: "/config/cia/question-format" },
-          { label: "Types and Evaluation", path: "/config/cia/types-evaluation" },
-          { label: "Evaluation Pattern", path: "/config/cia/evaluation-pattern" },
-          { label: "Show Evaluation Pattern", path: "/config/cia/show-evaluation-pattern" },
-          { label: "Pattern Mapping", path: "/config/cia/pattern-mapping" }
-        ]
-      }
+      { label: "Reports", path: "/academics/reports" }
     ]
   },
   { 
@@ -329,64 +318,99 @@ const adminNav = [
   }
 ];
 
+const EXPANDED_MENUS_STORAGE_KEY = "erp_sidebar_expanded_menus";
+
+const getSavedExpandedMenus = () => {
+  try {
+    const raw = sessionStorage.getItem(EXPANDED_MENUS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+};
+
+const saveExpandedMenus = (state) => {
+  try {
+    sessionStorage.setItem(EXPANDED_MENUS_STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {}
+};
+
+const detectActiveMenus = (pathname, navList = []) => {
+  const active = {};
+  if (!pathname) return active;
+
+  const checkItem = (item) => {
+    if (!item?.isSubmenu || !Array.isArray(item.children)) return;
+    for (const child of item.children) {
+      if (child.isNestedSubmenu && Array.isArray(child.children)) {
+        for (const subchild of child.children) {
+          if (subchild.path && (pathname === subchild.path || (subchild.path !== '/' && pathname.startsWith(subchild.path)))) {
+            active[item.label] = true;
+            active[child.label] = true;
+          }
+        }
+      } else if (child.path && (pathname === child.path || (child.path !== '/' && pathname.startsWith(child.path)))) {
+        active[item.label] = true;
+      }
+    }
+  };
+
+  if (Array.isArray(navList)) {
+    navList.forEach(checkItem);
+  }
+
+  [studentNav, staffNav, examCellNav, deptAdminNav, hodNav, wardenNav, officestaffNav, managementNav, securityNav, principalNav, adminNav].forEach(list => {
+    if (Array.isArray(list)) list.forEach(checkItem);
+  });
+
+  // Direct route-based fallbacks
+  if (pathname.startsWith('/cia/')) active.CIA = true;
+  if (pathname.startsWith('/academics/') && !pathname.startsWith('/academics/lms/')) active.Academics = true;
+  if (pathname === '/staff/my-subjects' || pathname === '/staff/timetable') active.Academics = true;
+  if (pathname.startsWith('/hod/attendance') || pathname.startsWith('/reports/daily-attendance') || pathname.startsWith('/hod/class-incharge')) active.Attendance = true;
+  if (pathname.startsWith('/config/')) {
+    active.Configuration = true;
+    if (pathname.startsWith('/config/general/')) active['General Configuration'] = true;
+    if (pathname.startsWith('/config/cia/')) active['CIA Configuration'] = true;
+  }
+  if (
+    pathname.startsWith('/staff/period-attendance') ||
+    pathname.startsWith('/staff/hour-alteration') ||
+    pathname.startsWith('/staff/classwork-record') ||
+    pathname.startsWith('/academics/lms/') ||
+    pathname.startsWith('/Academics/lms/')
+  ) {
+    active.Logbook = true;
+  }
+
+  return active;
+};
+
 export default function Sidebar() {
   const { userProfile, logout, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const desktopSidebarRef = React.useRef(null);
+
   const [expandedMenus, setExpandedMenus] = useState(() => {
-    const state = {};
-    const path = window.location.pathname;
-    if (path.startsWith('/cia/')) state.CIA = true;
-    if (path.startsWith('/academics/') && !path.startsWith('/academics/lms/')) state.Academics = true;
-    if (path.startsWith('/hod/attendance') || path.startsWith('/reports/daily-attendance') || path.startsWith('/hod/class-incharge')) state.Attendance = true;
-    if (path.startsWith('/config/')) {
-      state.Configuration = true;
-      if (path.startsWith('/config/general/')) state['General Configuration'] = true;
-      if (path.startsWith('/config/cia/')) state['CIA Configuration'] = true;
-    }
-    if (
-      path.startsWith('/staff/period-attendance') ||
-      path.startsWith('/staff/hour-alteration') ||
-      path.startsWith('/staff/classwork-record') ||
-      path.startsWith('/academics/lms/') ||
-      path.startsWith('/Academics/lms/')
-    ) {
-      state.Logbook = true;
-    }
-    return state;
+    const saved = getSavedExpandedMenus();
+    const autoActive = detectActiveMenus(window.location.pathname);
+    return { ...saved, ...autoActive };
   });
   const [reviewCount, setReviewCount] = useState(0);
   const [isClassIncharge, setIsClassIncharge] = useState(false);
 
-  const role = userProfile?.role;
-
-  // Keep submenus expanded when navigating between their child routes
-  useEffect(() => {
-    const path = location.pathname;
+  const toggleMenu = (label) => {
     setExpandedMenus(prev => {
-      const next = { ...prev };
-      if (path.startsWith('/cia/')) next.CIA = true;
-      if (path.startsWith('/academics/') && !path.startsWith('/academics/lms/')) next.Academics = true;
-      if (path.startsWith('/hod/attendance') || path.startsWith('/reports/daily-attendance') || path.startsWith('/hod/class-incharge')) next.Attendance = true;
-      if (path.startsWith('/config/')) {
-        next.Configuration = true;
-        if (path.startsWith('/config/general/')) next['General Configuration'] = true;
-        if (path.startsWith('/config/cia/')) next['CIA Configuration'] = true;
-      }
-      if (
-        path.startsWith('/staff/period-attendance') ||
-        path.startsWith('/staff/hour-alteration') ||
-        path.startsWith('/staff/classwork-record') ||
-        path.startsWith('/academics/lms/') ||
-        path.startsWith('/Academics/lms/')
-      ) {
-        next.Logbook = true;
-      }
+      const next = { ...prev, [label]: !prev[label] };
+      saveExpandedMenus(next);
       return next;
     });
-  }, [location.pathname]);
+  };
+
+  const role = userProfile?.role;
 
   useEffect(() => {
     if (!role) return;
@@ -441,6 +465,7 @@ export default function Sidebar() {
     role === "dept_admin" ? [
       ...tailoredStaffNav.slice(0, 1),
       { icon: <Users size={18} />, label: "New Student Add", path: "/dept_admin/new-admission" },
+      { icon: <GraduationCap size={18} />, label: "Promote Student", path: "/config/general/promote-student" },
       ...tailoredStaffNav.slice(1),
       { icon: <Calendar size={18} />, label: "Manage Timetables", path: "/staff/manage-timetable" }
     ] :
@@ -456,6 +481,34 @@ export default function Sidebar() {
       navItems.splice(1, 0, { icon: <Users size={18} />, label: "Student Details", path: "/staff/students" });
     }
   }
+
+  // Ensure that if the current route belongs to any submenu, that submenu is expanded and saved
+  useEffect(() => {
+    const autoActive = detectActiveMenus(location.pathname, navItems);
+    if (Object.keys(autoActive).length > 0) {
+      setExpandedMenus(prev => {
+        const next = { ...prev, ...autoActive };
+        saveExpandedMenus(next);
+        return next;
+      });
+    }
+  }, [location.pathname, navItems]);
+
+  // Restore sidebar scroll position across navigations
+  useEffect(() => {
+    if (desktopSidebarRef.current) {
+      const savedScroll = sessionStorage.getItem("erp_sidebar_scroll_pos");
+      if (savedScroll !== null) {
+        desktopSidebarRef.current.scrollTop = Number(savedScroll);
+      }
+    }
+  }, [location.pathname]);
+
+  const handleSidebarScroll = (e) => {
+    try {
+      sessionStorage.setItem("erp_sidebar_scroll_pos", e.currentTarget.scrollTop);
+    } catch (err) {}
+  };
 
   async function handleLogout() {
     await logout();
@@ -501,7 +554,7 @@ export default function Sidebar() {
                 className={`nav-item ${isItemActive ? "active" : ""}`}
                 onClick={() => {
                   if (item.isSubmenu) {
-                    setExpandedMenus(prev => ({ ...prev, [item.label]: !prev[item.label] }));
+                    toggleMenu(item.label);
                   } else {
                     handleNavClick(item.path);
                   }
@@ -534,7 +587,7 @@ export default function Sidebar() {
                       <>
                         <div
                           className="nav-item"
-                          onClick={(e) => { e.stopPropagation(); setExpandedMenus(prev => ({ ...prev, [child.label]: !prev[child.label] })); }}
+                          onClick={(e) => { e.stopPropagation(); toggleMenu(child.label); }}
                           style={{ padding: "8px 12px", fontSize: "13px", minHeight: "35px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "var(--accent)", fontWeight: "bold" }}
                         >
                           <span>{child.label}</span>
@@ -723,7 +776,11 @@ export default function Sidebar() {
       )}
 
       {/* Desktop Sidebar */}
-      <div className="sidebar sidebar-desktop">
+      <div
+        className="sidebar sidebar-desktop"
+        ref={desktopSidebarRef}
+        onScroll={handleSidebarScroll}
+      >
         {sidebarContent}
       </div>
 

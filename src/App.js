@@ -332,7 +332,7 @@ export default function App() {
           <Route path="/config/general/regulation-mapping" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><RegulationMapping /></ProtectedRoute>} />
           <Route path="/config/general/student" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod", "dept_admin"]}><StudentDetails /></ProtectedRoute>} />
           <Route path="/config/general/faculty" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><FacultyDetails /></ProtectedRoute>} />
-          <Route path="/config/general/promote-student" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><PromoteStudent /></ProtectedRoute>} />
+          <Route path="/config/general/promote-student" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod", "dept_admin"]}><PromoteStudent /></ProtectedRoute>} />
           <Route path="/config/general/pass-out-students" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><PassOutStudents /></ProtectedRoute>} />
           
           <Route path="/config/cia/question-format" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><QuestionFormat /></ProtectedRoute>} />

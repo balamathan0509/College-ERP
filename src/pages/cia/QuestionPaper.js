@@ -1432,6 +1432,7 @@ let allocData = {};
                   <div style={{ textAlign: 'center', flex: 1, padding: '0 10px' }}>
                     <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#800000', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                       {headerConfig.collegeName || 'RENGANAYAGI VARATHARAJ COLLEGE OF ENGINEERING'}
+                    
                     </div>
                     <div style={{ fontSize: '12px', color: '#333', marginBottom: 6 }}>
                       {headerConfig.collegeAddress || 'Salvarpatti, Sivakasi - 626 128'}
