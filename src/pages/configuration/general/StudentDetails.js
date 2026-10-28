@@ -104,6 +104,91 @@ const EMPTY_STUDENT_FORM = {
   csvData: {}
 };
 
+// Check if a section denotes a single class / no section
+const isSingleClassSection = (rawSec) => {
+  if (!rawSec) return true;
+  const s = String(rawSec).trim().toUpperCase();
+  return (
+    !s ||
+    s === 'NONE' ||
+    s === 'SINGLE' ||
+    s === 'SINGLE CLASS' ||
+    s === 'NO' ||
+    s === 'NO SECTION' ||
+    s === 'NA' ||
+    s === 'N/A' ||
+    s === 'NIL' ||
+    s === 'NULL' ||
+    s === '.' ||
+    s === '-' ||
+    s === '--' ||
+    s === '0' ||
+    s.startsWith('NO ') ||
+    s.startsWith('NOT ')
+  );
+};
+
+// Smart year and semester detection
+const detectYearAndSemester = (row, regNo, currentYear = 2026) => {
+  const csvSem = row['Semester'] || row['semester'] || row['sem'] || row['Sem'] || row['currentSemester'];
+  if (csvSem) {
+    const semNum = parseInt(String(csvSem).replace(/\D/g, ''), 10);
+    if (semNum >= 1 && semNum <= 8) {
+      const yr = semNum <= 2 ? '1st Year' : semNum <= 4 ? '2nd Year' : semNum <= 6 ? '3rd Year' : '4th Year';
+      return { year: yr, semester: String(semNum) };
+    }
+  }
+
+  const csvYear = row['Year'] || row['year'] || row['Academic Year'] || row['studentYear'] || row['Class'];
+  if (csvYear) {
+    const y = String(csvYear).trim().toUpperCase();
+    if (y.includes('4') || y.includes('FOURTH') || y.includes('FINAL') || y === 'IV') return { year: '4th Year', semester: '7' };
+    if (y.includes('3') || y.includes('THIRD') || y === 'III') return { year: '3rd Year', semester: '5' };
+    if (y.includes('2') || y.includes('SECOND') || y === 'II') return { year: '2nd Year', semester: '3' };
+    if (y.includes('1') || y.includes('FIRST') || y === 'I') return { year: '1st Year', semester: '1' };
+  }
+
+  if (regNo && regNo.length >= 6) {
+    const m = regNo.match(/9525(\d{2})/);
+    if (m) {
+      const joinYr = parseInt(m[1], 10);
+      const diff = 26 - joinYr;
+      if (diff <= 0) return { year: '1st Year', semester: '1' };
+      if (diff === 1) return { year: '2nd Year', semester: '3' };
+      if (diff === 2) return { year: '3rd Year', semester: '5' };
+      if (diff >= 3) return { year: '4th Year', semester: '7' };
+    }
+  }
+
+  return { year: '1st Year', semester: '1' };
+};
+
+// Normalize Department
+const normalizeDepartment = (rawDept, regNo, fallbackDept = 'CSE') => {
+  let d = String(rawDept || '').toUpperCase().trim();
+  if (!d && regNo && regNo.length >= 9) {
+    const codeMatch = regNo.match(/9525\d{2}(\d{3})/);
+    if (codeMatch) {
+      const code = codeMatch[1];
+      if (code === '104') return 'CSE';
+      if (code === '243' || code === '244') return 'AIDS';
+      if (code === '106') return 'ECE';
+      if (code === '105') return 'EEE';
+      if (code === '205') return 'IT';
+      if (code === '114') return 'MECH';
+    }
+  }
+  if (!d) return fallbackDept;
+  if (d === 'CSE' || d.includes('COMPUTER SCIENCE') || d.includes('COMP. SCI')) return 'CSE';
+  if (d === 'AIDS' || d === 'AI&DS' || d === 'AI & DS' || d.includes('ARTIFICIAL') || d.includes('DATA SCIENCE')) return 'AIDS';
+  if (d === 'ECE' || d.includes('ELECTRONICS') || d.includes('COMMUNICATION')) return 'ECE';
+  if (d === 'EEE' || d.includes('ELECTRICAL')) return 'EEE';
+  if (d === 'IT' || d.includes('INFORMATION TECH')) return 'IT';
+  if (d === 'MECH' || d.includes('MECHANICAL')) return 'MECH';
+  if (d === 'CSBS' || d.includes('BUSINESS SYSTEMS')) return 'CSBS';
+  return d;
+};
+
 export default function StudentDetails() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -253,8 +338,8 @@ export default function StudentDetails() {
     fetchStudents();
   }, []);
 
-  // Filter students based on UI selections
-  const filteredStudents = useMemo(() => {
+  // Students matching Dept and Year (independent of section and search)
+  const baseYearStudents = useMemo(() => {
     return students.filter(s => {
       // Dept filter
       if (selectedDept !== 'All' && s.programmeCode !== selectedDept && s.dept !== selectedDept) {
@@ -268,9 +353,53 @@ export default function StudentDetails() {
         if (selectedYear === '3rd Year' && normYear !== '3rd year' && normYear !== '3') return false;
         if (selectedYear === '4th Year' && normYear !== '4th year' && normYear !== '4') return false;
       }
+      return true;
+    });
+  }, [students, selectedDept, selectedYear]);
+
+  // Compute available sections dynamically based strictly on the selected Year and Dept
+  const availableSections = useMemo(() => {
+    if (baseYearStudents.length === 0) {
+      return []; // Not assigned yet for this year!
+    }
+
+    const set = new Set();
+    let hasSingle = false;
+
+    baseYearStudents.forEach(s => {
+      if (isSingleClassSection(s.section)) {
+        hasSingle = true;
+      } else {
+        const sec = (s.section || '').trim().toUpperCase();
+        if (sec) set.add(sec);
+      }
+    });
+
+    const realSections = Array.from(set).sort();
+
+    // If only single class exists in this year (no sections A, B, etc.)
+    if (realSections.length === 0) {
+      return hasSingle ? ['Single Class'] : [];
+    }
+
+    const result = ['All'];
+    if (hasSingle) result.push('Single Class');
+    result.push(...realSections);
+    return result;
+  }, [baseYearStudents]);
+
+  // Filter students based on UI selections
+  const filteredStudents = useMemo(() => {
+    return baseYearStudents.filter(s => {
       // Section filter
       if (selectedSection !== 'All') {
-        if ((s.section || '').toUpperCase() !== selectedSection.toUpperCase()) return false;
+        const isSingle = isSingleClassSection(s.section);
+        if (selectedSection === 'Single Class') {
+          if (!isSingle) return false;
+        } else {
+          const sec = (s.section || '').trim().toUpperCase();
+          if (isSingle || sec !== selectedSection.toUpperCase()) return false;
+        }
       }
       // Search query
       if (searchQuery.trim()) {
@@ -284,16 +413,34 @@ export default function StudentDetails() {
       }
       return true;
     });
-  }, [students, selectedDept, selectedYear, selectedSection, searchQuery]);
+  }, [baseYearStudents, selectedSection, searchQuery]);
 
-  // Statistics
+  // Dynamic Section Statistics
   const stats = useMemo(() => {
     const total = filteredStudents.length;
-    const secACount = filteredStudents.filter(s => s.section === 'A').length;
-    const secBCount = filteredStudents.filter(s => s.section === 'B').length;
-    const secCCount = filteredStudents.filter(s => s.section === 'C').length;
-    return { total, secACount, secBCount, secCCount };
+    const secMap = {};
+    let singleClassCount = 0;
+
+    filteredStudents.forEach(s => {
+      if (isSingleClassSection(s.section)) {
+        singleClassCount++;
+      } else {
+        const sec = (s.section || '').trim().toUpperCase();
+        secMap[sec] = (secMap[sec] || 0) + 1;
+      }
+    });
+
+    return { total, secMap, singleClassCount };
   }, [filteredStudents]);
+
+  // Keep selectedSection in sync with available options
+  useEffect(() => {
+    if (availableSections.length === 0) {
+      setSelectedSection('All');
+    } else if (!availableSections.includes(selectedSection)) {
+      setSelectedSection(availableSections[0]);
+    }
+  }, [availableSections, selectedSection]);
 
   // Download Sample Template (Excel & CSV compatible)
   const handleDownloadTemplate = () => {
@@ -366,13 +513,13 @@ export default function StudentDetails() {
           const personalEmail = String(row['Personal Email'] || row['personalEmail'] || row['Email'] || row['email'] || '').trim();
           const collegeEmail = String(row['College Email'] || row['collegeEmail'] || '').trim();
           const mobile = String(row['Mobile'] || row['phone'] || row['mobile'] || '').trim();
-          const dept = String(row['Department'] || row['programmeCode'] || row['dept'] || defaultDept).trim();
-          const year = String(row['Year'] || row['year'] || defaultYear).trim();
+          const rawDept = String(row['Department'] || row['programmeCode'] || row['dept'] || row['Branch'] || '').trim();
+          const dept = normalizeDepartment(rawDept, regNo, defaultDept);
+          const { year, semester } = detectYearAndSemester(row, regNo);
           const section = sectionMode === 'force' 
             ? defaultSection 
             : String(row['Section'] || row['section'] || defaultSection).trim().toUpperCase();
           const batch = String(row['Batch'] || row['batch'] || defaultBatch).trim();
-          const semester = String(row['Semester'] || row['semester'] || '1').trim();
           const studentType = String(row['Student Type'] || row['studentType'] || 'dayscholar').toLowerCase().trim();
           const customPwd = String(row['Password (Optional)'] || row['Password'] || row['password'] || '').trim();
           const finalPwd = customPwd || `Rvce@${regNo || '123'}`;
@@ -838,40 +985,49 @@ export default function StudentDetails() {
                 <Users size={22} />
               </div>
               <div>
-                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>Total Students Filtered</div>
+                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>
+                  {stats.total === 0 ? 'Total Students' : (Object.keys(stats.secMap).length === 0 ? 'Total Students (Single Class)' : 'Total Students Filtered')}
+                </div>
                 <div style={{ fontSize: '22px', fontWeight: '700', color: '#1e293b' }}>{stats.total}</div>
               </div>
             </div>
 
-            <div style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <div style={{ background: '#ecfdf5', color: '#059669', padding: '12px', borderRadius: '10px', fontWeight: '700', fontSize: '18px' }}>
-                A
+            {/* Single Class Students Card (Show only if multiple sections exist AND single class students exist) */}
+            {Object.keys(stats.secMap).length > 0 && stats.singleClassCount > 0 && (
+              <div style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ background: '#e0e7ff', color: '#4338ca', padding: '12px', borderRadius: '10px', fontWeight: '700', fontSize: '15px' }}>
+                  Single
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>Single Class Students</div>
+                  <div style={{ fontSize: '22px', fontWeight: '700', color: '#4338ca' }}>{stats.singleClassCount}</div>
+                </div>
               </div>
-              <div>
-                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>Section A Students</div>
-                <div style={{ fontSize: '22px', fontWeight: '700', color: '#059669' }}>{stats.secACount}</div>
-              </div>
-            </div>
+            )}
 
-            <div style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <div style={{ background: '#f5f3ff', color: '#7c3aed', padding: '12px', borderRadius: '10px', fontWeight: '700', fontSize: '18px' }}>
-                B
-              </div>
-              <div>
-                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>Section B Students</div>
-                <div style={{ fontSize: '22px', fontWeight: '700', color: '#7c3aed' }}>{stats.secBCount}</div>
-              </div>
-            </div>
+            {/* Dynamic Section Cards (ONLY show if students actually exist in that section) */}
+            {Object.keys(stats.secMap).sort().map(sec => {
+              const count = stats.secMap[sec];
+              if (!count || count <= 0) return null;
+              const theme = {
+                A: { bg: '#ecfdf5', color: '#059669' },
+                B: { bg: '#f5f3ff', color: '#7c3aed' },
+                C: { bg: '#fffbeb', color: '#d97706' },
+                D: { bg: '#eff6ff', color: '#2563eb' }
+              }[sec] || { bg: '#f1f5f9', color: '#334155' };
 
-            <div style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <div style={{ background: '#fffbeb', color: '#d97706', padding: '12px', borderRadius: '10px', fontWeight: '700', fontSize: '18px' }}>
-                C
-              </div>
-              <div>
-                <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>Section C Students</div>
-                <div style={{ fontSize: '22px', fontWeight: '700', color: '#d97706' }}>{stats.secCCount}</div>
-              </div>
-            </div>
+              return (
+                <div key={sec} style={{ background: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ background: theme.bg, color: theme.color, padding: '12px', borderRadius: '10px', fontWeight: '700', fontSize: '18px' }}>
+                    {sec}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '500' }}>Section {sec} Students</div>
+                    <div style={{ fontSize: '22px', fontWeight: '700', color: theme.color }}>{count}</div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Filter Bar */}
@@ -955,25 +1111,45 @@ export default function StudentDetails() {
               {/* Section Filter Pills */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: '12px', fontWeight: '600', color: '#64748b', marginRight: '6px' }}>Class / Section:</span>
-                {['All', 'A', 'B', 'C', 'D'].map(sec => (
-                  <button
-                    key={sec}
-                    onClick={() => setSelectedSection(sec)}
+                {availableSections.length === 0 ? (
+                  <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic', padding: '5px 8px' }}>
+                    Not assigned yet
+                  </span>
+                ) : availableSections.length === 1 && availableSections[0] === 'Single Class' ? (
+                  <span
                     style={{
-                      padding: '5px 12px',
+                      padding: '5px 14px',
                       borderRadius: '20px',
-                      border: selectedSection === sec ? '1px solid #4f46e5' : '1px solid #cbd5e1',
-                      cursor: 'pointer',
+                      border: '1px solid #c7d2fe',
                       fontSize: '12px',
-                      fontWeight: selectedSection === sec ? '700' : '500',
-                      background: selectedSection === sec ? '#e0e7ff' : '#fff',
-                      color: selectedSection === sec ? '#4338ca' : '#475569',
-                      transition: 'all 0.15s ease'
+                      fontWeight: '700',
+                      background: '#e0e7ff',
+                      color: '#4338ca'
                     }}
                   >
-                    {sec === 'All' ? 'All Sections' : `Section ${sec}`}
-                  </button>
-                ))}
+                    Single Class (All Students)
+                  </span>
+                ) : (
+                  availableSections.map(sec => (
+                    <button
+                      key={sec}
+                      onClick={() => setSelectedSection(sec)}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: '20px',
+                        border: selectedSection === sec ? '1px solid #4f46e5' : '1px solid #cbd5e1',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: selectedSection === sec ? '700' : '500',
+                        background: selectedSection === sec ? '#e0e7ff' : '#fff',
+                        color: selectedSection === sec ? '#4338ca' : '#475569',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {sec === 'All' ? 'All Sections' : sec === 'Single Class' ? 'Single Class' : `Section ${sec}`}
+                    </button>
+                  ))
+                )}
               </div>
 
             </div>
@@ -1021,7 +1197,7 @@ export default function StudentDetails() {
                             {student.studentName}
                           </td>
                           <td style={{ padding: '14px 16px' }}>
-                            {student.section && !['NO', '.', '-', 'N/A', 'NONE'].includes(student.section) ? (
+                            {student.section && !isSingleClassSection(student.section) ? (
                               <span style={{
                                 padding: '3px 10px',
                                 borderRadius: '12px',
@@ -1033,7 +1209,16 @@ export default function StudentDetails() {
                                 Sec {student.section}
                               </span>
                             ) : (
-                              <span style={{ color: '#94a3b8', fontSize: '13px' }}>—</span>
+                              <span style={{
+                                padding: '3px 10px',
+                                borderRadius: '12px',
+                                fontWeight: '600',
+                                fontSize: '11.5px',
+                                background: '#f1f5f9',
+                                color: '#475569'
+                              }}>
+                                Single Class
+                              </span>
                             )}
                           </td>
                           <td style={{ padding: '14px 16px' }}>
