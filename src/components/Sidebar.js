@@ -644,20 +644,10 @@ export default function Sidebar() {
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <button
             onClick={() => setMobileOpen(true)}
-            style={{
-              display: "none",
-              background: "transparent",
-              border: "none",
-              color: "var(--text)",
-              cursor: "pointer",
-              padding: 4,
-              marginRight: 15
-            }}
             className="hamburger-btn-header"
+            aria-label="Open menu"
           >
-            <div style={{ width: 20, height: 2, background: "var(--text-dark)", margin: "4px 0" }}></div>
-            <div style={{ width: 20, height: 2, background: "var(--text-dark)", margin: "4px 0" }}></div>
-            <div style={{ width: 20, height: 2, background: "var(--text-dark)", margin: "4px 0" }}></div>
+            <Menu size={20} color="#0f172a" />
           </button>
         </div>
         

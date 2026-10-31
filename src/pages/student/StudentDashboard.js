@@ -354,7 +354,7 @@ export default function StudentDashboard() {
         </div>
 
         {/* Stat Cards — compact white bordered, same style as StaffDashboard */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12, marginBottom: 20 }}>
+        <div className="dashboard-stats-grid">
           {statCards.map((card, i) => (
             <div
               key={i}
@@ -402,7 +402,7 @@ export default function StudentDashboard() {
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
                 <div>
-                  <span style={{ fontSize: 18, fontWeight: 700, color: card.valueColor || "#0f172a", lineHeight: 1 }}>
+                  <span className="stat-box-value" style={{ fontSize: 18, fontWeight: 700, color: card.valueColor || "#0f172a", lineHeight: 1 }}>
                     {card.value}
                   </span>
                   {card.badge && (
@@ -433,13 +433,13 @@ export default function StudentDashboard() {
             </div>
             <TrendingUp size={17} color="#1d4ed8"/>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(105px,1fr))", gap: 12 }}>
+          <div className="dashboard-quick-actions-grid">
             {quickActions.map((action, idx) => (
               <div key={idx} onClick={() => navigate(action.path)}
                 style={{ padding: "16px 8px", borderRadius: 14, border: "1.5px solid transparent", background: "#f8fafc", cursor: "pointer", textAlign: "center", transition: "all 0.2s ease", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}
                 onMouseEnter={e => { e.currentTarget.style.background = action.bg; e.currentTarget.style.borderColor = action.color + "40"; e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = `0 8px 20px ${action.color}25`; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "#f8fafc"; e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}>
-                <div style={{ width: 52, height: 52, borderRadius: "50%", background: action.bg, border: `1.5px solid ${action.color}30`, display: "flex", alignItems: "center", justifyContent: "center" }}>{action.icon}</div>
+                <div className="quick-action-icon-circle" style={{ width: 48, height: 48, borderRadius: "50%", background: action.bg, border: `1.5px solid ${action.color}30`, display: "flex", alignItems: "center", justifyContent: "center" }}>{action.icon}</div>
                 <div style={{ fontSize: 11, fontWeight: 600, color: "#374151", lineHeight: 1.3 }}>{action.label}</div>
               </div>
             ))}

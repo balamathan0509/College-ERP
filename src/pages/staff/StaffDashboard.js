@@ -402,7 +402,7 @@ export default function StaffDashboard() {
         )}
 
         {/* Stat Cards - Compact, Simple & Fixed 5-Boxes Layout */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12, marginBottom: 20 }}>
+        <div className="dashboard-stats-grid">
           {statCards.map((card, i) => (
             <div
               key={i}
