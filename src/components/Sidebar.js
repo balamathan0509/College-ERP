@@ -536,7 +536,7 @@ export default function Sidebar() {
   const sidebarContent = (
     <>
       <div className="sidebar-logo-area">
-        <h2 style={{ fontFamily: 'Poppins, sans-serif' }}>RENGANAYAGI VARATHARAJ<br/><span style={{fontSize: 10, opacity: 0.8}}>COLLEGE OF ENGINEERING</span></h2>
+        <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>RENGANAYAGI VARATHARAJ<br/><span style={{fontSize: 10, opacity: 0.8}}>COLLEGE OF ENGINEERING</span></h2>
       </div>
 
       <div className="sidebar-nav-header">CONFIGURATION</div>
@@ -796,7 +796,31 @@ export default function Sidebar() {
           transition: "transform 0.3s ease"
         }}
       >
-        {sidebarContent}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setMobileOpen(false)}
+            style={{
+              position: "absolute",
+              top: 18,
+              right: 14,
+              zIndex: 10,
+              background: "rgba(0,0,0,0.15)",
+              border: "none",
+              borderRadius: "50%",
+              width: 28,
+              height: 28,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              color: "#0f172a"
+            }}
+            title="Close menu"
+          >
+            <X size={16} />
+          </button>
+          {sidebarContent}
+        </div>
       </div>
     </>
   );

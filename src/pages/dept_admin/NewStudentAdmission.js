@@ -27,7 +27,6 @@ import {
   Eye,
   EyeOff,
   ArrowRight,
-  Sparkles,
   ShieldCheck,
   BookOpen,
   RefreshCw,
@@ -65,13 +64,13 @@ function generatePassword(personalEmail, regNo) {
   if (personalEmail && personalEmail.includes('@')) {
     const emailPrefix = personalEmail.split('@')[0].trim();
     if (emailPrefix) {
-      return `${emailPrefix}@9523`;
+      return `${emailPrefix}@9525`;
     }
   }
   if (regNo) {
-    return `${regNo}@9523`;
+    return `${regNo}@9525`;
   }
-  return `student@9523`;
+  return `student@9525`;
 }
 
 function generateCollegeEmail(regNo, dept) {
@@ -296,7 +295,7 @@ function calculateBatchForYear(yearStr, baseYear) {
 // Step-by-step wizard
 const STEPS = [
   { id: 1, label: 'Upload & Review', icon: Upload },
-  { id: 2, label: 'Completed', icon: Sparkles }
+  { id: 2, label: 'Completed', icon: CheckCircle2 }
 ];
 
 export default function NewStudentAdmission() {
@@ -438,7 +437,7 @@ export default function NewStudentAdmission() {
             else if (typeField.includes('day')) studentType = 'dayscholar';
           }
 
-          // Password (custom from CSV or student's personal email username + '@9523')
+          // Password (custom from CSV or student's personal email username + '@9525')
           const customPwd = getField(row, ['Password', 'password']);
           const password = customPwd || generatePassword(personalEmail, regNo);
 
@@ -915,28 +914,33 @@ export default function NewStudentAdmission() {
       <Sidebar />
       <main className="main-content">
         <Toaster position="top-right" />
-        <div style={{ padding: '28px', background: '#f0f4ff', minHeight: '100vh' }}>
+        <div style={{ padding: '24px', background: '#f8fafc', minHeight: '100vh' }}>
 
           {/* Page Header */}
           <div style={{ marginBottom: '28px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '6px' }}>
               <div style={{
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                padding: '12px', borderRadius: '14px',
-                boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)'
+                background: '#0f172a',
+                color: '#ffffff',
+                padding: '10px',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
               }}>
-                <UserPlus size={26} color="#fff" />
+                <UserPlus size={22} />
               </div>
               <div>
                 <h1 style={{
-                  margin: 0, fontSize: '24px', fontWeight: '800',
+                  margin: 0,
+                  fontSize: '22px',
+                  fontWeight: '700',
                   fontFamily: 'Plus Jakarta Sans, sans-serif',
-                  background: 'linear-gradient(135deg, #667eea, #764ba2)',
-                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
+                  color: '#0f172a'
                 }}>
                   New Student Add
                 </h1>
-                <p style={{ margin: 0, color: '#64748b', fontSize: '14px', marginTop: '3px' }}>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '13px', marginTop: '2px' }}>
                   <Building2 size={13} style={{ marginRight: 5, verticalAlign: 'middle' }} />
                   Department: <strong>{dept}</strong> &nbsp;|&nbsp; Bulk add students via CSV/Excel for any year & semester
                 </p>
@@ -1253,7 +1257,7 @@ export default function NewStudentAdmission() {
                                         padding: '3px 9px',
                                         borderRadius: '6px'
                                       }}>
-                                        {isAllSectionsInYear && '✓ '}{yData.total} Students
+                                        {isAllSectionsInYear && <Check size={11} style={{ marginRight: 3, verticalAlign: 'middle' }} />}{yData.total} Students
                                       </span>
                                     </div>
                                   </div>
@@ -1341,8 +1345,8 @@ export default function NewStudentAdmission() {
                                     <span>Dayscholar: <strong style={{ color: '#0f172a' }}>{yData.dayscholars}</strong></span>
                                   </div>
                                   {yData.duplicates > 0 && (
-                                    <span style={{ color: '#b45309', background: '#fef3c7', border: '1px solid #fde68a', padding: '1px 6px', borderRadius: '4px', fontWeight: '600' }}>
-                                      ⚠️ {yData.duplicates} dup
+                                    <span style={{ color: '#0f172a', background: '#f1f5f9', border: '1px solid #cbd5e1', display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '1px 6px', borderRadius: '4px', fontWeight: '600' }}>
+                                      <AlertCircle size={11} color="#64748b" /> {yData.duplicates} dup
                                     </span>
                                   )}
                                 </div>
@@ -1701,7 +1705,7 @@ export default function NewStudentAdmission() {
                     {/* Direct Action Button */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '10px' }}>
                       <div style={{ fontSize: '12px', color: '#64748b' }}>
-                        Password auto-set to <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', color: '#0f172a', border: '1px solid #e2e8f0' }}>&lt;email_username&gt;@9523</code> • Login ID: <strong>Personal Email</strong>
+                        Password auto-set to <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', color: '#0f172a', border: '1px solid #e2e8f0' }}>&lt;email_username&gt;@9525</code> • Login ID: <strong>Personal Email</strong>
                       </div>
                       <button
                         onClick={handleConfirmUpload}
@@ -1729,71 +1733,101 @@ export default function NewStudentAdmission() {
           {/* ===== STEP 2: Completed ===== */}
           {step === 2 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
-              <div style={{ background: '#fff', borderRadius: '20px', border: '1px solid #e2e8f0', padding: '48px 36px', maxWidth: '600px', width: '100%', textAlign: 'center', boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}>
+              <div style={{
+                background: '#ffffff',
+                borderRadius: '12px',
+                border: '1.5px solid #cbd5e1',
+                padding: '36px 32px',
+                maxWidth: '580px',
+                width: '100%',
+                textAlign: 'center',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.04)'
+              }}>
                 <div style={{
-                  width: '80px', height: '80px', borderRadius: '50%', margin: '0 auto 20px',
-                  background: 'linear-gradient(135deg, #10b981, #059669)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: '0 8px 24px rgba(16,185,129,0.4)'
+                  width: '52px',
+                  height: '52px',
+                  borderRadius: '50%',
+                  margin: '0 auto 16px',
+                  background: '#f1f5f9',
+                  border: '1.5px solid #cbd5e1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#0f172a'
                 }}>
-                  <Sparkles size={38} color="#fff" />
+                  <CheckCircle2 size={26} />
                 </div>
-                <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', color: '#059669', fontWeight: '800', fontSize: '28px', margin: '0 0 8px' }}>
+                <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif', color: '#0f172a', fontWeight: '700', fontSize: '20px', margin: '0 0 6px' }}>
                   Admission Complete
                 </h2>
-                <p style={{ color: '#64748b', fontSize: '15px', margin: '0 0 28px' }}>
+                <p style={{ color: '#64748b', fontSize: '13.5px', margin: '0 0 24px' }}>
                   {results.success.length} students have been successfully admitted to <strong>{dept}</strong> — {currentYear} batch
                 </p>
 
                 {/* Result stats */}
-                <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '28px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '22px' }}>
                   {[
-                    { label: 'Admitted', val: results.success.length, color: '#10b981', bg: '#ecfdf5' },
-                    { label: 'Skipped', val: results.skipped.length, color: '#d97706', bg: '#fffbeb' },
-                    { label: 'Failed', val: results.failed.length, color: '#ef4444', bg: '#fef2f2' }
-                  ].map(({ label, val, color, bg }) => (
-                    <div key={label} style={{ background: bg, borderRadius: '12px', padding: '14px 20px' }}>
-                      <div style={{ fontSize: '24px', fontWeight: '800', color }}>{val}</div>
-                      <div style={{ fontSize: '12px', color, opacity: 0.8, fontWeight: '600' }}>{label}</div>
+                    { label: 'Admitted', val: results.success.length },
+                    { label: 'Skipped', val: results.skipped.length },
+                    { label: 'Failed', val: results.failed.length }
+                  ].map(({ label, val }) => (
+                    <div key={label} style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px 14px' }}>
+                      <div style={{ fontSize: '20px', fontWeight: '700', color: '#0f172a' }}>{val}</div>
+                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '2px' }}>{label}</div>
                     </div>
                   ))}
                 </div>
 
                 {/* Email notification status */}
-                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '16px', marginBottom: '24px', textAlign: 'left' }}>
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px 16px', marginBottom: '22px', textAlign: 'left' }}>
                   <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                    <Mail size={18} color="#16a34a" style={{ flexShrink: 0, marginTop: 1 }} />
+                    <Mail size={16} color="#475569" style={{ flexShrink: 0, marginTop: 2 }} />
                     <div>
-                      <div style={{ fontWeight: '700', color: '#15803d', fontSize: '13px', marginBottom: '4px' }}>
+                      <div style={{ fontWeight: '600', color: '#0f172a', fontSize: '13px', marginBottom: '3px' }}>
                         Email Notifications Sent
                       </div>
-                      <div style={{ color: '#16a34a', fontSize: '12px', lineHeight: 1.5 }}>
+                      <div style={{ color: '#64748b', fontSize: '12px', lineHeight: 1.5 }}>
                         Login credentials (Personal Email + Password) have been sent to each student's personal email and college email. Students can now login using their <strong>personal email as the login ID</strong>.
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
                   <button
                     onClick={handleDownloadPDF}
                     style={{
-                      padding: '11px 22px',
-                      background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                      border: 'none', borderRadius: '10px', color: '#fff',
-                      cursor: 'pointer', fontWeight: '700', fontSize: '13px',
-                      display: 'flex', alignItems: 'center', gap: '8px',
-                      boxShadow: '0 4px 12px rgba(239, 68, 68, 0.35)'
+                      padding: '10px 18px',
+                      background: '#0f172a',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <Download size={16} /> Download PDF (ID & Passwords)
+                    <Download size={15} /> Download PDF (ID & Passwords)
                   </button>
                   <button
                     onClick={handleExportCredentials}
                     style={{
-                      padding: '11px 20px', background: '#f0fdf4', border: '1px solid #bbf7d0',
-                      borderRadius: '10px', color: '#15803d', cursor: 'pointer',
-                      fontWeight: '700', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px'
+                      padding: '10px 18px',
+                      background: '#ffffff',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: '8px',
+                      color: '#0f172a',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      transition: 'all 0.15s ease'
                     }}
                   >
                     <FileSpreadsheet size={15} /> Export Excel
@@ -1801,15 +1835,21 @@ export default function NewStudentAdmission() {
                   <button
                     onClick={resetAll}
                     style={{
-                      padding: '11px 24px',
-                      background: 'linear-gradient(135deg, #667eea, #764ba2)',
-                      border: 'none', borderRadius: '10px', color: '#fff',
-                      cursor: 'pointer', fontWeight: '700', fontSize: '14px',
-                      display: 'flex', alignItems: 'center', gap: '8px',
-                      boxShadow: '0 4px 12px rgba(102,126,234,0.4)'
+                      padding: '10px 18px',
+                      background: '#2563eb',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#ffffff',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      transition: 'all 0.15s ease'
                     }}
                   >
-                    <UserPlus size={16} /> Add More Students
+                    <UserPlus size={15} /> Add More Students
                   </button>
                 </div>
               </div>

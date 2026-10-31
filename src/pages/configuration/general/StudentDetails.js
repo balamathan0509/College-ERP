@@ -1585,7 +1585,7 @@ export default function StudentDetails() {
 
                       <div style={{ gridColumn: '1 / -1' }}>
                         <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '5px', color: '#334155' }}>
-                          Login Password (Default: Rvce@&lt;RegisterNumber&gt; or username@9523)
+                          Login Password (Default: Rvce@&lt;RegisterNumber&gt; or username@9525)
                         </label>
                         <input
                           type="text"
