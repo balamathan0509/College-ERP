@@ -101,30 +101,44 @@ export default function Login() {
       <div className="auth-card">
         <div className="auth-logo" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '24px', width: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '16px', marginBottom: '8px', width: '100%' }}>
-            <img 
-              src="/seal-logo.png" 
-              alt="College Seal" 
-              style={{ 
-                height: '80px', 
-                width: 'auto',
-                objectFit: 'contain'
-              }} 
-            />
+            <picture>
+              <source srcSet="/seal-logo.webp" type="image/webp" />
+              <img 
+                src="/seal-logo.png" 
+                alt="College Seal" 
+                width="80"
+                height="80"
+                loading="eager"
+                decoding="async"
+                style={{ 
+                  height: '80px', 
+                  width: 'auto',
+                  objectFit: 'contain'
+                }} 
+              />
+            </picture>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               <h1 style={{ margin: 0, fontSize: '42px', fontWeight: '800', color: '#1e3a8a', letterSpacing: '1px', lineHeight: '1' }}>RVCE</h1>
               <div style={{ fontSize: '9px', fontWeight: '700', color: '#1e3a8a', textAlign: 'center', marginTop: '4px', letterSpacing: '0.5px' }}>
                 RENGANAYAGI VARATHARAJ<br/>COLLEGE OF ENGINEERING
               </div>
             </div>
-            <img 
-              src="/college-logo.png" 
-              alt="College Logo" 
-              style={{ 
-                height: '80px', 
-                width: 'auto',
-                objectFit: 'contain'
-              }} 
-            />
+            <picture>
+              <source srcSet="/college-logo.webp" type="image/webp" />
+              <img 
+                src="/college-logo.png" 
+                alt="College Logo" 
+                width="80"
+                height="80"
+                loading="eager"
+                decoding="async"
+                style={{ 
+                  height: '80px', 
+                  width: 'auto',
+                  objectFit: 'contain'
+                }} 
+              />
+            </picture>
           </div>
           <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '14px', marginTop: '8px' }}>Sign in to your account</p>
         </div>
