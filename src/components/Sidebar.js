@@ -756,12 +756,6 @@ export default function Sidebar() {
       {mobileOpen && (
         <div
           onClick={() => setMobileOpen(false)}
-          style={{
-            position: "fixed", inset: 0,
-            background: "rgba(0,0,0,0.6)",
-            zIndex: 1002,
-            display: "none"
-          }}
           className="sidebar-overlay"
         />
       )}
