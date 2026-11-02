@@ -6,6 +6,9 @@ import { db } from "../../supabase/supabaseAdapter";
 import {
   collection, query, where, getDocs, doc, setDoc, getDoc
 } from "../../supabase/supabaseAdapter";
+import { Download, FileSpreadsheet, FileText } from "lucide-react";
+import html2pdf from "html2pdf.js";
+import * as XLSX from "xlsx";
 
 // Generate room numbers
 const ROOMS = Array.from({ length: 20 }, (_, i) => `${101 + i}`);
@@ -148,7 +151,7 @@ export default function WardenAttendance() {
     setSaving(false);
   }
 
-  function downloadPDF() {
+  function getAttendanceRows() {
     const rows = [];
     Object.entries(roomSummary).forEach(([roomNo, records]) => {
       Object.entries(records).forEach(([studentId, status]) => {
@@ -159,51 +162,154 @@ export default function WardenAttendance() {
         });
       });
     });
+    return rows;
+  }
+
+  function downloadPDF() {
+    const rows = getAttendanceRows();
+    if (rows.length === 0) return;
 
     const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Hostel Attendance Report - ${selectedDate}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          h1 { color: #1a1a2e; }
-          h3 { color: #e94560; margin-top: 20px; }
-          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-          th { background: #1a1a2e; color: white; padding: 10px; text-align: left; }
-          td { padding: 8px 10px; border-bottom: 1px solid #eee; }
-          .present { color: green; font-weight: bold; }
-          .absent { color: red; font-weight: bold; }
-          .leave { color: orange; font-weight: bold; }
-        </style>
-      </head>
-      <body>
-        <h1>🏠 Hostel Attendance Report</h1>
-        <p><strong>Date:</strong> ${selectedDate}</p>
-        <p><strong>Warden:</strong> ${userProfile.name}</p>
-        <table>
-          <thead><tr><th>Name</th><th>Room</th><th>Status</th></tr></thead>
+      <div style="font-family: Arial, sans-serif; padding: 20px; color: #000; background: #fff;">
+        <h1 style="color: #1a1a2e; margin-bottom: 5px;">🏠 Hostel Attendance Report</h1>
+        <p style="margin: 4px 0;"><strong>Date:</strong> ${selectedDate} &nbsp;|&nbsp; <strong>Warden:</strong> ${userProfile?.name || 'Warden'}</p>
+        <p style="margin: 4px 0;"><strong>Total Students Recorded:</strong> ${rows.length}</p>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+          <thead>
+            <tr style="background: #1a1a2e; color: white;">
+              <th style="padding: 10px; border: 1px solid #000; text-align: left;">S.No</th>
+              <th style="padding: 10px; border: 1px solid #000; text-align: left;">Name</th>
+              <th style="padding: 10px; border: 1px solid #000; text-align: left;">Room</th>
+              <th style="padding: 10px; border: 1px solid #000; text-align: left;">Status</th>
+            </tr>
+          </thead>
           <tbody>
-            ${rows.map(r => `
+            ${rows.map((r, i) => `
               <tr>
-                <td>${r.name}</td>
-                <td>${r.room}</td>
-                <td class="${r.status.toLowerCase()}">${r.status}</td>
+                <td style="padding: 8px 10px; border: 1px solid #ddd;">${i + 1}</td>
+                <td style="padding: 8px 10px; border: 1px solid #ddd; font-weight: bold;">${r.name}</td>
+                <td style="padding: 8px 10px; border: 1px solid #ddd;">${r.room}</td>
+                <td style="padding: 8px 10px; border: 1px solid #ddd; font-weight: bold; color: ${r.status === 'Present' ? 'green' : r.status === 'Absent' ? 'red' : 'orange'};">${r.status}</td>
               </tr>
             `).join("")}
           </tbody>
         </table>
-      </body>
-      </html>
+      </div>
     `;
 
-    const blob = new Blob([htmlContent], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Hostel_Attendance_${selectedDate}.html`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const opt = {
+      margin: 10,
+      filename: `Hostel_Attendance_${selectedDate}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(htmlContent).save();
+  }
+
+  function downloadExcel() {
+    const rows = getAttendanceRows();
+    if (rows.length === 0) return;
+
+    try {
+      const wb = XLSX.utils.book_new();
+      const excelRows = [
+        ["RENGANAYAGI VARATHARAJ COLLEGE OF ENGINEERING"],
+        ["HOSTEL ATTENDANCE REPORT"],
+        [`Date: ${selectedDate}`, `Warden: ${userProfile?.name || 'Warden'}`],
+        [],
+        ["S.No", "Student Name", "Room Number", "Attendance Status", "Date"]
+      ];
+
+      rows.forEach((r, idx) => {
+        excelRows.push([
+          idx + 1,
+          r.name,
+          r.room,
+          r.status,
+          selectedDate
+        ]);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(excelRows);
+      ws['!cols'] = [
+        { wch: 8 },
+        { wch: 28 },
+        { wch: 15 },
+        { wch: 18 },
+        { wch: 15 }
+      ];
+      XLSX.utils.book_append_sheet(wb, ws, "Attendance Report");
+      XLSX.writeFile(wb, `Hostel_Attendance_${selectedDate}.xlsx`);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  function downloadWord() {
+    const rows = getAttendanceRows();
+    if (rows.length === 0) return;
+
+    try {
+      const wordDocHtml = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' 
+              xmlns:w='urn:schemas-microsoft-com:office:word' 
+              xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+          <meta charset="utf-8">
+          <title>Hostel Attendance - ${selectedDate}</title>
+          <style>
+            @page Section1 { size: 8.5in 11in; margin: 0.5in; }
+            div.Section1 { page: Section1; font-family: Arial, sans-serif; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            th, td { border: 1px solid #333; padding: 6px 8px; text-align: left; }
+            th { background: #f2f2f2; }
+          </style>
+        </head>
+        <body>
+          <div class="Section1">
+            <h2 style="text-align: center; margin-bottom: 4px;">RENGANAYAGI VARATHARAJ COLLEGE OF ENGINEERING</h2>
+            <h3 style="text-align: center; margin-top: 0; color: #e94560;">HOSTEL ATTENDANCE REPORT</h3>
+            <p><strong>Date:</strong> ${selectedDate} &nbsp;|&nbsp; <strong>Warden:</strong> ${userProfile?.name || 'Warden'}</p>
+            <p><strong>Total Students Recorded:</strong> ${rows.length}</p>
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 40px;">S.No</th>
+                  <th>Student Name</th>
+                  <th>Room</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows.map((r, i) => `
+                  <tr>
+                    <td>${i + 1}</td>
+                    <td><strong>${r.name}</strong></td>
+                    <td>${r.room}</td>
+                    <td style="font-weight: bold; color: ${r.status === 'Present' ? 'green' : r.status === 'Absent' ? 'red' : 'orange'};">${r.status}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob(['\ufeff', wordDocHtml], { type: 'application/msword;charset=utf-8' });
+      const filename = `Hostel_Attendance_${selectedDate}.doc`;
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   useEffect(() => {
@@ -474,20 +580,53 @@ export default function WardenAttendance() {
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
               <h3 style={{ fontFamily: "Syne", fontSize: 20 }}>📄 Final Attendance Report — {selectedDate}</h3>
-              <button
-                onClick={downloadPDF}
-                disabled={Object.keys(roomSummary).length === 0}
-                style={{
-                  padding: "12px 24px", borderRadius: 10, border: "none",
-                  background: "linear-gradient(135deg, #e94560, #c0392b)",
-                  color: "white", fontWeight: 700, fontSize: 14,
-                  cursor: Object.keys(roomSummary).length === 0 ? "not-allowed" : "pointer",
-                  opacity: Object.keys(roomSummary).length === 0 ? 0.5 : 1,
-                  fontFamily: "Syne"
-                }}
-              >
-                📥 Download Report
-              </button>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                <button
+                  onClick={downloadPDF}
+                  disabled={Object.keys(roomSummary).length === 0}
+                  style={{
+                    padding: "10px 18px", borderRadius: 8, border: "none",
+                    background: "#c53030",
+                    color: "white", fontWeight: 600, fontSize: 13,
+                    display: "flex", alignItems: "center", gap: 6,
+                    cursor: Object.keys(roomSummary).length === 0 ? "not-allowed" : "pointer",
+                    opacity: Object.keys(roomSummary).length === 0 ? 0.5 : 1
+                  }}
+                  title="Download Attendance Report as PDF"
+                >
+                  <Download size={15} /> Download PDF
+                </button>
+                <button
+                  onClick={downloadExcel}
+                  disabled={Object.keys(roomSummary).length === 0}
+                  style={{
+                    padding: "10px 18px", borderRadius: 8, border: "none",
+                    background: "#107c41",
+                    color: "white", fontWeight: 600, fontSize: 13,
+                    display: "flex", alignItems: "center", gap: 6,
+                    cursor: Object.keys(roomSummary).length === 0 ? "not-allowed" : "pointer",
+                    opacity: Object.keys(roomSummary).length === 0 ? 0.5 : 1
+                  }}
+                  title="Download Attendance Report as Excel (.xlsx)"
+                >
+                  <FileSpreadsheet size={15} /> Download Excel
+                </button>
+                <button
+                  onClick={downloadWord}
+                  disabled={Object.keys(roomSummary).length === 0}
+                  style={{
+                    padding: "10px 18px", borderRadius: 8, border: "none",
+                    background: "#2b579a",
+                    color: "white", fontWeight: 600, fontSize: 13,
+                    display: "flex", alignItems: "center", gap: 6,
+                    cursor: Object.keys(roomSummary).length === 0 ? "not-allowed" : "pointer",
+                    opacity: Object.keys(roomSummary).length === 0 ? 0.5 : 1
+                  }}
+                  title="Download Attendance Report as Word (.doc)"
+                >
+                  <FileText size={15} /> Download Word
+                </button>
+              </div>
             </div>
 
             {/* Stats */}

@@ -15,4 +15,14 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
   }
 });
 
+// Dedicated administrative DB client that ALWAYS uses the service_role key
+// and is NEVER hijacked by signed-in user session tokens!
+export const dbClient = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+    detectSessionInUrl: false
+  }
+});
+
 export default supabase;

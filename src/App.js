@@ -25,6 +25,7 @@ import VerifyGatePass from "./pages/security/VerifyGatePass";
 import MessPage from "./pages/mess/MessPage";
 import HostelPage from "./pages/hostel/HostelPage";
 import Profile from "./pages/Profile";
+import ExamCellDashboard from "./pages/exam_cell/ExamCellDashboard";
 import HelpCenter from "./pages/shared/HelpCenter";
 import StaffAttendance from "./pages/staff/Attendance";
 import StudentAttendance from "./pages/student/Attendance";
@@ -32,9 +33,7 @@ import HodAttendance from "./pages/hod/Attendance";
 import ClassIncharge from "./pages/hod/ClassIncharge";
 import AttendanceOverview from "./pages/hod/AttendanceOverview";
 import DailyAttendanceReport from "./pages/shared/DailyAttendanceReport";
-import StaffTimetable from "./pages/staff/Timetable";
-import StudentTimetable from "./pages/student/Timetable";
-import HodTimetable from "./pages/hod/Timetable";
+
 import WardenDashboard from "./pages/warden/WardenDashboard";
 import ManagementDashboard from "./pages/management/Dashboard";
 import WardenGatePass from "./pages/warden/GatePass";
@@ -47,7 +46,6 @@ import FeesCollection from "./pages/officestaff/FeesCollection";
 import FeesOverview from "./pages/officestaff/FeesOverview";
 import FeesAlerts from "./pages/officestaff/FeesAlerts";
 import CampusMap from "./pages/shared/CampusMap";
-import Signup from "./pages/Signup";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import PrincipalDashboard from "./pages/principal/Dashboard";
 import PrincipalLeave from "./pages/principal/Leave";
@@ -56,10 +54,12 @@ import VerifyFees from "./pages/officestaff/VerifyFees";
 import StudentFines from "./pages/student/Fines";
 import StaffFines from "./pages/staff/Fines";
 import OfficeStaffFines from "./pages/officestaff/Fines";
+import StaffStudentDetails from "./pages/staff/StudentDetails";
 
 // CIA Pages
 import ExamCreation from "./pages/cia/ExamCreation";
 import ScheduleExamination from "./pages/cia/ScheduleExamination";
+import ExamSeatingArrangement from "./pages/cia/ExamSeatingArrangement";
 import QuestionBank from "./pages/cia/QuestionBank";
 import QuestionPaper from "./pages/cia/QuestionPaper";
 import MarkAttendance from "./pages/cia/MarkAttendance";
@@ -73,18 +73,20 @@ import MyQuestionPapers from "./pages/cia/MyQuestionPapers";
 import HodQuestionPaperReview from "./pages/cia/HodQuestionPaperReview";
 import PrincipalQuestionPaperReview from "./pages/cia/PrincipalQuestionPaperReview";
 import StudentQuestionPapers from "./pages/student/StudentQuestionPapers";
+import StudentQuestionBank from "./pages/student/StudentQuestionBank";
+import ClassQuestionBanks from "./pages/cia/ClassQuestionBanks";
 
 // Academics Pages
+import AcademicCalendar from "./pages/academics/AcademicCalendar";
 import CourseAllocation from "./pages/academics/CourseAllocation";
 import CourseEnrollment from "./pages/academics/CourseEnrollment";
-import TimetableConfig from "./pages/academics/TimetableConfig";
-import ViewTimetable from "./pages/academics/ViewTimetable";
+
 import FacultyProfile from "./pages/academics/FacultyProfile";
 import AcademicReports from "./pages/academics/AcademicReports";
 
 // LMS Pages
 import CourseContents from "./pages/academics/lms/CourseContents";
-import FacultyTimetable from "./pages/academics/lms/FacultyTimetable";
+
 import CoursePlanCompletion from "./pages/academics/lms/CoursePlanCompletion";
 import CoursePlanFeedback from "./pages/academics/lms/CoursePlanFeedback";
 import Assignments from "./pages/academics/lms/Assignments";
@@ -110,9 +112,22 @@ import EvaluationPattern from "./pages/configuration/cia/EvaluationPattern";
 import ShowEvaluationPattern from "./pages/configuration/cia/ShowEvaluationPattern";
 import PatternMapping from "./pages/configuration/cia/PatternMapping";
 
-// Subject Allocation
 import SubjectAllocation from "./pages/hod/SubjectAllocation";
 import MySubjects from "./pages/staff/MySubjects";
+
+// Timetable
+import TimetableEditor from "./pages/dept_admin/TimetableEditor";
+import StudentTimetable from "./pages/student/Timetable";
+import StaffTimetable from "./pages/staff/Timetable";
+
+// Hour Alteration, Period Attendance & Record of Classwork (Logbook)
+import HourAlteration from "./pages/staff/HourAlteration";
+import PeriodAttendance from "./pages/staff/PeriodAttendance";
+import RecordOfClasswork from "./pages/staff/RecordOfClasswork";
+
+// New Student Admission & Coordinator Management
+import NewStudentAdmission from "./pages/dept_admin/NewStudentAdmission";
+import CoordinatorManagement from "./pages/hod/CoordinatorManagement";
 
 const ComingSoon = ({ title }) => (
   <div style={{
@@ -137,6 +152,7 @@ export default function App() {
           <Routes>
           {/* Auth */}
           <Route path="/" element={<Auth />} />
+          <Route path="/login" element={<Auth />} />
 
           {/* Student Routes */}
           <Route path="/student" element={<ProtectedRoute allowedRole="student"><StudentDashboard /></ProtectedRoute>} />
@@ -144,41 +160,55 @@ export default function App() {
           <Route path="/student/leave" element={<ProtectedRoute allowedRole="student"><StudentLeave /></ProtectedRoute>} />
           <Route path="/student/attendance" element={<ProtectedRoute allowedRole="student"><StudentAttendance /></ProtectedRoute>} />
           <Route path="/student/fees" element={<ProtectedRoute allowedRole="student"><StudentFees /></ProtectedRoute>} />
+          <Route path="/student/timetable" element={<ProtectedRoute allowedRole="student"><StudentTimetable /></ProtectedRoute>} />
           <Route path="/student/mess" element={<ProtectedRoute allowedRole="student"><MessPage /></ProtectedRoute>} />
           <Route path="/student/hostel" element={<ProtectedRoute allowedRole="student"><HostelPage /></ProtectedRoute>} />
           <Route path="/student/profile" element={<ProtectedRoute allowedRole="student"><Profile /></ProtectedRoute>} />
-          <Route path="/student/timetable" element={<ProtectedRoute allowedRole="student"><StudentTimetable /></ProtectedRoute>} />
+
           <Route path="/student/placements" element={<ProtectedRoute allowedRole="student"><PlacementsPage /></ProtectedRoute>} />
           <Route path="/student/alerts" element={<ProtectedRoute allowedRole="student"><AlertsPage /></ProtectedRoute>} />
           <Route path="/student/complaints" element={<ProtectedRoute allowedRole="student"><ComplaintsPage /></ProtectedRoute>} />
           <Route path="/student/fines" element={<ProtectedRoute allowedRole="student"><StudentFines /></ProtectedRoute>} />
           <Route path="/student/question-papers" element={<ProtectedRoute allowedRole="student"><StudentQuestionPapers /></ProtectedRoute>} />
+          <Route path="/student/question-bank" element={<ProtectedRoute allowedRole="student"><StudentQuestionBank /></ProtectedRoute>} />
+          <Route path="/student/seating-arrangement" element={<ProtectedRoute allowedRole="student"><ExamSeatingArrangement /></ProtectedRoute>} />
           <Route path="/student/help" element={<ProtectedRoute allowedRole="student"><HelpCenter /></ProtectedRoute>} />
 
           {/* Staff Routes */}
           <Route path="/staff" element={<ProtectedRoute allowedRole="staff"><StaffDashboard /></ProtectedRoute>} />
           <Route path="/staff/gatepass" element={<ProtectedRoute allowedRole="staff"><StaffGatePass /></ProtectedRoute>} />
           <Route path="/staff/leave" element={<ProtectedRoute allowedRole="staff"><StaffLeave /></ProtectedRoute>} />
+          <Route path="/staff/students" element={<ProtectedRoute allowedRole="staff"><StaffStudentDetails /></ProtectedRoute>} />
+          <Route path="/staff/class-question-bank" element={<ProtectedRoute allowedRole={["staff", "hod"]}><StudentQuestionBank /></ProtectedRoute>} />
           <Route path="/staff/attendance" element={<ProtectedRoute allowedRole="staff"><StaffAttendance /></ProtectedRoute>} />
+          <Route path="/staff/period-attendance" element={<ProtectedRoute allowedRole={["staff", "hod"]}><PeriodAttendance /></ProtectedRoute>} />
+          <Route path="/staff/hour-alteration" element={<ProtectedRoute allowedRole={["staff", "hod"]}><HourAlteration /></ProtectedRoute>} />
+          <Route path="/staff/classwork-record" element={<ProtectedRoute allowedRole={["staff", "hod", "principal"]}><RecordOfClasswork /></ProtectedRoute>} />
           <Route path="/staff/my-subjects" element={<ProtectedRoute allowedRole={["staff", "hod"]}><MySubjects /></ProtectedRoute>} />
           <Route path="/staff/results" element={<ProtectedRoute allowedRole="staff"><StaffResults /></ProtectedRoute>} />
+          <Route path="/staff/timetable" element={<ProtectedRoute allowedRole={["staff", "hod", "dept_admin"]}><StaffTimetable /></ProtectedRoute>} />
           <Route path="/staff/mess" element={<ProtectedRoute allowedRole="staff"><MessPage /></ProtectedRoute>} />
           <Route path="/staff/hostel" element={<ProtectedRoute allowedRole="staff"><HostelPage /></ProtectedRoute>} />
           <Route path="/staff/profile" element={<ProtectedRoute allowedRole="staff"><Profile /></ProtectedRoute>} />
-          <Route path="/staff/timetable" element={<ProtectedRoute allowedRole="staff"><StaffTimetable /></ProtectedRoute>} />
+
           <Route path="/staff/placements" element={<ProtectedRoute allowedRole="staff"><PlacementsPage /></ProtectedRoute>} />
           <Route path="/staff/alerts" element={<ProtectedRoute allowedRole="staff"><AlertsPage /></ProtectedRoute>} />
           <Route path="/staff/complaints" element={<ProtectedRoute allowedRole="staff"><ComplaintsPage /></ProtectedRoute>} />
           <Route path="/staff/fines" element={<ProtectedRoute allowedRole="staff"><StaffFines /></ProtectedRoute>} />
           <Route path="/staff/help" element={<ProtectedRoute allowedRole="staff"><HelpCenter /></ProtectedRoute>} />
           
+          {/* Exam Cell CIA Routes */}
+          <Route path="/cia/exam-creation" element={<ProtectedRoute allowedRole="exam_cell"><ExamCreation /></ProtectedRoute>} />
+          <Route path="/cia/schedule" element={<ProtectedRoute allowedRole="exam_cell"><ScheduleExamination /></ProtectedRoute>} />
+          <Route path="/cia/seating-arrangement" element={<ProtectedRoute allowedRole={["exam_cell", "admin", "staff", "hod"]}><ExamSeatingArrangement /></ProtectedRoute>} />
+          <Route path="/cia/attendance" element={<ProtectedRoute allowedRole="exam_cell"><MarkAttendance /></ProtectedRoute>} />
+
           {/* Staff CIA Routes */}
-          <Route path="/cia/exam-creation" element={<ProtectedRoute allowedRole="staff"><ExamCreation /></ProtectedRoute>} />
-          <Route path="/cia/schedule" element={<ProtectedRoute allowedRole="staff"><ScheduleExamination /></ProtectedRoute>} />
-          <Route path="/cia/question-bank" element={<ProtectedRoute allowedRole="staff"><QuestionBank /></ProtectedRoute>} />
+          <Route path="/cia/question-bank" element={<ProtectedRoute allowedRole={["staff", "dept_admin"]}><QuestionBank /></ProtectedRoute>} />
+          <Route path="/cia/class-question-banks" element={<ProtectedRoute allowedRole={["staff", "dept_admin", "hod", "admin"]}><ClassQuestionBanks /></ProtectedRoute>} />
+          <Route path="/staff/class-question-bank" element={<ProtectedRoute allowedRole={["staff", "dept_admin", "hod", "admin"]}><ClassQuestionBanks /></ProtectedRoute>} />
           <Route path="/cia/my-papers" element={<ProtectedRoute allowedRole="staff"><MyQuestionPapers /></ProtectedRoute>} />
           <Route path="/cia/question-paper" element={<ProtectedRoute allowedRole="staff"><QuestionPaper /></ProtectedRoute>} />
-          <Route path="/cia/attendance" element={<ProtectedRoute allowedRole="staff"><MarkAttendance /></ProtectedRoute>} />
           <Route path="/cia/mark-entry" element={<ProtectedRoute allowedRole="staff"><MarkEntryCIA /></ProtectedRoute>} />
           <Route path="/cia/other-mark-entry" element={<ProtectedRoute allowedRole="staff"><MarkEntryOther /></ProtectedRoute>} />
           <Route path="/cia/ese-mark-entry" element={<ProtectedRoute allowedRole="staff"><MarkEntryESE /></ProtectedRoute>} />
@@ -187,15 +217,15 @@ export default function App() {
           <Route path="/cia/reports" element={<ProtectedRoute allowedRole="staff"><Reports /></ProtectedRoute>} />
 
           {/* Academics & LMS Routes */}
+          <Route path="/academics/academic-calendar" element={<ProtectedRoute allowedRole={['staff', 'hod', 'admin', 'management', 'principal']}><AcademicCalendar /></ProtectedRoute>} />
           <Route path="/academics/course-allocation" element={<ProtectedRoute allowedRole={['staff', 'hod']}><CourseAllocation /></ProtectedRoute>} />
           <Route path="/academics/course-enrollment" element={<ProtectedRoute allowedRole={['staff', 'hod']}><CourseEnrollment /></ProtectedRoute>} />
-          <Route path="/academics/timetable-config" element={<ProtectedRoute allowedRole={['staff', 'hod']}><TimetableConfig /></ProtectedRoute>} />
-          <Route path="/academics/view-timetable" element={<ProtectedRoute allowedRole={['staff', 'hod']}><ViewTimetable /></ProtectedRoute>} />
+
           <Route path="/academics/faculty-profile" element={<ProtectedRoute allowedRole={['staff', 'hod']}><FacultyProfile /></ProtectedRoute>} />
           <Route path="/academics/reports" element={<ProtectedRoute allowedRole={['staff', 'hod']}><AcademicReports /></ProtectedRoute>} />
           
           <Route path="/academics/lms/course-contents" element={<ProtectedRoute allowedRole={['staff', 'hod']}><CourseContents /></ProtectedRoute>} />
-          <Route path="/academics/lms/faculty-timetable" element={<ProtectedRoute allowedRole={['staff', 'hod']}><FacultyTimetable /></ProtectedRoute>} />
+
           <Route path="/academics/lms/plan-completion" element={<ProtectedRoute allowedRole={['staff', 'hod']}><CoursePlanCompletion /></ProtectedRoute>} />
           <Route path="/academics/lms/plan-feedback" element={<ProtectedRoute allowedRole={['staff', 'hod']}><CoursePlanFeedback /></ProtectedRoute>} />
           <Route path="/academics/lms/assignments" element={<ProtectedRoute allowedRole={['staff', 'hod']}><Assignments /></ProtectedRoute>} />
@@ -205,6 +235,23 @@ export default function App() {
           <Route path="/academics/lms/self-appraisal" element={<ProtectedRoute allowedRole={['staff', 'hod']}><SelfAppraisal /></ProtectedRoute>} />
           <Route path="/academics/lms/faculty-participation" element={<ProtectedRoute allowedRole={['staff', 'hod']}><FacultyParticipation /></ProtectedRoute>} />
 
+          <Route path="/dept-admin/timetable" element={<ProtectedRoute allowedRole={["dept_admin", "hod", "admin"]}><TimetableEditor /></ProtectedRoute>} />
+          <Route path="/hod/timetable" element={<ProtectedRoute allowedRole={["hod", "dept_admin", "admin"]}><TimetableEditor /></ProtectedRoute>} />
+          <Route path="/staff/manage-timetable" element={<ProtectedRoute allowedRole={["dept_admin", "hod", "admin"]}><TimetableEditor /></ProtectedRoute>} />
+          <Route path="/dept_admin/profile" element={<ProtectedRoute allowedRole="dept_admin"><Profile /></ProtectedRoute>} />
+          <Route path="/dept_admin/help" element={<ProtectedRoute allowedRole="dept_admin"><HelpCenter /></ProtectedRoute>} />
+
+          {/* New Student Admission — Coordinator Only */}
+          <Route path="/dept_admin/new-admission" element={<ProtectedRoute allowedRole={["dept_admin", "hod", "admin"]}><NewStudentAdmission /></ProtectedRoute>} />
+
+          {/* HOD Coordinator Management */}
+          <Route path="/hod/coordinators" element={<ProtectedRoute allowedRole={["hod", "admin"]}><CoordinatorManagement /></ProtectedRoute>} />
+
+          {/* Exam Cell Routes */}
+          <Route path="/exam_cell" element={<ProtectedRoute allowedRole="exam_cell"><ExamCellDashboard /></ProtectedRoute>} />
+          <Route path="/exam_cell/profile" element={<ProtectedRoute allowedRole="exam_cell"><Profile /></ProtectedRoute>} />
+          <Route path="/exam_cell/help" element={<ProtectedRoute allowedRole="exam_cell"><HelpCenter /></ProtectedRoute>} />
+
           {/* HOD Routes */}
           <Route path="/hod" element={<ProtectedRoute allowedRole="hod"><HodDashboard /></ProtectedRoute>} />
           <Route path="/hod/gatepass" element={<ProtectedRoute allowedRole="hod"><HodGatePass /></ProtectedRoute>} />
@@ -212,14 +259,14 @@ export default function App() {
           <Route path="/hod/results" element={<ProtectedRoute allowedRole="hod"><HodResults /></ProtectedRoute>} />
           <Route path="/hod/attendance" element={<ProtectedRoute allowedRole="hod"><HodAttendance /></ProtectedRoute>} />
           <Route path="/hod/class-incharge" element={<ProtectedRoute allowedRole={["hod", "admin"]}><ClassIncharge /></ProtectedRoute>} />
-          <Route path="/hod/subject-allocation" element={<ProtectedRoute allowedRole={["hod", "admin", "management"]}><SubjectAllocation /></ProtectedRoute>} />
+          <Route path="/hod/subject-allocation" element={<Navigate to="/academics/course-allocation" replace />} />
           <Route path="/hod/attendance-overview" element={<ProtectedRoute allowedRole={["hod", "admin"]}><AttendanceOverview /></ProtectedRoute>} />
           <Route path="/reports/daily-attendance" element={<ProtectedRoute allowedRole={["hod", "admin", "management", "principal"]}><DailyAttendanceReport /></ProtectedRoute>} />
           <Route path="/hod/fees" element={<ProtectedRoute allowedRole="hod"><HodFees /></ProtectedRoute>} />
           <Route path="/hod/mess" element={<ProtectedRoute allowedRole="hod"><MessPage /></ProtectedRoute>} />
           <Route path="/hod/hostel" element={<ProtectedRoute allowedRole="hod"><HostelPage /></ProtectedRoute>} />
           <Route path="/hod/profile" element={<ProtectedRoute allowedRole="hod"><Profile /></ProtectedRoute>} />
-          <Route path="/hod/timetable" element={<ProtectedRoute allowedRole="hod"><HodTimetable /></ProtectedRoute>} />
+
           <Route path="/hod/placements" element={<ProtectedRoute allowedRole="hod"><PlacementsPage /></ProtectedRoute>} />
           <Route path="/hod/alerts" element={<ProtectedRoute allowedRole="hod"><AlertsPage /></ProtectedRoute>} />
           <Route path="/hod/complaints" element={<ProtectedRoute allowedRole="hod"><ComplaintsPage /></ProtectedRoute>} />
@@ -283,9 +330,9 @@ export default function App() {
           <Route path="/config/general/programme" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><Programme /></ProtectedRoute>} />
           <Route path="/config/general/upload-courses" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><UploadCourses /></ProtectedRoute>} />
           <Route path="/config/general/regulation-mapping" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><RegulationMapping /></ProtectedRoute>} />
-          <Route path="/config/general/student" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><StudentDetails /></ProtectedRoute>} />
+          <Route path="/config/general/student" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod", "dept_admin"]}><StudentDetails /></ProtectedRoute>} />
           <Route path="/config/general/faculty" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><FacultyDetails /></ProtectedRoute>} />
-          <Route path="/config/general/promote-student" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><PromoteStudent /></ProtectedRoute>} />
+          <Route path="/config/general/promote-student" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod", "dept_admin"]}><PromoteStudent /></ProtectedRoute>} />
           <Route path="/config/general/pass-out-students" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><PassOutStudents /></ProtectedRoute>} />
           
           <Route path="/config/cia/question-format" element={<ProtectedRoute allowedRole={["management", "officestaff", "staff", "admin", "hod"]}><QuestionFormat /></ProtectedRoute>} />

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { db } from "../../supabase/supabaseAdapter";
 import { collection, query, getDocs, setDoc, doc, where } from "../../supabase/supabaseAdapter";
+import { getStoredCollegeStructure, matchesAcademicSession } from '../../utils/collegeConfig';
 import { Search, ArrowLeft } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 
@@ -12,13 +13,17 @@ export default function MarkEntryOther() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  // Allocations for the logged-in staff
+  const [allocations, setAllocations] = useState([]);
+  const [sessionMap, setSessionMap] = useState({});
+
   // Filters
-  const [filterSession, setFilterSession] = useState('');
-  const [filterProgramme, setFilterProgramme] = useState('');
-  const [filterSemester, setFilterSemester] = useState('');
+  const [filterSession, setFilterSession] = useState('2026-2027');
+  const [filterProgramme, setFilterProgramme] = useState('B.E CSE');
+  const [filterSemester, setFilterSemester] = useState('7');
   const [filterCourse, setFilterCourse] = useState('');
-  const [filterClass, setFilterClass] = useState('');
-  const [filterComponent, setFilterComponent] = useState('');
+  const [filterClass, setFilterClass] = useState('Single Class');
+  const [filterComponent, setFilterComponent] = useState('Assignment');
   
   const [searched, setSearched] = useState(false);
 
@@ -29,6 +34,181 @@ export default function MarkEntryOther() {
   const PROGRAMMES = ["B.E CSE", "B.E ECE", "B.E EEE", "B.E MECH", "B.Tech IT"];
   const SEMESTERS = ["1", "2", "3", "4", "5", "6", "7", "8"];
   const COMPONENTS = ["Assignment", "Quiz", "Seminar", "Tutorial", "Practical", "Internal Test"];
+
+  useEffect(() => {
+    fetchStaffAllocations();
+  }, [userProfile]);
+
+  async function fetchStaffAllocations() {
+    if (!userProfile) return;
+    try {
+      const uid = userProfile.uid || userProfile.id;
+      const userName = (userProfile.name || "").trim().toLowerCase();
+      const userEmail = (userProfile.email || "").trim().toLowerCase();
+
+      // 0. Fetch academic sessions for name resolution
+      try {
+        const sessSnap = await getDocs(collection(db, "academic_sessions"));
+        const sMap = {};
+        sessSnap.docs.forEach(d => {
+          const data = d.data();
+          if (data && data.name) sMap[d.id] = data.name;
+        });
+        setSessionMap(sMap);
+      } catch (e) {}
+
+      // 1. Fetch from subject_allocations
+      let rawSubs = [];
+      try {
+        const snap = await getDocs(collection(db, "subject_allocations"));
+        snap.docs.forEach(d => {
+          const data = d.data();
+          if (!data) return;
+          const fUid = data.facultyId;
+          const fName = (data.facultyName || "").trim().toLowerCase();
+          if (
+            (fUid && String(fUid) === String(uid)) ||
+            (fName && userName && (fName === userName || fName.includes(userName) || userName.includes(fName)))
+          ) {
+            rawSubs.push({ id: d.id, ...data });
+          }
+        });
+      } catch (e) {}
+
+      // 2. Fetch from course_allocations
+      let rawCourses = [];
+      try {
+        const snap = await getDocs(collection(db, "course_allocations"));
+        snap.docs.forEach(d => {
+          const data = d.data();
+          if (!data) return;
+          const fUid = data.facultyId;
+          const fName = (data.facultyName || "").trim().toLowerCase();
+          const fEmail = (data.facultyEmail || "").trim().toLowerCase();
+          if (
+            (fUid && String(fUid) === String(uid)) ||
+            (fEmail && fEmail === userEmail) ||
+            (fName && userName && (fName === userName || fName.includes(userName) || userName.includes(fName)))
+          ) {
+            rawCourses.push({ id: d.id, ...data });
+          }
+        });
+      } catch (e) {}
+
+      // Normalize
+      const map = new Map();
+      const addAlloc = (item) => {
+        const code = (item.courseCode || item.subjectCode || item.subject_code || '').trim().toUpperCase();
+        if (!code) return;
+        const name = (item.courseName || item.subjectName || item.subject_name || '').trim();
+        const sem = String(item.semester || '7').trim();
+        const sec = (item.section || '').trim();
+        const prog = item.programme || item.batch || 'B.E CSE';
+        const key = `${code}_${sem}_${sec}`;
+
+        if (!map.has(key)) {
+          map.set(key, {
+            id: item.id || key,
+            courseCode: code,
+            courseName: name,
+            semester: sem,
+            section: sec,
+            programme: prog,
+            department: item.department || item.dept || 'CSE',
+            sessionId: item.sessionId || item.academicSession || ''
+          });
+        }
+      };
+
+      rawSubs.forEach(addAlloc);
+      rawCourses.forEach(addAlloc);
+
+      const allocList = Array.from(map.values());
+      setAllocations(allocList);
+
+      // Pre-select first allocated course for staff
+      if (allocList.length > 0 && !filterCourse) {
+        const first = allocList[0];
+        setFilterCourse(first.courseCode);
+        if (first.semester) setFilterSemester(first.semester);
+        if (first.programme) setFilterProgramme(first.programme);
+        if (first.section && first.section !== 'None' && first.section !== '.') {
+          setFilterClass(first.section);
+        } else {
+          setFilterClass('Single Class');
+        }
+      }
+    } catch (err) {
+      console.warn("fetchStaffAllocations error:", err);
+    }
+  }
+
+  // Dynamic allocations mapped to selected Academic Session & Semester
+  const sessionAllocations = useMemo(() => {
+    if (!filterSession) return [];
+    return allocations.filter(a => {
+      const sessionMatches = matchesAcademicSession(a.sessionId, filterSession, sessionMap);
+      if (!sessionMatches) return false;
+      if (filterSemester && String(a.semester || '').trim() !== String(filterSemester).trim()) {
+        return false;
+      }
+      return true;
+    });
+  }, [allocations, filterSession, filterSemester, sessionMap]);
+
+  // Keep filterCourse synced with sessionAllocations
+  useEffect(() => {
+    if (sessionAllocations.length > 0) {
+      const match = sessionAllocations.find(a => a.courseCode === filterCourse);
+      if (!match) {
+        handleCourseChange(sessionAllocations[0].courseCode);
+      }
+    } else {
+      setFilterCourse('');
+    }
+  }, [sessionAllocations]);
+
+  // Dynamic available classes/sections based on Programme & Semester from college structure
+  const availableClasses = useMemo(() => {
+    try {
+      const structure = getStoredCollegeStructure();
+      const deptKey = (filterProgramme || '').replace('B.E ', '').replace('B.Tech ', '').trim() || 'CSE';
+      const semNum = Number(filterSemester) || 7;
+      const yearNum = Math.ceil(semNum / 2) || 4; // 1, 2, 3, or 4
+      
+      const sections = structure?.sections?.[deptKey]?.[String(yearNum)] || ['Single'];
+      if (sections.includes('Single')) {
+        return [{ value: 'Single Class', label: 'Single Class' }];
+      }
+      return sections.map(s => ({
+        value: s,
+        label: `Section ${s}`
+      }));
+    } catch (e) {
+      return [{ value: 'Single Class', label: 'Single Class' }];
+    }
+  }, [filterProgramme, filterSemester]);
+
+  // Handle course change
+  const handleCourseChange = (selectedCode) => {
+    setFilterCourse(selectedCode);
+    const alloc = allocations.find(a => a.courseCode === selectedCode);
+    if (alloc) {
+      if (alloc.semester) setFilterSemester(alloc.semester);
+      if (alloc.programme) setFilterProgramme(alloc.programme);
+      if (alloc.section && alloc.section !== 'None' && alloc.section !== '.') {
+        setFilterClass(alloc.section);
+      } else {
+        const semNum = Number(alloc.semester) || 7;
+        const yearNum = Math.ceil(semNum / 2) || 4;
+        const deptKey = (alloc.programme || '').replace('B.E ', '').replace('B.Tech ', '').trim() || 'CSE';
+        const structure = getStoredCollegeStructure();
+        const secs = structure?.sections?.[deptKey]?.[String(yearNum)] || ['Single'];
+        if (secs.includes('Single')) setFilterClass('Single Class');
+        else setFilterClass(secs[0]);
+      }
+    }
+  };
 
   const handleSearch = async () => {
     if (!filterSession || !filterProgramme || !filterSemester || !filterCourse || !filterClass || !filterComponent) {
@@ -43,23 +223,67 @@ export default function MarkEntryOther() {
                    filterProgramme.includes("ECE") ? "ECE" :
                    filterProgramme.includes("IT") ? "IT" :
                    filterProgramme.includes("EEE") ? "EEE" :
-                   filterProgramme.includes("MECH") ? "MECH" : "";
+                   filterProgramme.includes("MECH") ? "MECH" : "CSE";
                    
-      const yearStr = filterSemester === "1" || filterSemester === "2" ? "1st Year" :
-                      filterSemester === "3" || filterSemester === "4" ? "2nd Year" :
-                      filterSemester === "5" || filterSemester === "6" ? "3rd Year" : "4th Year";
+      const semNum = Number(filterSemester) || 7;
+      const yearNum = Math.ceil(semNum / 2); // 1, 2, 3, or 4
+      const yearStr = `${yearNum}${yearNum === 1 ? 'st' : yearNum === 2 ? 'nd' : yearNum === 3 ? 'rd' : 'th'} Year`;
 
-      let studentsList = [];
-      if (dept) {
-        const studentQ = query(collection(db, "users"), where("role", "==", "student"), where("dept", "==", dept), where("year", "==", yearStr));
-        const sSnap = await getDocs(studentQ);
-        studentsList = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-      } else {
-        const studentQ = query(collection(db, "users"), where("role", "==", "student"));
-        const sSnap = await getDocs(studentQ);
-        studentsList = sSnap.docs.map(d => ({ id: d.id, ...d.data() })).slice(0, 10);
-      }
-      studentsList.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      // Query students in this department
+      const studentQ = query(collection(db, "users"), where("role", "==", "student"), where("dept", "==", dept));
+      const sSnap = await getDocs(studentQ);
+      const allDeptStudents = sSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // Strictly filter students by Academic Session, Year/Semester and Class/Section
+      const filteredStudents = allDeptStudents.filter(s => {
+        // 0. Academic Session match
+        if (filterSession) {
+          const sSession = (s.academicSession || '').trim();
+          const sBatch = (s.batch || '').replace(/\s+/g, '');
+          
+          let sessionMatches = false;
+          if (sSession) {
+            sessionMatches = (sSession === filterSession);
+          } else if (sBatch.includes('-')) {
+            // For batch e.g. 2023-2027:
+            // Year 1 (Sem 1-2): 2023-2024
+            // Year 2 (Sem 3-4): 2024-2025
+            // Year 3 (Sem 5-6): 2025-2026
+            // Year 4 (Sem 7-8): 2026-2027
+            const [startYear] = sBatch.split('-').map(Number);
+            if (startYear && !isNaN(startYear)) {
+              const expectedSession = `${startYear + (yearNum - 1)}-${startYear + yearNum}`;
+              sessionMatches = (expectedSession === filterSession);
+            }
+          }
+          if (!sessionMatches) return false;
+        }
+
+        // 1. Year / Semester match
+        const sYear = (s.year || '').trim();
+        const sSem = String(s.semester || s.sem || '').trim();
+        const yearMatches = sYear.toLowerCase() === yearStr.toLowerCase() ||
+                            sYear.startsWith(String(yearNum)) ||
+                            sSem === String(filterSemester) ||
+                            (filterSemester === '7' && (sSem === 'VII' || sSem === '7')) ||
+                            (filterSemester === '3' && (sSem === 'III' || sSem === '3')) ||
+                            (filterSemester === '1' && (sSem === 'I' || sSem === '1')) ||
+                            (filterSemester === '5' && (sSem === 'V' || sSem === '5'));
+        if (!yearMatches) return false;
+
+        // 2. Class / Section match
+        const sSec = (s.section || s.sec || '').trim().toUpperCase();
+        const target = filterClass.trim().toUpperCase();
+
+        if (target === 'SINGLE CLASS' || target === 'SINGLE' || target === 'NONE' || target === 'NO' || target === '.') {
+          return !sSec || sSec === '.' || sSec === 'NO' || sSec === 'NONE' || sSec === 'SINGLE';
+        } else {
+          const cleanTarget = target.replace('SECTION', '').replace('CLASS', '').trim();
+          return sSec === cleanTarget || sSec === `CLASS ${cleanTarget}` || sSec === `SEC ${cleanTarget}`;
+        }
+      });
+
+      filteredStudents.sort((a, b) => (a.registerNo || a.name || "").localeCompare(b.registerNo || b.name || ""));
       
       // Fetch Existing Marks
       const marksQ = query(
@@ -78,11 +302,11 @@ export default function MarkEntryOther() {
         mData[data.studentId] = data.marks;
       });
 
-      setStudents(studentsList);
+      setStudents(filteredStudents);
       setMarksMap(mData);
 
-      if (studentsList.length === 0) {
-        toast.error("No students found.");
+      if (filteredStudents.length === 0) {
+        toast.error(`No students found for ${filterProgramme} Sem ${filterSemester} (${filterClass})`);
       }
 
     } catch (err) {
@@ -169,11 +393,41 @@ export default function MarkEntryOther() {
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Course Code *</label>
-                <input type="text" placeholder="e.g. CS101" value={filterCourse} onChange={(e) => setFilterCourse(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }} />
+                {sessionAllocations.length > 0 ? (
+                  <select 
+                    value={filterCourse} 
+                    onChange={(e) => handleCourseChange(e.target.value)} 
+                    style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}
+                  >
+                    <option value="">Select Course</option>
+                    {sessionAllocations.map(a => (
+                      <option key={a.id} value={a.courseCode}>
+                        {a.courseCode} - {a.courseName} (Sem {a.semester})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <select 
+                    disabled
+                    value=""
+                    style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text-muted)' }}
+                  >
+                    <option value="">No subjects allocated for {filterSession} (Sem {filterSemester})</option>
+                  </select>
+                )}
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Class *</label>
-                <input type="text" placeholder="e.g. CSE-A" value={filterClass} onChange={(e) => setFilterClass(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }} />
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Class / Section *</label>
+                <select 
+                  value={filterClass} 
+                  onChange={(e) => setFilterClass(e.target.value)} 
+                  style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}
+                >
+                  <option value="">Select Class</option>
+                  {availableClasses.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Component *</label>
@@ -205,7 +459,9 @@ export default function MarkEntryOther() {
             {loading ? (
               <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>Loading students...</div>
             ) : students.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>No students found.</div>
+              <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
+                No students found for Academic Session {filterSession}, {filterProgramme} Sem {filterSemester} ({filterClass}).
+              </div>
             ) : (
               <>
                 <div style={{ overflowX: 'auto', marginBottom: 20 }}>

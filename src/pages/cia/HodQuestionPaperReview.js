@@ -36,7 +36,14 @@ export default function HodQuestionPaperReview() {
       }
       const snap = await getDocs(q);
       const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      list.sort((a, b) => (b.submittedToHodAt?.toMillis() || 0) - (a.submittedToHodAt?.toMillis() || 0));
+      const getTime = (val) => {
+        if (!val) return 0;
+        if (typeof val?.toMillis === 'function') return val.toMillis();
+        if (typeof val?.toDate === 'function') return val.toDate().getTime();
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? 0 : d.getTime();
+      };
+      list.sort((a, b) => getTime(b.submittedToHodAt) - getTime(a.submittedToHodAt));
       setPapers(list);
     } catch (err) {
       console.error(err);

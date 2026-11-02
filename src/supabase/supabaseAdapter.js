@@ -1,15 +1,9 @@
 // src/supabase/supabaseAdapter.js
-import { createClient } from "@supabase/supabase-js";
-import supabase from "./config";
+// Single supabase client — config.js-la irundhu import pannrom (no duplicate clients!)
+import supabase, { dbClient as configDbClient } from "./config";
 
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || "https://hnyeyvwbnoozqnumvfpi.supabase.co";
-const serviceRoleKey = process.env.REACT_APP_SUPABASE_SERVICE_ROLE_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhueWV5dndibm9venFudW12ZnBpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDU2MDQwNywiZXhwIjoyMTA2MTM2NDA3fQ.oKiyCtxs5QiMnbXXbTCC3ztAmATy_gDRwRf6w7adPg0";
-
-// Admin database client using service_role key to bypass PostgreSQL RLS permanently
-export const dbClient = createClient(supabaseUrl, serviceRoleKey, {
-  auth: { persistSession: false, autoRefreshToken: false }
-});
+// dbClient uses the dedicated service_role client that bypasses RLS
+export const dbClient = configDbClient || supabase;
 
 function cleanData(obj) {
   if (!obj || typeof obj !== "object") return obj;
@@ -35,11 +29,17 @@ function generateId() {
 // Global dummy db object for API compatibility
 export const db = { _type: "supabase_db" };
 
+// Table alias map for virtual/dynamic collections that map to pre-existing Supabase document tables
+const TABLE_ALIASES = {
+  "cia_published_question_banks": "ciaTypesConfig"
+};
+
 export function collection(dbRef, tableName) {
   if (typeof dbRef === "string" && !tableName) {
     tableName = dbRef;
   }
-  return { _type: "collection", tableName };
+  const resolvedTable = TABLE_ALIASES[tableName] || tableName;
+  return { _type: "collection", tableName: resolvedTable, originalName: tableName };
 }
 
 export function doc(dbOrColl, tableNameOrId, optionalId) {
@@ -51,8 +51,9 @@ export function doc(dbOrColl, tableNameOrId, optionalId) {
     tableName = tableNameOrId;
     id = optionalId;
   }
+  const resolvedTable = TABLE_ALIASES[tableName] || tableName;
   if (!id) id = generateId();
-  return { _type: "doc", tableName, id };
+  return { _type: "doc", tableName: resolvedTable, id, originalName: tableName };
 }
 
 export function query(collectionRef, ...constraints) {
@@ -391,12 +392,21 @@ export async function createUserWithEmailAndPassword(authObj, email, password) {
       password: password,
       email_confirm: true
     });
-    if (!error && data?.user) {
+    if (error) {
+      // If admin API returns a explicit user already exists error, throw it
+      if (error.status === 422 || error.message?.toLowerCase().includes("already")) {
+        throw error;
+      }
+      console.warn("dbClient admin createUser returned error, falling back to signUp:", error.message);
+    } else if (data?.user) {
       const user = data.user;
       user.uid = user.id;
       return { user };
     }
   } catch (adminErr) {
+    if (adminErr.message?.toLowerCase().includes("already")) {
+      throw adminErr;
+    }
     console.warn("dbClient admin createUser failed, falling back to signUp:", adminErr);
   }
 
@@ -434,7 +444,7 @@ export async function signOut(authObj) {
 
 export async function sendPasswordResetEmail(authObj, email) {
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + "/login"
+    redirectTo: `${window.location.origin}/reset-password`
   });
   if (error) throw error;
   return data;
@@ -460,6 +470,20 @@ export async function updatePassword(user, newPassword) {
 }
 
 export function onAuthStateChanged(authObj, callback) {
+  // Immediately fire with the current session so loading state resolves on first render
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    const user = session?.user || null;
+    if (user) {
+      user.uid = user.id;
+      _cachedUser = user;
+    } else {
+      _cachedUser = null;
+    }
+    callback(user);
+  }).catch(() => {
+    callback(null);
+  });
+
   const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
     const user = session?.user || null;
     if (user) {

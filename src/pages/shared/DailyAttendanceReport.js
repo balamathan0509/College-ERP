@@ -5,6 +5,7 @@ import { db } from "../../supabase/supabaseAdapter";
 import { collection, query, where, getDocs } from "../../supabase/supabaseAdapter";
 import toast, { Toaster } from "react-hot-toast";
 import { FileText, Download, Calendar } from "lucide-react";
+import { COLLEGE_DEPARTMENTS, getSectionsForDeptAndYear } from "../../utils/collegeConfig";
 
 const YEARS = ["1st Year", "2nd Year", "3rd Year", "4th Year"];
 
@@ -22,7 +23,7 @@ export default function DailyAttendanceReport() {
 
   useEffect(() => {
     if (isSuperAdmin) {
-      setDepartments(["CSE", "ECE", "EEE", "MECH", "IT", "AIDS"]);
+      setDepartments(COLLEGE_DEPARTMENTS);
     } else if (userProfile?.dept) {
       setDepartment(userProfile.dept);
     }
@@ -173,9 +174,30 @@ export default function DailyAttendanceReport() {
                 {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
               </select>
             </div>
-            <div style={{ flex: 1, minWidth: 100 }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>Section (Optional)</label>
-              <input type="text" className="input-field" style={{ width: '100%', marginTop: 5 }} value={section} onChange={e => setSection(e.target.value.toUpperCase())} placeholder="e.g. A" />
+            <div style={{ flex: 1, minWidth: 120 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>Section</label>
+              {(() => {
+                const availableSecs = getSectionsForDeptAndYear(department, year);
+                const isSingle = availableSecs.length === 1 && availableSecs[0] === 'Single';
+                if (isSingle) {
+                  return (
+                    <div style={{ padding: "10px 12px", background: "#f8fafc", borderRadius: 6, fontSize: 13, color: "#64748b", marginTop: 5, border: "1px solid #cbd5e1" }}>
+                      Single Class
+                    </div>
+                  );
+                }
+                return (
+                  <select
+                    className="input-field"
+                    style={{ width: '100%', marginTop: 5 }}
+                    value={section}
+                    onChange={e => setSection(e.target.value)}
+                  >
+                    <option value="">All Sections</option>
+                    {availableSecs.map(s => <option key={s} value={s}>Section {s}</option>)}
+                  </select>
+                );
+              })()}
             </div>
             <div>
               <button onClick={generateReport} className="btn-primary" style={{ padding: '10px 20px', height: 42 }}>

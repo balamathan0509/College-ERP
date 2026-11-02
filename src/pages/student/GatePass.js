@@ -45,6 +45,13 @@ export default function StudentGatePass() {
     setLoading(true);
     try {
       const reasonText = form.reason === "Other" ? form.otherReason : form.reason;
+      const studentSection = userProfile.section || ".";
+
+      // Lookup class incharge for this student's class
+      const inchargeDocId = `${userProfile.dept}_${userProfile.year}_${studentSection}`.replace(/\s+/g, "_");
+      const incSnap = await getDocs(query(collection(db, "class_incharges"), where("dept", "==", userProfile.dept)));
+      const myIncharge = incSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .find(i => i.year === userProfile.year && (i.section === studentSection || i.section === "."));
 
       await addDoc(collection(db, "gate_pass"), {
         studentId: currentUser.uid,
@@ -53,6 +60,8 @@ export default function StudentGatePass() {
         registerNo: userProfile.registerNo,
         dept: userProfile.dept,
         year: userProfile.year,
+        section: studentSection,
+        classInchargeId: myIncharge?.facultyId || null,
         phone: userProfile.phone || "",
         reason: reasonText,
         outDate: form.outDate,
@@ -65,25 +74,23 @@ export default function StudentGatePass() {
         createdAt: new Date().toISOString()
       });
 
-      const staffQ = query(
-        collection(db, "users"),
-        where("role", "==", "staff"),
-        where("dept", "==", userProfile.dept)
-      );
-      const staffSnap = await getDocs(staffQ);
-      staffSnap.docs.forEach(d => {
-        const staffData = d.data();
-        if (staffData.email) {
-          sendEmail({
-            toEmail: staffData.email,
-            toName: staffData.name,
-            subject: "New Gate Pass Request",
-            message: `${userProfile.name} (${userProfile.registerNo}) has submitted a Gate Pass request for: ${reasonText}.\nPlace: ${form.place}\nOut: ${form.outDate} ${form.outTime}\nIn: ${form.inDate} ${form.inTime}`
-          });
+      // Notify only the class incharge (not all dept staff)
+      if (myIncharge?.facultyId) {
+        const incUserSnap = await getDocs(query(collection(db, "users"), where("uid", "==", myIncharge.facultyId)));
+        if (!incUserSnap.empty) {
+          const incData = incUserSnap.docs[0].data();
+          if (incData.email) {
+            sendEmail({
+              toEmail: incData.email,
+              toName: incData.name,
+              subject: "New Gate Pass Request",
+              message: `${userProfile.name} (${userProfile.registerNo}) has submitted a Gate Pass request for: ${reasonText}.\nPlace: ${form.place}\nOut: ${form.outDate} ${form.outTime}\nIn: ${form.inDate} ${form.inTime}`
+            });
+          }
         }
-      });
+      }
 
-      setSuccess("Gate pass request submitted successfully! Pending faculty approval.");
+      setSuccess("Gate pass request submitted successfully! Pending your class incharge approval.");
       setForm({ reason: "", otherReason: "", outDate: "", outTime: "", inDate: "", inTime: "", place: "" });
     } catch (err) {
       setError("Failed to submit request. Try again.");

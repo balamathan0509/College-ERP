@@ -25,46 +25,16 @@ export default function DateTimeHeader() {
   });
 
   return (
-    <div className="datetime-header" style={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "12px 20px",
-      marginBottom: 24,
-      borderRadius: "var(--radius-md)",
-      background: "var(--bg-color)",
-      border: "1px solid var(--border)",
-      backdropFilter: "blur(12px)"
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <Calendar size={18} color="var(--highlight)" />
-        <span style={{
-          fontSize: 14,
-          fontWeight: 600,
-          color: "var(--text)",
-          fontFamily: "Inter, sans-serif"
-        }}>
+    <div className="datetime-header">
+      <div className="datetime-date-wrapper">
+        <Calendar size={16} color="#2563eb" style={{ flexShrink: 0 }} />
+        <span className="datetime-date-text">
           {dateStr}
         </span>
       </div>
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "6px 14px",
-        borderRadius: "var(--radius-sm)",
-        background: "rgba(37, 99, 235, 0.12)",
-        border: "1px solid rgba(37, 99, 235, 0.3)"
-      }}>
-        <Clock size={16} color="var(--highlight)" />
-        <span style={{
-          fontSize: 14,
-          fontWeight: 700,
-          color: "var(--highlight)",
-          fontFamily: "Plus Jakarta Sans, sans-serif",
-          letterSpacing: "0.02em",
-          fontVariantNumeric: "tabular-nums"
-        }}>
+      <div className="datetime-time-pill">
+        <Clock size={13} color="#2563eb" style={{ flexShrink: 0 }} />
+        <span className="datetime-time-text">
           {timeStr}
         </span>
       </div>

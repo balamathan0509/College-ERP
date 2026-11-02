@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
+  Menu,
   LayoutDashboard,
   DoorOpen,
   ClipboardList,
@@ -30,7 +31,9 @@ import {
   FileText,
   BookOpen,
   HelpCircle,
-  Lock
+  Lock,
+  Grid,
+  ArrowLeftRight
 } from "lucide-react";
 
 const studentNav = [
@@ -44,17 +47,38 @@ const studentNav = [
   { icon: <Bell size={18} />, label: "Alerts", path: "/student/alerts" },
   { icon: <MessageSquareWarning size={18} />, label: "Complaints", path: "/student/complaints" },
   { icon: <AlertOctagon size={18} />, label: "Fines", path: "/student/fines" },
-  { icon: <FileText size={18} />, label: "Question Papers", path: "/student/question-papers" }
+  { icon: <FileText size={18} />, label: "Question Papers", path: "/student/question-papers" },
+  { icon: <BookOpen size={18} />, label: "Question Bank", path: "/student/question-bank" },
+  { icon: <Grid size={18} />, label: "Exam Seating Plan", path: "/student/seating-arrangement" }
 ];
 
 const staffNav = [
   { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/staff" },
-
+  { icon: <Calendar size={18} />, label: "My Timetable", path: "/staff/timetable" },
+  { 
+    icon: <BookOpen size={18} />, 
+    label: "Logbook", 
+    isSubmenu: true,
+    children: [
+      { label: "Period Attendance", path: "/staff/period-attendance" },
+      { label: "Hour Alteration", path: "/staff/hour-alteration" },
+      { label: "Classwork Logbook", path: "/staff/classwork-record" },
+      { label: "Course Contents & Plan", path: "/academics/lms/course-contents" },
+      { label: "Plan Completion", path: "/academics/lms/plan-completion" },
+      { label: "Plan Feedback", path: "/academics/lms/plan-feedback" },
+      { label: "Assignments", path: "/academics/lms/assignments" },
+      { label: "Mark Attendance", path: "/academics/lms/mark-attendance" },
+      { label: "Academic Activities", path: "/academics/lms/academic-activities" },
+      { label: "Research Repository", path: "/academics/lms/research-repository" },
+      { label: "Self Appraisal", path: "/academics/lms/self-appraisal" },
+      { label: "Faculty Participation", path: "/academics/lms/faculty-participation" }
+    ]
+  },
   { icon: <DoorOpen size={18} />, label: "Gate Pass", path: "/staff/gatepass" },
   { icon: <ClipboardList size={18} />, label: "Leave", path: "/staff/leave" },
-  { icon: <CheckSquare size={18} />, label: "Attendance", path: "/staff/attendance" },
+  { icon: <CheckSquare size={18} />, label: "Class Incharge Att.", path: "/staff/attendance" },
+  { icon: <BookOpen size={18} />, label: "Class Question Banks", path: "/cia/class-question-banks" },
   { icon: <Award size={18} />, label: "Results", path: "/staff/results" },
-  { icon: <Calendar size={18} />, label: "Timetable", path: "/staff/timetable" },
   { icon: <Briefcase size={18} />, label: "Placements", path: "/staff/placements" },
   { icon: <Bell size={18} />, label: "Alerts", path: "/staff/alerts" },
   { icon: <MessageSquareWarning size={18} />, label: "Complaints", path: "/staff/complaints" },
@@ -64,12 +88,11 @@ const staffNav = [
     label: "CIA", 
     isSubmenu: true,
     children: [
-      { label: "Exam Creation", path: "/cia/exam-creation" },
-      { label: "Schedule Examination", path: "/cia/schedule" },
       { label: "Question Bank", path: "/cia/question-bank" },
+      { label: "Class Question Banks", path: "/cia/class-question-banks" },
       { label: "My Question Papers", path: "/cia/my-papers" },
       { label: "Question Paper", path: "/cia/question-paper" },
-      { label: "CIA Mark Attendance", path: "/cia/attendance" },
+      { label: "Exam Seating Plan", path: "/cia/seating-arrangement" },
       { label: "Mark Entry Process", path: "/cia/mark-entry" },
       { label: "Other Mark Entry Process", path: "/cia/other-mark-entry" },
       { label: "ESE Mark Entry Process", path: "/cia/ese-mark-entry" },
@@ -83,35 +106,41 @@ const staffNav = [
     label: "Academics", 
     isSubmenu: true,
     children: [
+      { label: "Academic Calendar", path: "/academics/academic-calendar" },
       { label: "Course Allocation", path: "/academics/course-allocation" },
       { label: "My Subjects", path: "/staff/my-subjects" },
       { label: "Course Enrollment", path: "/academics/course-enrollment" },
-      { label: "Timetable Config", path: "/academics/timetable-config" },
-      { label: "View Timetable", path: "/academics/view-timetable" },
       { label: "Faculty Profile", path: "/academics/faculty-profile" },
-      { label: "Academic Reports", path: "/academics/reports" },
-      { 
-        label: "LMS",
-        isNestedSubmenu: true,
-        children: [
-          { label: "Course Contents & Plan", path: "/academics/lms/course-contents" },
-          { label: "Faculty Timetable", path: "/academics/lms/faculty-timetable" },
-          { label: "Plan Completion", path: "/academics/lms/plan-completion" },
-          { label: "Plan Feedback", path: "/academics/lms/plan-feedback" },
-          { label: "Assignments", path: "/academics/lms/assignments" },
-          { label: "Mark Attendance", path: "/academics/lms/mark-attendance" },
-          { label: "Academic Activities", path: "/academics/lms/academic-activities" },
-          { label: "Research Repository", path: "/academics/lms/research-repository" },
-          { label: "Self Appraisal", path: "/academics/lms/self-appraisal" },
-          { label: "Faculty Participation", path: "/academics/lms/faculty-participation" }
-        ]
-      }
+      { label: "Academic Reports", path: "/academics/reports" }
     ]
   }
 ];
 
+const examCellNav = [
+  { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/exam_cell" },
+  { 
+    icon: <FileText size={18} />, 
+    label: "CIA", 
+    isSubmenu: true,
+    children: [
+      { label: "Exam Creation", path: "/cia/exam-creation" },
+      { label: "Schedule Examination", path: "/cia/schedule" },
+      { label: "Seating Arrangement", path: "/cia/seating-arrangement" },
+      { label: "CIA Mark Attendance", path: "/cia/attendance" }
+    ]
+  }
+];
+
+const deptAdminNav = [
+  { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/dept-admin" },
+  { icon: <Users size={18} />, label: "New Student Add", path: "/dept_admin/new-admission" },
+  { icon: <Calendar size={18} />, label: "My Timetable", path: "/staff/timetable" },
+  { icon: <Calendar size={18} />, label: "Timetable Management", path: "/dept-admin/timetable" }
+];
+
 const hodNav = [
   { icon: <LayoutDashboard size={18} />, label: "Dashboard", path: "/hod" },
+  { icon: <Calendar size={18} />, label: "Class Timetables", path: "/hod/timetable" },
   { icon: <ClipboardList size={18} />, label: "Leave", path: "/hod/leave" },
   { icon: <Award size={18} />, label: "Results", path: "/hod/results" },
   { icon: <Briefcase size={18} />, label: "Placements", path: "/hod/placements" },
@@ -123,24 +152,20 @@ const hodNav = [
     label: "Department", 
     isSubmenu: true,
     children: [
+      { label: "Academic Calendar", path: "/academics/academic-calendar" },
+      { label: "Timetable Management", path: "/hod/timetable" },
+      { label: "New Student Add", path: "/dept_admin/new-admission" },
+      { label: "Promote Student", path: "/config/general/promote-student" },
+      { label: "Coordinator Management", path: "/hod/coordinators" },
       { label: "Student Details", path: "/config/general/student" },
       { label: "Staff Details", path: "/config/general/faculty" },
-      { label: "Subject Allocation", path: "/hod/subject-allocation" },
+      { label: "Course Allocation", path: "/academics/course-allocation" },
       { label: "Class Incharge", path: "/hod/class-incharge" },
       { label: "Attendance Monitor", path: "/hod/attendance" },
-      { label: "Timetable", path: "/hod/timetable" },
-      { label: "Reports", path: "/academics/reports" },
-      {
-        label: "CIA Configuration",
-        isNestedSubmenu: true,
-        children: [
-          { label: "Question Format", path: "/config/cia/question-format" },
-          { label: "Types and Evaluation", path: "/config/cia/types-evaluation" },
-          { label: "Evaluation Pattern", path: "/config/cia/evaluation-pattern" },
-          { label: "Show Evaluation Pattern", path: "/config/cia/show-evaluation-pattern" },
-          { label: "Pattern Mapping", path: "/config/cia/pattern-mapping" }
-        ]
-      }
+      { label: "Period Attendance", path: "/staff/period-attendance" },
+      { label: "Classwork Logbook", path: "/staff/classwork-record" },
+      { label: "Hour Alterations", path: "/staff/hour-alteration" },
+      { label: "Reports", path: "/academics/reports" }
     ]
   },
   { 
@@ -294,53 +319,103 @@ const adminNav = [
   }
 ];
 
+const EXPANDED_MENUS_STORAGE_KEY = "erp_sidebar_expanded_menus";
+
+const getSavedExpandedMenus = () => {
+  try {
+    const raw = sessionStorage.getItem(EXPANDED_MENUS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+};
+
+const saveExpandedMenus = (state) => {
+  try {
+    sessionStorage.setItem(EXPANDED_MENUS_STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {}
+};
+
+const detectActiveMenus = (pathname, navList = []) => {
+  const active = {};
+  if (!pathname) return active;
+
+  const checkItem = (item) => {
+    if (!item?.isSubmenu || !Array.isArray(item.children)) return;
+    for (const child of item.children) {
+      if (child.isNestedSubmenu && Array.isArray(child.children)) {
+        for (const subchild of child.children) {
+          if (subchild.path && (pathname === subchild.path || (subchild.path !== '/' && pathname.startsWith(subchild.path)))) {
+            active[item.label] = true;
+            active[child.label] = true;
+          }
+        }
+      } else if (child.path && (pathname === child.path || (child.path !== '/' && pathname.startsWith(child.path)))) {
+        active[item.label] = true;
+      }
+    }
+  };
+
+  if (Array.isArray(navList)) {
+    navList.forEach(checkItem);
+  }
+
+  [studentNav, staffNav, examCellNav, deptAdminNav, hodNav, wardenNav, officestaffNav, managementNav, securityNav, principalNav, adminNav].forEach(list => {
+    if (Array.isArray(list)) list.forEach(checkItem);
+  });
+
+  // Direct route-based fallbacks
+  if (pathname.startsWith('/cia/')) active.CIA = true;
+  if (pathname.startsWith('/academics/') && !pathname.startsWith('/academics/lms/')) active.Academics = true;
+  if (pathname === '/staff/my-subjects' || pathname === '/staff/timetable') active.Academics = true;
+  if (pathname.startsWith('/hod/attendance') || pathname.startsWith('/reports/daily-attendance') || pathname.startsWith('/hod/class-incharge')) active.Attendance = true;
+  if (pathname.startsWith('/config/')) {
+    active.Configuration = true;
+    if (pathname.startsWith('/config/general/')) active['General Configuration'] = true;
+    if (pathname.startsWith('/config/cia/')) active['CIA Configuration'] = true;
+  }
+  if (
+    pathname.startsWith('/staff/period-attendance') ||
+    pathname.startsWith('/staff/hour-alteration') ||
+    pathname.startsWith('/staff/classwork-record') ||
+    pathname.startsWith('/academics/lms/') ||
+    pathname.startsWith('/Academics/lms/')
+  ) {
+    active.Logbook = true;
+  }
+
+  return active;
+};
+
 export default function Sidebar() {
-  const { currentUser, userProfile, logout, isSuperAdmin } = useAuth();
+  const { userProfile, logout, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const desktopSidebarRef = React.useRef(null);
+
   const [expandedMenus, setExpandedMenus] = useState(() => {
-    const state = {};
-    const path = window.location.pathname;
-    if (path.startsWith('/cia/')) state.CIA = true;
-    if (path.startsWith('/academics/')) state.Academics = true;
-    if (path.startsWith('/academics/lms/')) state.LMS = true;
-    if (path.startsWith('/Academics/lms/')) state.LMS = true;
-    if (path.startsWith('/hod/attendance') || path.startsWith('/reports/daily-attendance') || path.startsWith('/hod/class-incharge')) state.Attendance = true;
-    if (path.startsWith('/config/')) {
-      state.Configuration = true;
-      if (path.startsWith('/config/general/')) state['General Configuration'] = true;
-      if (path.startsWith('/config/cia/')) state['CIA Configuration'] = true;
-    }
-    return state;
+    const saved = getSavedExpandedMenus();
+    const autoActive = detectActiveMenus(window.location.pathname);
+    return { ...saved, ...autoActive };
   });
   const [reviewCount, setReviewCount] = useState(0);
+  const [isClassIncharge, setIsClassIncharge] = useState(false);
+
+  const toggleMenu = (label) => {
+    setExpandedMenus(prev => {
+      const next = { ...prev, [label]: !prev[label] };
+      saveExpandedMenus(next);
+      return next;
+    });
+  };
 
   const role = userProfile?.role;
 
-  // Keep submenus expanded when navigating between their child routes
-  useEffect(() => {
-    const path = location.pathname;
-    setExpandedMenus(prev => {
-      const next = { ...prev };
-      if (path.startsWith('/cia/')) next.CIA = true;
-      if (path.startsWith('/academics/')) next.Academics = true;
-      if (path.startsWith('/academics/lms/')) next.LMS = true;
-      if (path.startsWith('/academics/lms/')) next.LMS = true;
-      if (path.startsWith('/hod/attendance') || path.startsWith('/reports/daily-attendance') || path.startsWith('/hod/class-incharge')) next.Attendance = true;
-      if (path.startsWith('/config/')) {
-        next.Configuration = true;
-        if (path.startsWith('/config/general/')) next['General Configuration'] = true;
-        if (path.startsWith('/config/cia/')) next['CIA Configuration'] = true;
-      }
-      return next;
-    });
-  }, [location.pathname]);
-
   useEffect(() => {
     if (!role) return;
-    import('../supabase/supabaseAdapter').then(({ collection, query, onSnapshot, where, db }) => {
+    import('../supabase/supabaseAdapter').then(({ collection, query, onSnapshot, getDocs, where, db }) => {
       if (role === 'hod') {
         const q = query(collection(db, "cia_question_papers"), where("status", "in", ["SUBMITTED_TO_HOD", "RETURNED_TO_HOD"]));
         const unsub = onSnapshot(q, snap => setReviewCount(snap.docs.length));
@@ -351,19 +426,90 @@ export default function Sidebar() {
         const unsub = onSnapshot(q, snap => setReviewCount(snap.docs.length));
         return () => unsub();
       }
+      if (role === 'staff' && userProfile?.uid) {
+        const q = query(collection(db, "class_incharges"), where("facultyId", "==", userProfile.uid));
+        getDocs(q).then(snap => {
+          setIsClassIncharge(!snap.empty);
+        });
+      }
     });
-  }, [role]);
+  }, [role, userProfile]);
 
-  const navItems =
+  const isDeptAdmin = role === "dept_admin" || role === "hod" || isSuperAdmin || userProfile?.isDeptAdmin === true;
+
+  // Filter Academics submenu:
+  // Regular staff get only what they need: Academic Calendar, My Subjects, Faculty Profile
+  // Department Admin (dept_admin / HOD / SuperAdmin) gets everything: Course Allocation, Course Enrollment, Academic Reports, etc.
+  const academicsChildren = [
+    { label: "Academic Calendar", path: "/academics/academic-calendar" },
+    ...(isDeptAdmin ? [{ label: "Course Allocation", path: "/academics/course-allocation" }] : []),
+    { label: "My Subjects", path: "/staff/my-subjects" },
+    { label: "My Timetable", path: "/staff/timetable" },
+    ...(isDeptAdmin ? [{ label: "Course Enrollment", path: "/academics/course-enrollment" }] : []),
+    { label: "Faculty Profile", path: "/academics/faculty-profile" },
+    ...(isDeptAdmin ? [{ label: "Academic Reports", path: "/academics/reports" }] : [])
+  ];
+
+  const tailoredStaffNav = staffNav.map(item => {
+    if (item.label === "Academics") {
+      return { ...item, children: academicsChildren };
+    }
+    return item;
+  });
+
+  let navItems =
     isSuperAdmin ? adminNav :
     role === "student" ? studentNav :
-    role === "staff" ? staffNav :
+    role === "exam_cell" ? examCellNav :
+    role === "staff" ? [...tailoredStaffNav] :
     role === "hod" ? hodNav :
+    role === "dept_admin" ? [
+      ...tailoredStaffNav.slice(0, 1),
+      { icon: <Users size={18} />, label: "New Student Add", path: "/dept_admin/new-admission" },
+      { icon: <GraduationCap size={18} />, label: "Promote Student", path: "/config/general/promote-student" },
+      ...tailoredStaffNav.slice(1),
+      { icon: <Calendar size={18} />, label: "Manage Timetables", path: "/staff/manage-timetable" }
+    ] :
     role === "warden" ? wardenNav :
     role === "officestaff" ? officestaffNav :
     role === "security" ? securityNav :
     role === "management" ? managementNav :
     role === "principal" ? principalNav : [];
+
+  if ((role === "staff" || role === "dept_admin") && isClassIncharge) {
+    // Insert "Student Details" right after Dashboard (index 1)
+    if (!navItems.some(i => i.path === "/staff/students")) {
+      navItems.splice(1, 0, { icon: <Users size={18} />, label: "Student Details", path: "/staff/students" });
+    }
+  }
+
+  // Ensure that if the current route belongs to any submenu, that submenu is expanded and saved
+  useEffect(() => {
+    const autoActive = detectActiveMenus(location.pathname, navItems);
+    if (Object.keys(autoActive).length > 0) {
+      setExpandedMenus(prev => {
+        const next = { ...prev, ...autoActive };
+        saveExpandedMenus(next);
+        return next;
+      });
+    }
+  }, [location.pathname, navItems]);
+
+  // Restore sidebar scroll position across navigations
+  useEffect(() => {
+    if (desktopSidebarRef.current) {
+      const savedScroll = sessionStorage.getItem("erp_sidebar_scroll_pos");
+      if (savedScroll !== null) {
+        desktopSidebarRef.current.scrollTop = Number(savedScroll);
+      }
+    }
+  }, [location.pathname]);
+
+  const handleSidebarScroll = (e) => {
+    try {
+      sessionStorage.setItem("erp_sidebar_scroll_pos", e.currentTarget.scrollTop);
+    } catch (err) {}
+  };
 
   async function handleLogout() {
     await logout();
@@ -391,24 +537,31 @@ export default function Sidebar() {
   const sidebarContent = (
     <>
       <div className="sidebar-logo-area">
-        <h2 style={{ fontFamily: 'Poppins, sans-serif' }}>RENGANAYAGI VARATHARAJ<br/><span style={{fontSize: 10, opacity: 0.8}}>COLLEGE OF ENGINEERING</span></h2>
+        <h2 style={{ fontFamily: 'Plus Jakarta Sans, sans-serif' }}>RENGANAYAGI VARATHARAJ<br/><span style={{fontSize: 10, opacity: 0.8}}>COLLEGE OF ENGINEERING</span></h2>
       </div>
 
       <div className="sidebar-nav-header">CONFIGURATION</div>
       <nav className="sidebar-nav">
-        {navItems.map((item) => (
-          <React.Fragment key={item.label}>
-            <div
-              className={`nav-item ${(!item.isSubmenu && location.pathname === item.path) || (item.isSubmenu && location.pathname.startsWith(`/${item.label.toLowerCase()}/`)) ? "active" : ""}`}
-              onClick={() => {
-                if (item.isSubmenu) {
-                  setExpandedMenus(prev => ({ ...prev, [item.label]: !prev[item.label] }));
-                } else {
-                  handleNavClick(item.path);
-                }
-              }}
-              style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
-            >
+        {navItems.map((item) => {
+          const isItemActive = (!item.isSubmenu && location.pathname === item.path) ||
+            (item.isSubmenu && (
+              location.pathname.startsWith(`/${item.label.toLowerCase()}/`) ||
+              item.children?.some(c => c.path === location.pathname || (c.isNestedSubmenu && c.children?.some(sc => sc.path === location.pathname)))
+            ));
+
+          return (
+            <React.Fragment key={item.label}>
+              <div
+                className={`nav-item ${isItemActive ? "active" : ""}`}
+                onClick={() => {
+                  if (item.isSubmenu) {
+                    toggleMenu(item.label);
+                  } else {
+                    handleNavClick(item.path);
+                  }
+                }}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              >
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 <span className="nav-icon">{item.icon}</span>
                 <span>
@@ -435,7 +588,7 @@ export default function Sidebar() {
                       <>
                         <div
                           className="nav-item"
-                          onClick={(e) => { e.stopPropagation(); setExpandedMenus(prev => ({ ...prev, [child.label]: !prev[child.label] })); }}
+                          onClick={(e) => { e.stopPropagation(); toggleMenu(child.label); }}
                           style={{ padding: "8px 12px", fontSize: "13px", minHeight: "35px", display: "flex", justifyContent: "space-between", alignItems: "center", color: "var(--accent)", fontWeight: "bold" }}
                         >
                           <span>{child.label}</span>
@@ -477,7 +630,8 @@ export default function Sidebar() {
               </div>
             )}
           </React.Fragment>
-        ))}
+          );
+        })}
       </nav>
 
 
@@ -491,20 +645,10 @@ export default function Sidebar() {
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <button
             onClick={() => setMobileOpen(true)}
-            style={{
-              display: "none",
-              background: "transparent",
-              border: "none",
-              color: "var(--text)",
-              cursor: "pointer",
-              padding: 4,
-              marginRight: 15
-            }}
             className="hamburger-btn-header"
+            aria-label="Open menu"
           >
-            <div style={{ width: 20, height: 2, background: "var(--text-dark)", margin: "4px 0" }}></div>
-            <div style={{ width: 20, height: 2, background: "var(--text-dark)", margin: "4px 0" }}></div>
-            <div style={{ width: 20, height: 2, background: "var(--text-dark)", margin: "4px 0" }}></div>
+            <Menu size={20} color="#0f172a" />
           </button>
         </div>
         
@@ -515,21 +659,13 @@ export default function Sidebar() {
             onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
             style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px' }}
           >
-            <div className="header-user-avatar" style={{ overflow: "hidden", borderRadius: "50%", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {userProfile?.photoURL ? (
-                <img src={userProfile.photoURL} alt="Avatar" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              ) : userProfile?.name ? (
-                userProfile.name.charAt(0).toUpperCase()
-              ) : (
-                <User size={16} />
-              )}
+            <div className="header-user-avatar" style={{ background: "#1e3a8a", color: "white", width: "32px", height: "32px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
+              {userProfile?.name ? userProfile.name.charAt(0).toUpperCase() : <User size={16} />}
             </div>
-            <div className="header-user-info">
-              <span className="name" style={{ fontWeight: 600, fontSize: '13px' }}>
-                {userProfile?.name || currentUser?.email || "User"}
-              </span>
-              <span className="role" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                {isSuperAdmin ? "SUPER ADMIN" : (role ? role.toUpperCase() : "USER")}
+            <div className="header-user-info" style={{ display: "flex", flexDirection: "column" }}>
+              <span className="name" style={{ fontWeight: "bold", fontSize: "14px" }}>{userProfile?.name || 'RVCE User'}</span>
+              <span className="role" style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+                {role === 'dept_admin' ? `${userProfile?.dept || ''} ADMIN`.trim() : role?.toUpperCase()}
               </span>
             </div>
           </div>
@@ -620,18 +756,16 @@ export default function Sidebar() {
       {mobileOpen && (
         <div
           onClick={() => setMobileOpen(false)}
-          style={{
-            position: "fixed", inset: 0,
-            background: "rgba(0,0,0,0.6)",
-            zIndex: 1002,
-            display: "none"
-          }}
           className="sidebar-overlay"
         />
       )}
 
       {/* Desktop Sidebar */}
-      <div className="sidebar sidebar-desktop">
+      <div
+        className="sidebar sidebar-desktop"
+        ref={desktopSidebarRef}
+        onScroll={handleSidebarScroll}
+      >
         {sidebarContent}
       </div>
 
@@ -647,7 +781,31 @@ export default function Sidebar() {
           transition: "transform 0.3s ease"
         }}
       >
-        {sidebarContent}
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setMobileOpen(false)}
+            style={{
+              position: "absolute",
+              top: 18,
+              right: 14,
+              zIndex: 10,
+              background: "rgba(0,0,0,0.15)",
+              border: "none",
+              borderRadius: "50%",
+              width: 28,
+              height: 28,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              color: "#0f172a"
+            }}
+            title="Close menu"
+          >
+            <X size={16} />
+          </button>
+          {sidebarContent}
+        </div>
       </div>
     </>
   );

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/Sidebar';
 import { useAuth } from '../../context/AuthContext';
 import { db } from "../../supabase/supabaseAdapter";
 import { collection, query, getDocs, where } from "../../supabase/supabaseAdapter";
 import { Search, PieChart, BarChart2, Users, CheckCircle, XCircle } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { matchesAcademicSession } from '../../utils/collegeConfig';
 
 export default function ResultAnalysis() {
   const [loading, setLoading] = useState(false);
@@ -15,12 +16,76 @@ export default function ResultAnalysis() {
   const [filterSemester, setFilterSemester] = useState('');
   const [filterCourse, setFilterCourse] = useState('');
   const [filterType, setFilterType] = useState('CIA'); // CIA, OTHER, ESE
+  const [filterComponent, setFilterComponent] = useState('All');
+  
+  const OTHER_COMPONENTS = ["All", "Assignment", "Quiz", "Seminar", "Tutorial", "Practical", "Internal Test"];
   
   const [results, setResults] = useState(null);
+  const [courses, setCourses] = useState([]);
+  const [sessionMap, setSessionMap] = useState({});
+  const [allocations, setAllocations] = useState([]);
+  const [examSchedules, setExamSchedules] = useState([]);
   
   const SESSIONS = ["2025-2026", "2026-2027"];
   const PROGRAMMES = ["B.E CSE", "B.E ECE", "B.E EEE", "B.E MECH", "B.Tech IT"];
   const SEMESTERS = ["1", "2", "3", "4", "5", "6", "7", "8"];
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [cSnap, sessSnap, allocSnap, schedSnap] = await Promise.all([
+          getDocs(collection(db, "courses")),
+          getDocs(collection(db, "academic_sessions")).catch(() => ({ docs: [] })),
+          getDocs(collection(db, "course_allocations")).catch(() => ({ docs: [] })),
+          getDocs(collection(db, "cia_exam_schedules")).catch(() => ({ docs: [] }))
+        ]);
+
+        const sMap = {};
+        sessSnap.docs.forEach(d => {
+          const data = d.data();
+          if (data && data.name) sMap[d.id] = data.name;
+        });
+        setSessionMap(sMap);
+
+        setCourses(cSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setAllocations(allocSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setExamSchedules(schedSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.warn("Failed to load data in ResultAnalysis:", e);
+      }
+    }
+    loadData();
+  }, []);
+
+  const selectableCourses = useMemo(() => {
+    if (!filterSession || !filterSemester) return [];
+    const targetSem = String(filterSemester).trim();
+    const deptKey = (filterProgramme || '').replace('B.E ', '').replace('B.Tech ', '').trim();
+
+    const sessionCourseCodes = new Set();
+    allocations.forEach(a => {
+      const aSession = a.academicSession || sessionMap[a.sessionId] || '';
+      if (matchesAcademicSession(aSession, filterSession, sessionMap)) {
+        if (String(a.semester || '').trim() === targetSem) {
+          if (!deptKey || (a.department || a.programme || '').includes(deptKey)) {
+            if (a.courseCode) sessionCourseCodes.add(a.courseCode.trim().toUpperCase());
+          }
+        }
+      }
+    });
+
+    examSchedules.forEach(s => {
+      if (matchesAcademicSession(s.academicSession, filterSession, sessionMap)) {
+        if (String(s.semester || '').trim() === targetSem) {
+          if (!deptKey || (s.programmeName || '').includes(deptKey)) {
+            if (s.courseCode) sessionCourseCodes.add(s.courseCode.trim().toUpperCase());
+          }
+        }
+      }
+    });
+
+    return courses.filter(c => sessionCourseCodes.has((c.courseCode || '').trim().toUpperCase()));
+  }, [filterSession, filterSemester, filterProgramme, courses, allocations, examSchedules, sessionMap]);
 
   const handleSearch = async () => {
     if (!filterSession || !filterProgramme || !filterSemester || !filterCourse) {
@@ -53,8 +118,16 @@ export default function ResultAnalysis() {
       
       snap.docs.forEach(doc => {
         const data = doc.data();
-        // Skip if session doesn't match 
-        // For CIA, academicSession might be inside the exam metadata, but we'll filter loosely or assume it matches.
+        
+        // Filter by Component if specified for OTHER
+        if (filterType === 'OTHER' && filterComponent !== 'All' && data.componentType && data.componentType !== filterComponent) {
+          return;
+        }
+
+        // Filter by Academic Session if present
+        if (filterSession && data.academicSession && data.academicSession !== filterSession) {
+          return;
+        }
         
         const isAbsent = data.isAbsent;
         const mark = Number(data.marks) || 0;
@@ -64,10 +137,16 @@ export default function ResultAnalysis() {
         if (isAbsent) {
           totalAbsent++;
         } else {
-          // Define passing criteria
-          if (filterType === 'CIA' && mark >= 25) passed = true; // out of 50
-          else if (filterType === 'ESE' && mark >= 50) passed = true; // out of 100
-          else if (filterType === 'OTHER' && mark >= 50) passed = true; // out of 100 (example)
+          if (filterType === 'OTHER') {
+            // For Other components (Assignments, Quizzes out of 10), 50% is passing
+            passed = mark >= 5;
+          } else if (data.grade) {
+            passed = !['RA', 'AB', 'SA', 'W'].includes(data.grade);
+          } else {
+            const maxM = Number(data.maxMarks) || 50;
+            const passCriteria = data.passMarks !== undefined ? Number(data.passMarks) : (maxM === 100 || filterType === 'Model' ? 75 : 35);
+            if (mark >= passCriteria) passed = true;
+          }
           
           if (passed) totalPassed++;
           else totalFailed++;
@@ -80,6 +159,7 @@ export default function ResultAnalysis() {
           marks: mark,
           isAbsent,
           passed,
+          component: data.componentType || 'Other',
           grade: data.grade || (passed ? 'PASS' : (isAbsent ? 'AB' : 'FAIL'))
         });
       });
@@ -127,6 +207,14 @@ export default function ResultAnalysis() {
                 <option value="OTHER">Other Components</option>
               </select>
             </div>
+            {filterType === 'OTHER' && (
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Component *</label>
+                <select value={filterComponent} onChange={(e) => setFilterComponent(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}>
+                  {OTHER_COMPONENTS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            )}
             <div>
               <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Academic Session *</label>
               <select value={filterSession} onChange={(e) => setFilterSession(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}>
@@ -150,7 +238,27 @@ export default function ResultAnalysis() {
             </div>
             <div>
               <label style={{ display: 'block', marginBottom: 6, fontSize: 13, color: 'var(--text-muted)' }}>Course Code *</label>
-              <input type="text" placeholder="e.g. CS101" value={filterCourse} onChange={(e) => setFilterCourse(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }} />
+              <select 
+                value={filterCourse} 
+                onChange={(e) => setFilterCourse(e.target.value)} 
+                disabled={!filterSemester}
+                style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)' }}
+              >
+                {!filterSemester ? (
+                  <option value="">Select Semester first</option>
+                ) : selectableCourses.length === 0 ? (
+                  <option value="">No courses mapped to {filterSession} (Sem {filterSemester})</option>
+                ) : (
+                  <>
+                    <option value="">Select Course</option>
+                    {selectableCourses.map(c => (
+                      <option key={c.id || c.courseCode} value={c.courseCode}>
+                        {c.courseCode} - {c.courseName}
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
             </div>
           </div>
           
@@ -235,6 +343,9 @@ export default function ResultAnalysis() {
                       <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>RANK</th>
                       <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>REGISTER NO</th>
                       <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>STUDENT NAME</th>
+                      {filterType === 'OTHER' && (
+                        <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>COMPONENT</th>
+                      )}
                       <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>MARKS</th>
                       <th style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: 13 }}>GRADE / STATUS</th>
                     </tr>
@@ -245,6 +356,9 @@ export default function ResultAnalysis() {
                         <td style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>{idx + 1}</td>
                         <td style={{ padding: '12px 16px' }}>{student.registerNo}</td>
                         <td style={{ padding: '12px 16px', fontWeight: 600 }}>{student.name}</td>
+                        {filterType === 'OTHER' && (
+                          <td style={{ padding: '12px 16px', color: '#6366f1', fontWeight: 600 }}>{student.component}</td>
+                        )}
                         <td style={{ padding: '12px 16px', fontWeight: 600 }}>{student.isAbsent ? 'AB' : student.marks}</td>
                         <td style={{ padding: '12px 16px' }}>
                           <span style={{ 

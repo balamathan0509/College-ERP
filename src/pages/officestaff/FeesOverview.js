@@ -5,8 +5,9 @@ import { useAuth } from "../../context/AuthContext";
 import { db } from "../../supabase/supabaseAdapter";
 import { collection, getDocs, query, where, addDoc } from "../../supabase/supabaseAdapter";
 import * as XLSX from "xlsx";
+import { COLLEGE_DEPARTMENTS } from "../../utils/collegeConfig";
 
-const DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "AIDS", "AIML"];
+const DEPARTMENTS = COLLEGE_DEPARTMENTS;
 const FEES_TYPES = ["College Fees", "Bus Fees", "Mess Fees", "Exam Fees", "Library Fees", "Other"];
 
 const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];

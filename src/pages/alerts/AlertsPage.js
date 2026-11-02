@@ -30,8 +30,12 @@ function formatDate(value) {
   return date.toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
 }
 
-function isVisibleToUser(alert, userProfile) {
+function isVisibleToUser(alert, userProfile, currentUserId) {
   if (!userProfile) return false;
+
+  // If alert is directly targeted to this user by UID, always show it
+  if (alert.targetUid && alert.targetUid === currentUserId) return true;
+
   const role = userProfile.role;
   const dept = userProfile.dept;
   const year = userProfile.year;
@@ -102,7 +106,7 @@ export default function AlertsPage() {
       const snap = await getDocs(collection(db, "alerts"));
       const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-      const visible = list.filter(alert => isVisibleToUser(alert, userProfile));
+      const visible = list.filter(alert => isVisibleToUser(alert, userProfile, currentUser?.uid));
       visible.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
       setAlerts(visible);
     } catch (err) {

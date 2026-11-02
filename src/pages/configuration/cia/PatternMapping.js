@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { Plus, Trash2, Edit2 } from 'lucide-react';
 import DataTable from '../../../components/common/DataTable';
 import { useAuth } from '../../../context/AuthContext';
+import { COLLEGE_DEPARTMENTS } from '../../../utils/collegeConfig';
 
 export default function PatternMapping() {
   const [mappings, setMappings] = useState([]);
@@ -17,7 +18,7 @@ export default function PatternMapping() {
   
   const { userProfile, isSuperAdmin } = useAuth();
   const [filterDept, setFilterDept] = useState('');
-  const DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "IT", "AIDS"];
+  const DEPARTMENTS = COLLEGE_DEPARTMENTS;
   
   const [formData, setFormData] = useState({
     academicSession: '',

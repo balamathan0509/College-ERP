@@ -5,13 +5,14 @@ import { collection, getDocs, query, orderBy, where } from "../../../supabase/su
 import toast from 'react-hot-toast';
 import DataTable from '../../../components/common/DataTable';
 import { useAuth } from '../../../context/AuthContext';
+import { COLLEGE_DEPARTMENTS } from '../../../utils/collegeConfig';
 
 export default function ShowEvaluationPattern() {
   const [patterns, setPatterns] = useState([]);
   const [loading, setLoading] = useState(true);
   const { userProfile } = useAuth();
   const [filterDept, setFilterDept] = useState('');
-  const DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "IT", "AIDS"];
+  const DEPARTMENTS = COLLEGE_DEPARTMENTS;
 
   const fetchData = async () => {
     try {

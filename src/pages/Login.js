@@ -1,16 +1,16 @@
 import React, { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { doc, getDoc } from "../supabase/supabaseAdapter";
+import { doc, getDoc, collection, query, where, getDocs } from "../supabase/supabaseAdapter";
 import { db, auth } from "../supabase/supabaseAdapter";
-import { sendPasswordResetEmail } from "../supabase/supabaseAdapter";
-import { GraduationCap, ArrowRight, CheckCircle2 } from "lucide-react";
 
-export default function Login({ onSwitch }) {
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
+
+export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -18,54 +18,83 @@ export default function Login({ onSwitch }) {
   async function handleLogin(e) {
     e.preventDefault();
     setError("");
-    setSuccessMsg("");
     setLoading(true);
+    const cleanEmail = email.trim();
     try {
-      const result = await login(email, password);
+      const result = await login(cleanEmail, password);
       const SUPER_ADMIN_EMAIL = "balamathan0509@gmail.com";
+      const userUid = result?.user?.uid;
+      const userEmail = result?.user?.email || cleanEmail;
       
       let userData = null;
-      let role = null;
       try {
-        const userDoc = await getDoc(doc(db, "users", result.user.uid));
-        userData = userDoc.data();
-        role = userData?.role;
+        if (userUid) {
+          const userDoc = await getDoc(doc(db, "users", userUid));
+          if (userDoc.exists()) {
+            userData = userDoc.data();
+          }
+        }
+        if (!userData && userEmail) {
+          const q = query(collection(db, "users"), where("email", "==", userEmail));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            userData = snap.docs[0].data();
+          }
+        }
       } catch (firestoreErr) {
-        console.error("Firestore read failed (rules issue):", firestoreErr);
+        console.error("Firestore read failed:", firestoreErr);
       }
 
-      if (userData?.isSuperAdmin === true || result.user.email === SUPER_ADMIN_EMAIL) {
+      let rawRole = (userData?.role || "").toLowerCase().trim();
+      const designation = (userData?.designation || "").toLowerCase().trim();
+
+      // Normalize role
+      if (rawRole.endsWith("hod") || rawRole.includes("hod") || designation.includes("hod")) {
+        rawRole = "hod";
+      } else if (rawRole === "faculty" || rawRole === "teacher") {
+        rawRole = "staff";
+      }
+
+      if (userData?.isSuperAdmin === true || userEmail === SUPER_ADMIN_EMAIL) {
         navigate("/admin");
-      } else if (role === "student") navigate("/student");
-      else if (role === "staff") navigate("/staff");
-      else if (role === "hod") navigate("/hod");
-      else if (role === "warden") navigate("/warden");
-      else if (role === "security") navigate("/security/verify");
-      else if (role === "officestaff") navigate("/officestaff");
-      else if (role === "management") navigate("/management");
-      else if (role === "principal") navigate("/principal");
-      else navigate("/");
+      } else if (rawRole === "hod" || rawRole.includes("hod")) {
+        navigate("/hod");
+      } else if (rawRole === "staff" || rawRole.includes("staff") || rawRole.includes("faculty") || rawRole === "dept_admin") {
+        navigate("/staff");
+      } else if (rawRole === "student" || rawRole.includes("student")) {
+        navigate("/student");
+      } else if (rawRole === "warden" || rawRole.includes("warden")) {
+        navigate("/warden");
+      } else if (rawRole === "security" || rawRole.includes("security")) {
+        navigate("/security/verify");
+      } else if (rawRole === "officestaff" || rawRole.includes("office")) {
+        navigate("/officestaff");
+      } else if (rawRole === "management" || rawRole.includes("management")) {
+        navigate("/management");
+      } else if (rawRole === "principal" || rawRole.includes("principal")) {
+        navigate("/principal");
+      } else if (rawRole === "exam_cell" || rawRole.includes("exam")) {
+        navigate("/exam_cell");
+      } else if (userData) {
+        // Default to student if profile exists but role wasn't explicitly matched
+        navigate("/student");
+      } else {
+        setError("Login successful, but user profile was not found. Please contact Administrator.");
+      }
     } catch (err) {
       console.error("Login error detail:", err);
-      setError(err.message || "Invalid email or password. Try again.");
+      let errMsg = "Invalid email or password. Please try again.";
+      if (err?.code === "auth/user-not-found" || err?.code === "auth/wrong-password" || err?.code === "auth/invalid-credential") {
+        errMsg = "Invalid email or password. Please check your credentials.";
+      } else if (err?.message) {
+        errMsg = err.message;
+      }
+      setError(errMsg);
     }
     setLoading(false);
   }
 
-  async function handleForgotPassword() {
-    setError("");
-    setSuccessMsg("");
-    if (!email) {
-      setError("Please enter your email address first, then click Forgot Password.");
-      return;
-    }
-    try {
-      await sendPasswordResetEmail(auth, email);
-      setSuccessMsg("Password reset email sent! Check your inbox (and spam folder).");
-    } catch (err) {
-      setError("Could not send reset email. Make sure the email is correct.");
-    }
-  }
+
 
   return (
     <div className="auth-wrapper">
@@ -101,19 +130,6 @@ export default function Login({ onSwitch }) {
         </div>
 
         {error && <div className="error-msg">{error}</div>}
-        {successMsg && <div className="success-msg" style={{
-          background: "rgba(16, 185, 129, 0.15)",
-          border: "1px solid rgba(16, 185, 129, 0.3)",
-          color: "var(--success)",
-          padding: "12px 16px",
-          borderRadius: "10px",
-          marginBottom: "16px",
-          fontSize: "14px",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          justifyContent: "center"
-        }}><CheckCircle2 size={16} /> {successMsg}</div>}
 
         <form onSubmit={handleLogin}>
           <div className="form-group">
@@ -128,40 +144,41 @@ export default function Login({ onSwitch }) {
           </div>
           <div className="form-group">
             <label>Password</label>
-            <input
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <div style={{ position: "relative" }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                style={{ paddingRight: "40px", width: "100%", boxSizing: "border-box" }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#6b7280",
+                  display: "flex",
+                  alignItems: "center",
+                  padding: 0
+                }}
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
-          <div style={{
-            textAlign: "right",
-            marginBottom: "16px",
-            marginTop: "-4px"
-          }}>
-            <span
-              onClick={handleForgotPassword}
-              style={{
-                color: "var(--highlight)",
-                fontSize: "13px",
-                cursor: "pointer",
-                fontWeight: 500
-              }}
-            >
-              Forgot Password?
-            </span>
-          </div>
-          <button className="btn-primary" type="submit" disabled={loading}>
+          <button className="btn-primary" type="submit" disabled={loading} style={{ marginTop: "16px" }}>
             {loading ? "Signing in..." : <>Sign In <ArrowRight size={16} /></>}
           </button>
         </form>
-
-        <div className="auth-switch">
-          Don't have an account?{" "}
-          <span onClick={onSwitch}>Sign Up</span>
-        </div>
       </div>
     </div>
   );

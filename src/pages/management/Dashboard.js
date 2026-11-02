@@ -21,8 +21,9 @@ import {
   User,
   Building2
 } from "lucide-react";
+import { COLLEGE_DEPARTMENTS } from "../../utils/collegeConfig";
 
-const DEPARTMENTS = ["CSE", "ECE", "EEE", "MECH", "CIVIL", "IT", "AIDS", "AIML"];
+const DEPARTMENTS = COLLEGE_DEPARTMENTS;
 
 export default function ManagementDashboard() {
   const { userProfile } = useAuth();
