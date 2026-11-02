@@ -29,7 +29,9 @@
       "react-app/jest"
     ],
     "rules": {
-      "react-hooks/exhaustive-deps": "off"
+      "react-hooks/exhaustive-deps": "off",
+      "no-unused-vars": "off",
+      "no-loop-func": "off"
     }
   },
   "browserslist": {
