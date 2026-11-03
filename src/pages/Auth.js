@@ -1,32 +1,55 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { Navigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Login from "./Login";
+import { getUserDashboard } from "../utils/authUtils";
 
 export default function Auth() {
   const { currentUser, userProfile, loading } = useAuth();
+  const navigate = useNavigate();
 
-  if (!loading && currentUser && userProfile) {
-    let role = (userProfile.role || "").toLowerCase().trim();
-    const designation = (userProfile.designation || "").toLowerCase().trim();
-
-    if (role.endsWith("hod") || role.includes("hod") || designation.includes("hod")) {
-      role = "hod";
-    } else if (role === "faculty" || role === "teacher") {
-      role = "staff";
+  useEffect(() => {
+    if (!loading && currentUser && userProfile) {
+      const destination = getUserDashboard(userProfile, currentUser);
+      navigate(destination, { replace: true });
     }
+  }, [loading, currentUser, userProfile, navigate]);
 
-    if (userProfile.isSuperAdmin || currentUser.email === "balamathan0509@gmail.com") return <Navigate to="/admin" replace />;
-    if (role === "hod" || role.includes("hod")) return <Navigate to="/hod" replace />;
-    if (role === "dept_admin" || role === "staff" || role.includes("staff") || role.includes("faculty")) return <Navigate to="/staff" replace />;
-    if (role === "student" || role.includes("student")) return <Navigate to="/student" replace />;
-    if (role === "warden" || role.includes("warden")) return <Navigate to="/warden" replace />;
-    if (role === "security" || role.includes("security")) return <Navigate to="/security/verify" replace />;
-    if (role === "officestaff" || role.includes("office")) return <Navigate to="/officestaff" replace />;
-    if (role === "management" || role.includes("management")) return <Navigate to="/management" replace />;
-    if (role === "principal" || role.includes("principal")) return <Navigate to="/principal" replace />;
-    if (role === "exam_cell" || role.includes("exam")) return <Navigate to="/exam_cell" replace />;
-    return <Navigate to="/student" replace />;
+  // Loading state or awaiting profile hydration
+  if (loading || (currentUser && !userProfile)) {
+    return (
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100vh",
+        width: "100vw",
+        background: "#f8fafc"
+      }}>
+        <div style={{ width: 40, height: 40, border: "4px solid #e2e8f0", borderTop: "4px solid #2563eb", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+        <p style={{ marginTop: 14, color: "#64748b", fontWeight: 600, fontSize: 13, fontFamily: "system-ui, -apple-system, sans-serif" }}>Loading portal...</p>
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // If already authenticated and profile ready, show spinner while useEffect performs navigate
+  if (currentUser && userProfile) {
+    return (
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100vh",
+        width: "100vw",
+        background: "#f8fafc"
+      }}>
+        <div style={{ width: 40, height: 40, border: "4px solid #e2e8f0", borderTop: "4px solid #2563eb", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
   }
 
   return <Login />;

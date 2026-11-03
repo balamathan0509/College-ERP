@@ -203,18 +203,18 @@ export default function App() {
           <Route path="/cia/seating-arrangement" element={<ProtectedRoute allowedRole={["exam_cell", "admin", "staff", "hod"]}><ExamSeatingArrangement /></ProtectedRoute>} />
           <Route path="/cia/attendance" element={<ProtectedRoute allowedRole="exam_cell"><MarkAttendance /></ProtectedRoute>} />
 
-          {/* Staff CIA Routes */}
-          <Route path="/cia/question-bank" element={<ProtectedRoute allowedRole={["staff", "dept_admin"]}><QuestionBank /></ProtectedRoute>} />
+          {/* Staff & HOD CIA Routes */}
+          <Route path="/cia/question-bank" element={<ProtectedRoute allowedRole={["staff", "dept_admin", "hod", "admin"]}><QuestionBank /></ProtectedRoute>} />
           <Route path="/cia/class-question-banks" element={<ProtectedRoute allowedRole={["staff", "dept_admin", "hod", "admin"]}><ClassQuestionBanks /></ProtectedRoute>} />
           <Route path="/staff/class-question-bank" element={<ProtectedRoute allowedRole={["staff", "dept_admin", "hod", "admin"]}><ClassQuestionBanks /></ProtectedRoute>} />
-          <Route path="/cia/my-papers" element={<ProtectedRoute allowedRole="staff"><MyQuestionPapers /></ProtectedRoute>} />
-          <Route path="/cia/question-paper" element={<ProtectedRoute allowedRole="staff"><QuestionPaper /></ProtectedRoute>} />
-          <Route path="/cia/mark-entry" element={<ProtectedRoute allowedRole="staff"><MarkEntryCIA /></ProtectedRoute>} />
-          <Route path="/cia/other-mark-entry" element={<ProtectedRoute allowedRole="staff"><MarkEntryOther /></ProtectedRoute>} />
-          <Route path="/cia/ese-mark-entry" element={<ProtectedRoute allowedRole="staff"><MarkEntryESE /></ProtectedRoute>} />
-          <Route path="/cia/result-analysis" element={<ProtectedRoute allowedRole="staff"><ResultAnalysis /></ProtectedRoute>} />
-          <Route path="/cia/attendance-report" element={<ProtectedRoute allowedRole="staff"><AttendanceReport /></ProtectedRoute>} />
-          <Route path="/cia/reports" element={<ProtectedRoute allowedRole="staff"><Reports /></ProtectedRoute>} />
+          <Route path="/cia/my-papers" element={<ProtectedRoute allowedRole={["staff", "hod"]}><MyQuestionPapers /></ProtectedRoute>} />
+          <Route path="/cia/question-paper" element={<ProtectedRoute allowedRole={["staff", "hod"]}><QuestionPaper /></ProtectedRoute>} />
+          <Route path="/cia/mark-entry" element={<ProtectedRoute allowedRole={["staff", "hod"]}><MarkEntryCIA /></ProtectedRoute>} />
+          <Route path="/cia/other-mark-entry" element={<ProtectedRoute allowedRole={["staff", "hod"]}><MarkEntryOther /></ProtectedRoute>} />
+          <Route path="/cia/ese-mark-entry" element={<ProtectedRoute allowedRole={["staff", "hod"]}><MarkEntryESE /></ProtectedRoute>} />
+          <Route path="/cia/result-analysis" element={<ProtectedRoute allowedRole={["staff", "hod", "admin"]}><ResultAnalysis /></ProtectedRoute>} />
+          <Route path="/cia/attendance-report" element={<ProtectedRoute allowedRole={["staff", "hod", "admin"]}><AttendanceReport /></ProtectedRoute>} />
+          <Route path="/cia/reports" element={<ProtectedRoute allowedRole={["staff", "hod", "admin"]}><Reports /></ProtectedRoute>} />
 
           {/* Academics & LMS Routes */}
           <Route path="/academics/academic-calendar" element={<ProtectedRoute allowedRole={['staff', 'hod', 'admin', 'management', 'principal']}><AcademicCalendar /></ProtectedRoute>} />
