@@ -87,8 +87,6 @@ const staffNav = [
     children: [
       { label: "Question Bank", path: "/cia/question-bank" },
       { label: "Class Question Banks", path: "/cia/class-question-banks" },
-      { label: "My Question Papers", path: "/cia/my-papers" },
-      { label: "Question Paper", path: "/cia/question-paper" },
       { label: "Exam Seating Plan", path: "/cia/seating-arrangement" },
       { label: "Mark Entry Process", path: "/cia/mark-entry" },
       { label: "Other Mark Entry Process", path: "/cia/other-mark-entry" },
@@ -122,6 +120,8 @@ const examCellNav = [
     children: [
       { label: "Exam Creation", path: "/cia/exam-creation" },
       { label: "Schedule Examination", path: "/cia/schedule" },
+      { label: "Question Paper Builder", path: "/cia/question-paper" },
+      { label: "Question Papers List", path: "/cia/my-papers" },
       { label: "Seating Arrangement", path: "/cia/seating-arrangement" },
       { label: "CIA Mark Attendance", path: "/cia/attendance" }
     ]
@@ -150,7 +150,6 @@ const hodNav = [
       { label: "Question Bank", path: "/cia/question-bank" },
       { label: "Class Question Banks", path: "/cia/class-question-banks" },
       { label: "My Question Papers", path: "/cia/my-papers" },
-      { label: "Question Paper", path: "/cia/question-paper" },
       { label: "Exam Seating Plan", path: "/cia/seating-arrangement" },
       { label: "Mark Entry Process", path: "/cia/mark-entry" },
       { label: "Other Mark Entry Process", path: "/cia/other-mark-entry" },
@@ -446,7 +445,7 @@ export default function Sidebar() {
         });
       }
     });
-  }, [role, userProfile]);
+  }, [role, userProfile?.uid]);
 
   const isDeptAdmin = role === "dept_admin" || role === "hod" || isSuperAdmin || userProfile?.isDeptAdmin === true;
 

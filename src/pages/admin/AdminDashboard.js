@@ -808,12 +808,12 @@ export default function AdminDashboard() {
               onClick={() => handleSelectDept("ALL")}
               style={{
                 padding: "9px 16px", borderRadius: 8, cursor: "pointer",
-                background: selectedDept === "ALL" ? "#0f172a" : "#ffffff",
-                color: selectedDept === "ALL" ? "#ffffff" : "#0f172a",
-                border: selectedDept === "ALL" ? "1px solid #0f172a" : "1px solid #cbd5e1",
+                background: selectedDept === "ALL" ? "#2563eb" : "#ffffff",
+                color: selectedDept === "ALL" ? "#ffffff" : "#1e293b",
+                border: selectedDept === "ALL" ? "1px solid #2563eb" : "1px solid #cbd5e1",
                 fontWeight: 700, fontSize: 13,
                 display: "inline-flex", alignItems: "center", gap: 8,
-                boxShadow: selectedDept === "ALL" ? "0 2px 4px rgba(15,23,42,0.2)" : "0 1px 2px rgba(0,0,0,0.02)"
+                boxShadow: selectedDept === "ALL" ? "0 2px 4px rgba(37,99,235,0.2)" : "0 1px 2px rgba(0,0,0,0.02)"
               }}
             >
               <span>🌐 All ERP Accounts</span>
@@ -937,7 +937,7 @@ export default function AdminDashboard() {
                 onClick={() => setRoleFilter("all")}
                 style={{
                   padding: "4px 10px", borderRadius: 6, border: "none",
-                  background: roleFilter === "all" ? "#0f172a" : "#e2e8f0",
+                  background: roleFilter === "all" ? "#2563eb" : "#e2e8f0",
                   color: roleFilter === "all" ? "white" : "#334155", fontSize: 12, fontWeight: 700, cursor: "pointer"
                 }}
               >

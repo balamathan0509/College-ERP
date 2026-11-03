@@ -31,6 +31,8 @@ import {
   BookOpen,
   RefreshCw,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Info,
   UserPlus,
   Building2,
@@ -317,6 +319,7 @@ export default function NewStudentAdmission() {
   const [filterDept, setFilterDept] = useState('ALL');
   const [filterSearch, setFilterSearch] = useState('');
   const [displayLimit, setDisplayLimit] = useState(25);
+  const [showBreakdown, setShowBreakdown] = useState(false); // Collapsed on mobile for compact layout
 
   // Section config
   const [activeSections, setActiveSections] = useState(['A', 'B']);
@@ -914,35 +917,250 @@ export default function NewStudentAdmission() {
       <Sidebar />
       <main className="main-content">
         <Toaster position="top-right" />
-        <div style={{ padding: '24px', background: '#f8fafc', minHeight: '100vh' }}>
 
-          {/* Page Header */}
-          <div style={{ marginBottom: '28px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '6px' }}>
+        {/* Responsive Mobile Styles for New Student Admission */}
+        <style>{`
+          .nsa-outer {
+            padding: 24px;
+            background: #f8fafc;
+            min-height: 100vh;
+          }
+          .nsa-card {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+          }
+          .nsa-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            gap: 10px;
+          }
+          .nsa-dropzone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            padding: 28px 16px;
+            cursor: pointer;
+            margin-bottom: 14px;
+            transition: all 0.15s ease;
+            width: 100%;
+            box-sizing: border-box;
+          }
+          .nsa-filename {
+            margin: 0;
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 14px;
+            word-break: break-all;
+            overflow-wrap: anywhere;
+            text-align: center;
+            max-width: 100%;
+          }
+          .nsa-breakdown-card {
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 10px 12px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          }
+          .nsa-table-wrapper {
+            overflow-x: auto;
+            max-height: 300px;
+            overflow-y: auto;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+            max-width: 100%;
+          }
+          .nsa-search-bar {
+            position: relative;
+            display: flex;
+            align-items: center;
+            flex: 1;
+            min-width: 0;
+          }
+          .nsa-confirm-btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.15s ease;
+          }
+          .nsa-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 12px;
+          }
+          .nsa-modal-card {
+            background: #ffffff;
+            border-radius: 14px;
+            width: 100%;
+            max-width: 780px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+            border: 1px solid #e2e8f0;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          }
+          .nsa-modal-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #ffffff;
+            border-top-left-radius: 14px;
+            border-top-right-radius: 14px;
+          }
+          .nsa-modal-body {
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+          }
+          .nsa-modal-profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+            gap: 12px;
+          }
+          .nsa-step2-card {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            padding: 24px 20px;
+            max-width: 540px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+          }
+
+          /* Small screens / Phones (< 768px) */
+          @media (max-width: 768px) {
+            .nsa-outer {
+              padding: 8px 4px !important;
+            }
+            .nsa-card {
+              padding: 12px 8px !important;
+              border-radius: 10px !important;
+            }
+            .nsa-header-row {
+              flex-direction: row !important;
+              align-items: center !important;
+              justify-content: space-between !important;
+              margin-bottom: 10px !important;
+            }
+            .nsa-header-row h3 {
+              font-size: 14px !important;
+            }
+            .nsa-header-row button {
+              padding: 5px 9px !important;
+              font-size: 11.5px !important;
+            }
+            .nsa-dropzone {
+              padding: 16px 10px !important;
+            }
+            .nsa-filename {
+              font-size: 12.5px !important;
+            }
+            .nsa-breakdown-card {
+              padding: 8px 10px !important;
+            }
+            .nsa-confirm-btn {
+              width: 100% !important;
+            }
+            .nsa-modal-overlay {
+              padding: 6px !important;
+            }
+            .nsa-modal-header {
+              padding: 10px 12px !important;
+            }
+            .nsa-modal-body {
+              padding: 10px 8px !important;
+            }
+            .nsa-modal-profile-grid {
+              grid-template-columns: 1fr !important;
+            }
+            .nsa-step2-card {
+              padding: 18px 12px !important;
+            }
+            .nsa-step2-btn-group {
+              flex-direction: column !important;
+              width: 100% !important;
+            }
+            .nsa-step2-btn-group button {
+              width: 100% !important;
+              justify-content: center !important;
+            }
+          }
+
+          /* Very small screens (< 480px) */
+          @media (max-width: 480px) {
+            .nsa-outer {
+              padding: 6px 2px !important;
+            }
+            .nsa-card {
+              padding: 10px 6px !important;
+            }
+          }
+        `}</style>
+
+        <div className="nsa-outer">
+
+          {/* Page Header - Compact & App-like */}
+          <div style={{ marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{
-                background: '#0f172a',
+                background: '#2563eb',
                 color: '#ffffff',
-                padding: '10px',
-                borderRadius: '10px',
+                padding: '6px',
+                borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center'
+                justifyContent: 'center',
+                flexShrink: 0
               }}>
-                <UserPlus size={22} />
+                <UserPlus size={17} />
               </div>
-              <div>
+              <div style={{ minWidth: 0, flex: 1 }}>
                 <h1 style={{
                   margin: 0,
-                  fontSize: '22px',
+                  fontSize: '17px',
                   fontWeight: '700',
                   fontFamily: 'Plus Jakarta Sans, sans-serif',
-                  color: '#0f172a'
+                  color: '#1e293b',
+                  lineHeight: 1.2
                 }}>
                   New Student Add
                 </h1>
-                <p style={{ margin: 0, color: '#64748b', fontSize: '13px', marginTop: '2px' }}>
-                  <Building2 size={13} style={{ marginRight: 5, verticalAlign: 'middle' }} />
-                  Department: <strong>{dept}</strong> &nbsp;|&nbsp; Bulk add students via CSV/Excel for any year & semester
+                <p style={{ margin: 0, color: '#64748b', fontSize: '11px', marginTop: '1px', lineHeight: 1.3, wordBreak: 'break-word' }}>
+                  <Building2 size={11} style={{ marginRight: 4, verticalAlign: 'middle', display: 'inline-block' }} />
+                  Dept: <strong>{dept}</strong> &nbsp;|&nbsp; Bulk student import (CSV/Excel)
                 </p>
               </div>
             </div>
@@ -952,62 +1170,108 @@ export default function NewStudentAdmission() {
           {step === 1 && (
             <div style={{ maxWidth: '100%', margin: '0 auto' }}>
               {/* Upload Card */}
-              <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '28px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-                  <h3 style={{ margin: 0, fontWeight: '700', color: '#1e293b', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
-                    Upload Student Data (CSV / Excel)
+              <div className="nsa-card">
+                <div className="nsa-header-row">
+                  <h3 style={{ margin: 0, fontWeight: '700', color: '#1e293b', fontFamily: 'Plus Jakarta Sans, sans-serif', fontSize: '14.5px' }}>
+                    Upload Student Data
                   </h3>
                   <button
                     onClick={handleDownloadTemplate}
                     style={{
-                      padding: '8px 14px', background: '#f8fafc', border: '1px solid #cbd5e1',
-                      borderRadius: '8px', color: '#475569', cursor: 'pointer', fontWeight: '600',
-                      fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px'
+                      padding: '5px 10px', background: '#eff6ff', border: '1px solid #bfdbfe',
+                      borderRadius: '6px', color: '#1d4ed8', cursor: 'pointer', fontWeight: '600',
+                      fontSize: '11.5px', display: 'flex', alignItems: 'center', gap: '5px'
                     }}
                   >
-                    <Download size={14} /> Download Template
+                    <Download size={13} /> Template
                   </button>
                 </div>
 
-                {/* Dropzone */}
-                <label
-                  htmlFor="csv-upload"
-                  style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    border: `1.5px dashed ${uploadFile ? '#0f172a' : '#cbd5e1'}`,
-                    borderRadius: '12px', padding: '40px 24px', cursor: 'pointer',
-                    background: uploadFile ? '#f8fafc' : '#ffffff',
-                    transition: 'all 0.15s ease', marginBottom: '20px'
-                  }}
-                >
+                {/* Dropzone - Super Slim when file uploaded */}
+                {uploadFile ? (
                   <div style={{
-                    background: uploadFile ? '#0f172a' : '#f1f5f9',
-                    padding: '14px', borderRadius: '50%', marginBottom: '12px',
-                    color: uploadFile ? '#ffffff' : '#64748b'
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 12px',
+                    background: '#f0fdf4',
+                    border: '1.5px solid #86efac',
+                    borderRadius: '8px',
+                    marginBottom: '10px',
+                    gap: '10px'
                   }}>
-                    <FileSpreadsheet size={28} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                      <div style={{
+                        background: '#16a34a',
+                        color: '#ffffff',
+                        padding: '6px',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <FileSpreadsheet size={16} />
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: '700', color: '#166534', fontSize: '12.5px', wordBreak: 'break-all', lineHeight: 1.2 }}>
+                          {uploadFile.name}
+                        </p>
+                        <p style={{ margin: '1px 0 0', color: '#4b5563', fontSize: '11px' }}>
+                          {rawRows.length} students detected
+                        </p>
+                      </div>
+                    </div>
+                    <label
+                      htmlFor="csv-upload"
+                      style={{
+                        padding: '4px 10px',
+                        background: '#ffffff',
+                        border: '1px solid #86efac',
+                        borderRadius: '6px',
+                        color: '#15803d',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        flexShrink: 0
+                      }}
+                    >
+                      Change
+                    </label>
+                    <input id="csv-upload" type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} style={{ display: 'none' }} />
                   </div>
-                  {uploadFile ? (
-                    <>
-                      <p style={{ margin: 0, fontWeight: '700', color: '#0f172a', fontSize: '15px' }}>
-                        {uploadFile.name}
-                      </p>
-                      <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '13px' }}>
-                        {rawRows.length} students detected from file
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p style={{ margin: 0, fontWeight: '600', color: '#0f172a', fontSize: '14px' }}>
+                ) : (
+                  <label
+                    htmlFor="csv-upload"
+                    className="nsa-dropzone"
+                    style={{
+                      border: '1.5px dashed #bfdbfe',
+                      background: '#f8fafc',
+                      padding: '20px 14px',
+                      borderRadius: '10px',
+                      marginBottom: '12px'
+                    }}
+                  >
+                    <div style={{
+                      background: '#eff6ff',
+                      padding: '8px',
+                      borderRadius: '50%',
+                      marginBottom: '6px',
+                      color: '#2563eb'
+                    }}>
+                      <FileSpreadsheet size={20} />
+                    </div>
+                    <div style={{ textAlign: 'center', maxWidth: '100%', padding: '0 8px' }}>
+                      <p style={{ margin: 0, fontWeight: '600', color: '#1e293b', fontSize: '12.5px' }}>
                         Drop CSV / Excel here or click to browse
                       </p>
-                      <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '12.5px' }}>
-                        Dept, Year, Semester & student details will be auto-detected directly from the file
+                      <p style={{ margin: '2px 0 0', color: '#64748b', fontSize: '11px' }}>
+                        Dept, Year, Semester auto-detected from file
                       </p>
-                    </>
-                  )}
-                  <input id="csv-upload" type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} style={{ display: 'none' }} />
-                </label>
+                    </div>
+                    <input id="csv-upload" type="file" accept=".xlsx,.xls,.csv" onChange={handleFileChange} style={{ display: 'none' }} />
+                  </label>
+                )}
 
                 {/* Parse Errors */}
                 {parseErrors.length > 0 && (
@@ -1025,470 +1289,360 @@ export default function NewStudentAdmission() {
                 {/* Preview Table */}
                 {rawRows.length > 0 && (
                   <div style={{ marginTop: '8px' }}>
-                    {/* File Distribution Summary (Professional ERP Layout with Interactive Drilldown - Crisp Box Outlines) */}
+                    {/* File Distribution Summary - Compact Collapsible Accordion */}
                     {parsedBreakdown && (
-                      <div style={{
-                        background: '#ffffff',
-                        border: '1.5px solid #94a3b8',
-                        borderRadius: '12px',
-                        padding: '18px 20px',
-                        marginBottom: '18px',
-                        boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-                        fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-                      }}>
-                        {/* Header */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div className="nsa-breakdown-card" style={{ marginBottom: '10px' }}>
+                        {/* Accordion Header Bar */}
+                        <div
+                          onClick={() => setShowBreakdown(prev => !prev)}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            cursor: 'pointer',
+                            gap: '8px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                             <div style={{
                               background: '#f1f5f9',
                               color: '#0f172a',
-                              padding: '8px',
-                              borderRadius: '8px',
+                              padding: '5px',
+                              borderRadius: '6px',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              border: '1.5px solid #94a3b8'
+                              border: '1px solid #cbd5e1',
+                              flexShrink: 0
                             }}>
-                              <Layers size={17} />
+                              <Layers size={14} />
                             </div>
-                            <div>
-                              <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '15px' }}>
-                                Class & Section Enrollment Breakdown
-                              </div>
-                              <div style={{ fontSize: '12px', color: '#64748b' }}>
-                                Click any Year or Class/Section to filter students below
-                              </div>
+                            <div style={{ minWidth: 0, display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                              <span style={{ fontWeight: '700', color: '#0f172a', fontSize: '13px' }}>
+                                Class Breakdown
+                              </span>
+                              <span style={{ fontSize: '11px', background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '1px 6px', borderRadius: '4px', color: '#475569', fontWeight: '600' }}>
+                                {parsedBreakdown.sortedYears.length} Years • {rawRows.length} std
+                              </span>
                             </div>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '12px', background: '#f8fafc', border: '1.5px solid #cbd5e1', padding: '4px 10px', borderRadius: '6px', color: '#334155', fontWeight: '600' }}>
-                              Total Records: <strong style={{ color: '#0f172a' }}>{rawRows.length}</strong>
-                            </span>
-                            {(filterYear !== 'ALL' || filterSection !== 'ALL' || filterDept !== 'ALL' || filterSearch) && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                            {(filterYear !== 'ALL' || filterSection !== 'ALL' || filterDept !== 'ALL') && (
                               <button
                                 type="button"
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setFilterYear('ALL');
                                   setFilterSection('ALL');
                                   setFilterDept('ALL');
                                   setFilterSearch('');
                                 }}
                                 style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '5px',
-                                  fontSize: '12px',
+                                  fontSize: '10.5px',
+                                  background: '#2563eb',
+                                  color: '#fff',
+                                  border: 'none',
+                                  padding: '2px 7px',
+                                  borderRadius: '4px',
                                   fontWeight: '600',
-                                  color: '#0f172a',
-                                  background: '#ffffff',
-                                  border: '1.5px solid #94a3b8',
-                                  padding: '4px 10px',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                  transition: 'all 0.15s ease'
+                                  cursor: 'pointer'
                                 }}
                               >
-                                <RotateCcw size={12} /> Clear Filter
+                                Reset
                               </button>
                             )}
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '2px',
+                              fontSize: '11.5px',
+                              fontWeight: '600',
+                              color: '#2563eb'
+                            }}>
+                              <span>{showBreakdown ? 'Hide' : 'Filter / View'}</span>
+                              {showBreakdown ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                            </div>
                           </div>
                         </div>
 
-                        {/* Quick Filter Bar (All + Depts) */}
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          flexWrap: 'wrap',
-                          padding: '10px 12px',
-                          background: '#f8fafc',
-                          borderRadius: '8px',
-                          border: '1.5px solid #cbd5e1',
-                          marginBottom: '16px'
-                        }}>
-                          <span style={{ fontSize: '11px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em', marginRight: '4px' }}>
-                            Filter:
-                          </span>
-
-                          {/* "All Students" Pill */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setFilterYear('ALL');
-                              setFilterSection('ALL');
-                              setFilterDept('ALL');
-                            }}
-                            style={{
-                              padding: '5px 12px',
-                              borderRadius: '6px',
-                              fontSize: '12px',
-                              fontWeight: '600',
-                              cursor: 'pointer',
-                              border: (filterYear === 'ALL' && filterSection === 'ALL' && filterDept === 'ALL') ? '1.5px solid #0f172a' : '1.5px solid #94a3b8',
-                              display: 'inline-flex',
+                        {/* Collapsible Content */}
+                        {showBreakdown && (
+                          <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #e2e8f0' }}>
+                            {/* Quick Filter Bar (All + Depts) */}
+                            <div style={{
+                              display: 'flex',
                               alignItems: 'center',
-                              gap: '5px',
-                              transition: 'all 0.15s ease',
-                              background: (filterYear === 'ALL' && filterSection === 'ALL' && filterDept === 'ALL') ? '#0f172a' : '#ffffff',
-                              color: (filterYear === 'ALL' && filterSection === 'ALL' && filterDept === 'ALL') ? '#ffffff' : '#0f172a'
-                            }}
-                          >
-                            {(filterYear === 'ALL' && filterSection === 'ALL' && filterDept === 'ALL') && <Check size={12} />}
-                            All Students ({rawRows.length})
-                          </button>
-
-                          {/* Department filter chips */}
-                          {Object.entries(parsedBreakdown.depts).map(([d, cnt]) => {
-                            const isDeptActive = filterDept === d;
-                            return (
+                              gap: '6px',
+                              flexWrap: 'wrap',
+                              padding: '5px 8px',
+                              background: '#f8fafc',
+                              borderRadius: '6px',
+                              border: '1px solid #cbd5e1',
+                              marginBottom: '8px'
+                            }}>
                               <button
-                                key={d}
                                 type="button"
-                                onClick={() => setFilterDept(prev => prev === d ? 'ALL' : d)}
+                                onClick={() => {
+                                  setFilterYear('ALL');
+                                  setFilterSection('ALL');
+                                  setFilterDept('ALL');
+                                }}
                                 style={{
-                                  padding: '5px 12px',
-                                  borderRadius: '6px',
-                                  fontSize: '12px',
+                                  padding: '3px 8px',
+                                  borderRadius: '5px',
+                                  fontSize: '11px',
                                   fontWeight: '600',
                                   cursor: 'pointer',
-                                  border: isDeptActive ? '1.5px solid #0f172a' : '1.5px solid #94a3b8',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  transition: 'all 0.15s ease',
-                                  background: isDeptActive ? '#0f172a' : '#ffffff',
-                                  color: isDeptActive ? '#ffffff' : '#0f172a'
+                                  border: (filterYear === 'ALL' && filterSection === 'ALL' && filterDept === 'ALL') ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                                  background: (filterYear === 'ALL' && filterSection === 'ALL' && filterDept === 'ALL') ? '#2563eb' : '#ffffff',
+                                  color: (filterYear === 'ALL' && filterSection === 'ALL' && filterDept === 'ALL') ? '#ffffff' : '#334155'
                                 }}
                               >
-                                {isDeptActive && <Check size={12} />}
-                                Dept: {d} ({cnt})
+                                All Students ({rawRows.length})
                               </button>
-                            );
-                          })}
-                        </div>
-
-                        {/* Hierarchical Year & Section Cards */}
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                          gap: '14px'
-                        }}>
-                          {parsedBreakdown.sortedYears.map((yData) => {
-                            const isYearSelected = filterYear === yData.year;
-                            const isAllSectionsInYear = isYearSelected && filterSection === 'ALL';
-
-                            // Sort sections alphabetically: A, B, C, D, E, then SINGLE
-                            const sortedSectionEntries = Object.entries(yData.sections).sort(([keyA], [keyB]) => {
-                              const order = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'SINGLE': 99 };
-                              return (order[keyA] || 50) - (order[keyB] || 50);
-                            });
-
-                            return (
-                              <div
-                                key={yData.year}
-                                style={{
-                                  background: isYearSelected ? '#f8fafc' : '#ffffff',
-                                  border: isYearSelected ? '2px solid #0f172a' : '1.5px solid #94a3b8',
-                                  borderRadius: '10px',
-                                  padding: '14px 16px',
-                                  boxShadow: isYearSelected ? '0 0 0 1px #0f172a, 0 4px 10px rgba(0,0,0,0.06)' : '0 1px 3px rgba(0,0,0,0.03)',
-                                  transition: 'all 0.15s ease',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  justifyContent: 'space-between'
-                                }}
-                              >
-                                {/* Year Header (Clickable to select whole year) */}
-                                <div>
-                                  <div
-                                    onClick={() => {
-                                      if (isYearSelected && filterSection === 'ALL') {
-                                        setFilterYear('ALL');
-                                        setFilterSection('ALL');
-                                      } else {
-                                        setFilterYear(yData.year);
-                                        setFilterSection('ALL');
-                                      }
-                                    }}
+                              {Object.entries(parsedBreakdown.depts).map(([d, cnt]) => {
+                                const isDeptActive = filterDept === d;
+                                return (
+                                  <button
+                                    key={d}
+                                    type="button"
+                                    onClick={() => setFilterDept(prev => prev === d ? 'ALL' : d)}
                                     style={{
-                                      display: 'flex',
-                                      justifyContent: 'space-between',
-                                      alignItems: 'center',
+                                      padding: '3px 8px',
+                                      borderRadius: '5px',
+                                      fontSize: '11px',
+                                      fontWeight: '600',
                                       cursor: 'pointer',
-                                      paddingBottom: '10px',
-                                      borderBottom: '1.5px solid #cbd5e1'
+                                      border: isDeptActive ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                                      background: isDeptActive ? '#2563eb' : '#ffffff',
+                                      color: isDeptActive ? '#ffffff' : '#334155'
                                     }}
-                                    title="Click to filter students for this entire year"
                                   >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                      <div style={{
-                                        width: '30px',
-                                        height: '30px',
-                                        borderRadius: '6px',
-                                        background: '#f1f5f9',
-                                        color: '#0f172a',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        border: '1px solid #cbd5e1'
-                                      }}>
-                                        <GraduationCap size={16} />
-                                      </div>
-                                      <div>
-                                        <span style={{ fontWeight: '700', color: '#0f172a', fontSize: '14px' }}>
+                                    Dept: {d} ({cnt})
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Slim Compact Year Rows */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              {parsedBreakdown.sortedYears.map((yData) => {
+                                const isYearSelected = filterYear === yData.year;
+                                const isAllSectionsInYear = isYearSelected && filterSection === 'ALL';
+                                const sortedSectionEntries = Object.entries(yData.sections).sort(([keyA], [keyB]) => {
+                                  const order = { 'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5, 'SINGLE': 99 };
+                                  return (order[keyA] || 50) - (order[keyB] || 50);
+                                });
+
+                                return (
+                                  <div
+                                    key={yData.year}
+                                    style={{
+                                      background: isYearSelected ? '#eff6ff' : '#ffffff',
+                                      border: isYearSelected ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                                      borderRadius: '6px',
+                                      padding: '6px 8px'
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                      <div
+                                        onClick={() => {
+                                          if (isYearSelected && filterSection === 'ALL') {
+                                            setFilterYear('ALL');
+                                            setFilterSection('ALL');
+                                          } else {
+                                            setFilterYear(yData.year);
+                                            setFilterSection('ALL');
+                                          }
+                                        }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '5px', cursor: 'pointer' }}
+                                      >
+                                        <GraduationCap size={13} color="#2563eb" />
+                                        <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '12px' }}>
                                           {yData.year}
                                         </span>
                                         {yData.semestersList.length > 0 && (
-                                          <span style={{ marginLeft: '6px', fontSize: '11px', color: '#334155', background: '#f1f5f9', border: '1px solid #94a3b8', padding: '1px 6px', borderRadius: '4px', fontWeight: '600' }}>
+                                          <span style={{ fontSize: '9.5px', color: '#475569', background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '0 4px', borderRadius: '3px', fontWeight: '600' }}>
                                             Sem {yData.semestersList.join(', ')}
+                                          </span>
+                                        )}
+                                        <span style={{
+                                          fontSize: '10.5px',
+                                          fontWeight: '700',
+                                          color: isAllSectionsInYear ? '#ffffff' : '#2563eb',
+                                          background: isAllSectionsInYear ? '#2563eb' : '#eff6ff',
+                                          border: isAllSectionsInYear ? '1px solid #2563eb' : '1px solid #bfdbfe',
+                                          padding: '1px 5px',
+                                          borderRadius: '4px'
+                                        }}>
+                                          {yData.total} std
+                                        </span>
+                                      </div>
+
+                                      {/* Section buttons & dup count */}
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                                        {sortedSectionEntries.map(([secKey, count]) => {
+                                          const isSecSelected = isYearSelected && filterSection === secKey;
+                                          const label = secKey === 'SINGLE' ? 'Single' : `Sec ${secKey}`;
+                                          return (
+                                            <button
+                                              key={secKey}
+                                              type="button"
+                                              onClick={() => {
+                                                if (isYearSelected && filterSection === secKey) {
+                                                  setFilterSection('ALL');
+                                                } else {
+                                                  setFilterYear(yData.year);
+                                                  setFilterSection(secKey);
+                                                }
+                                              }}
+                                              style={{
+                                                padding: '2px 6px',
+                                                borderRadius: '4px',
+                                                fontSize: '10.5px',
+                                                fontWeight: '600',
+                                                cursor: 'pointer',
+                                                border: isSecSelected ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                                                background: isSecSelected ? '#2563eb' : '#ffffff',
+                                                color: isSecSelected ? '#ffffff' : '#334155'
+                                              }}
+                                            >
+                                              {label}: <strong>{count}</strong>
+                                            </button>
+                                          );
+                                        })}
+                                        {yData.duplicates > 0 && (
+                                          <span style={{ fontSize: '10px', color: '#b45309', background: '#fef3c7', padding: '1px 4px', borderRadius: '3px', fontWeight: '600' }}>
+                                            {yData.duplicates} dup
                                           </span>
                                         )}
                                       </div>
                                     </div>
-
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                      <span style={{
-                                        fontSize: '11.5px',
-                                        fontWeight: '600',
-                                        color: isAllSectionsInYear ? '#ffffff' : '#0f172a',
-                                        background: isAllSectionsInYear ? '#0f172a' : '#f1f5f9',
-                                        border: isAllSectionsInYear ? '1.5px solid #0f172a' : '1.5px solid #94a3b8',
-                                        padding: '3px 9px',
-                                        borderRadius: '6px'
-                                      }}>
-                                        {isAllSectionsInYear && <Check size={11} style={{ marginRight: 3, verticalAlign: 'middle' }} />}{yData.total} Students
-                                      </span>
-                                    </div>
                                   </div>
-
-                                  {/* Sections Breakdown inside this Year */}
-                                  <div style={{ marginTop: '12px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                      <span style={{ fontSize: '10.5px', fontWeight: '700', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                        Sections & Classes
-                                      </span>
-                                      <span style={{ color: '#64748b', fontSize: '10px' }}>
-                                        Click to filter
-                                      </span>
-                                    </div>
-
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                      {sortedSectionEntries.map(([secKey, count]) => {
-                                        const isSecSelected = isYearSelected && filterSection === secKey;
-                                        const label = secKey === 'SINGLE' ? 'Single Class' : `Sec ${secKey}`;
-
-                                        return (
-                                          <button
-                                            key={secKey}
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              if (isYearSelected && filterSection === secKey) {
-                                                setFilterSection('ALL');
-                                              } else {
-                                                setFilterYear(yData.year);
-                                                setFilterSection(secKey);
-                                              }
-                                            }}
-                                            style={{
-                                              padding: '5px 10px',
-                                              borderRadius: '6px',
-                                              fontSize: '12px',
-                                              fontWeight: '600',
-                                              cursor: 'pointer',
-                                              border: isSecSelected ? '1.5px solid #0f172a' : '1.5px solid #94a3b8',
-                                              background: isSecSelected ? '#0f172a' : '#ffffff',
-                                              color: isSecSelected ? '#ffffff' : '#0f172a',
-                                              display: 'inline-flex',
-                                              alignItems: 'center',
-                                              gap: '6px',
-                                              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-                                              transition: 'all 0.15s ease'
-                                            }}
-                                            title={`Click to filter students for ${yData.year} ${label}`}
-                                          >
-                                            {isSecSelected && <Check size={11} />}
-                                            <span>{label}</span>
-                                            <span style={{
-                                              background: isSecSelected ? '#334155' : '#f1f5f9',
-                                              color: isSecSelected ? '#ffffff' : '#0f172a',
-                                              border: isSecSelected ? 'none' : '1px solid #cbd5e1',
-                                              padding: '1px 6px',
-                                              borderRadius: '4px',
-                                              fontSize: '11px',
-                                              fontWeight: '700'
-                                            }}>
-                                              {count}
-                                            </span>
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Bottom card meta details */}
-                                <div style={{
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center',
-                                  marginTop: '12px',
-                                  paddingTop: '10px',
-                                  borderTop: '1.5px solid #cbd5e1',
-                                  fontSize: '11.5px',
-                                  color: '#475569'
-                                }}>
-                                  <div style={{ display: 'flex', gap: '8px' }}>
-                                    <span>Hosteller: <strong style={{ color: '#0f172a' }}>{yData.hostellers}</strong></span>
-                                    <span>•</span>
-                                    <span>Dayscholar: <strong style={{ color: '#0f172a' }}>{yData.dayscholars}</strong></span>
-                                  </div>
-                                  {yData.duplicates > 0 && (
-                                    <span style={{ color: '#0f172a', background: '#f1f5f9', border: '1px solid #cbd5e1', display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '1px 6px', borderRadius: '4px', fontWeight: '600' }}>
-                                      <AlertCircle size={11} color="#64748b" /> {yData.duplicates} dup
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
-                    {/* Preview Table Header & Search Filter */}
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: '10px',
-                      flexWrap: 'wrap',
-                      gap: '10px',
-                      fontFamily: "'Plus Jakarta Sans', sans-serif"
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                        <div style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Users size={15} color="#475569" /> Student List Preview
+                    {/* Preview Table Header & Search Filter - Compact Single-Line Row */}
+                    <div style={{ marginBottom: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <Users size={14} color="#475569" />
+                          <span>Student List</span>
+                          <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '500' }}>
+                            ({filteredStudents.length})
+                          </span>
                         </div>
 
-                        {/* Active Filter Badge */}
-                        {(filterYear !== 'ALL' || filterSection !== 'ALL' || filterDept !== 'ALL') ? (
+                        {/* Active filter badge if any */}
+                        {(filterYear !== 'ALL' || filterSection !== 'ALL' || filterDept !== 'ALL') && (
                           <div style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '6px',
+                            gap: '4px',
                             background: '#f1f5f9',
                             border: '1px solid #cbd5e1',
-                            padding: '3px 8px',
-                            borderRadius: '6px',
-                            fontSize: '11.5px',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontSize: '10.5px',
                             color: '#0f172a',
                             fontWeight: '600'
                           }}>
-                            <Filter size={11} />
-                            Viewing: {filterYear !== 'ALL' ? filterYear : 'All Years'}
-                            {filterSection !== 'ALL' && (filterSection === 'SINGLE' ? ' • Single Class' : ` • Sec ${filterSection}`)}
-                            {filterDept !== 'ALL' && ` • Dept: ${filterDept}`}
-                            <span style={{ color: '#64748b' }}>({filteredStudents.length} students)</span>
+                            <span>{filterYear !== 'ALL' ? filterYear : 'Filtered'}</span>
                             <X
-                              size={12}
+                              size={11}
                               onClick={() => {
                                 setFilterYear('ALL');
                                 setFilterSection('ALL');
                                 setFilterDept('ALL');
                               }}
-                              style={{ cursor: 'pointer', marginLeft: '2px' }}
-                              title="Reset filter"
+                              style={{ cursor: 'pointer' }}
                             />
                           </div>
-                        ) : (
-                          <span style={{ fontSize: '12px', color: '#64748b' }}>
-                            Showing all classes ({filteredStudents.length} students)
-                          </span>
                         )}
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                        {/* Search Input */}
-                        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                          <Search size={14} style={{ position: 'absolute', left: '10px', color: '#64748b' }} />
+                      {/* Single Line Search & Limit Input */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%' }}>
+                        <div className="nsa-search-bar">
+                          <Search size={13} style={{ position: 'absolute', left: '8px', color: '#64748b' }} />
                           <input
                             type="text"
                             placeholder="Search Name, Reg No, Email..."
                             value={filterSearch}
                             onChange={(e) => setFilterSearch(e.target.value)}
                             style={{
-                              padding: '6px 26px 6px 30px',
-                              fontSize: '12px',
+                              padding: '5px 22px 5px 26px',
+                              fontSize: '11.5px',
                               borderRadius: '6px',
-                              border: '1.5px solid #94a3b8',
+                              border: '1px solid #94a3b8',
                               outline: 'none',
-                              width: '220px',
+                              width: '100%',
                               background: '#ffffff',
                               color: '#0f172a',
-                              fontFamily: 'inherit'
+                              fontFamily: 'inherit',
+                              boxSizing: 'border-box'
                             }}
                           />
                           {filterSearch && (
                             <X
                               size={12}
                               onClick={() => setFilterSearch('')}
-                              style={{ position: 'absolute', right: '8px', cursor: 'pointer', color: '#64748b' }}
+                              style={{ position: 'absolute', right: '6px', cursor: 'pointer', color: '#64748b' }}
                             />
                           )}
                         </div>
 
-                        {/* Display Limit Dropdown */}
                         <select
                           value={displayLimit}
                           onChange={(e) => setDisplayLimit(Number(e.target.value))}
                           style={{
-                            padding: '6px 8px',
+                            padding: '5px 6px',
                             borderRadius: '6px',
-                            border: '1.5px solid #94a3b8',
-                            fontSize: '12px',
+                            border: '1px solid #94a3b8',
+                            fontSize: '11.5px',
                             background: '#ffffff',
                             color: '#0f172a',
                             fontWeight: '600',
                             cursor: 'pointer',
-                            fontFamily: 'inherit'
+                            fontFamily: 'inherit',
+                            flexShrink: 0
                           }}
                         >
-                          <option value={25}>Show 25</option>
-                          <option value={50}>Show 50</option>
-                          <option value={100}>Show 100</option>
-                          <option value={-1}>Show All ({filteredStudents.length})</option>
+                          <option value={25}>25</option>
+                          <option value={50}>50</option>
+                          <option value={100}>100</option>
+                          <option value={-1}>All ({filteredStudents.length})</option>
                         </select>
                       </div>
                     </div>
 
-                    {/* Table Container with Crisp Visible Border */}
-                    <div style={{
-                      overflowX: 'auto',
-                      maxHeight: '380px',
-                      overflowY: 'auto',
-                      borderRadius: '8px',
-                      border: '1.5px solid #94a3b8',
-                      background: '#ffffff',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
-                      fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif"
-                    }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    {/* Table Container with Horizontal Scroll */}
+                    <div style={{ fontSize: '10.5px', color: '#64748b', marginBottom: '3px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                      <span>👉</span>
+                      <span>Swipe table horizontally to view all columns</span>
+                    </div>
+                    <div className="nsa-table-wrapper">
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', minWidth: '700px' }}>
                         <thead style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 1 }}>
                           <tr>
                             {['#', 'Reg No', 'Name', 'Dept', 'Year & Sem', 'Section', 'Personal Email (Login)', 'Mobile', 'Type', 'Details'].map(h => (
                               <th key={h} style={{
-                                padding: '10px 12px',
+                                padding: '6px 8px',
                                 textAlign: 'left',
                                 fontWeight: '700',
                                 color: '#0f172a',
-                                borderBottom: '2px solid #94a3b8',
+                                borderBottom: '1.5px solid #94a3b8',
                                 borderRight: '1px solid #e2e8f0',
                                 whiteSpace: 'nowrap',
-                                fontSize: '11px',
+                                fontSize: '10.5px',
                                 textTransform: 'uppercase',
-                                letterSpacing: '0.04em'
+                                letterSpacing: '0.03em'
                               }}>
                                 {h}
                               </th>
@@ -1498,10 +1652,10 @@ export default function NewStudentAdmission() {
                         <tbody>
                           {filteredStudents.length === 0 ? (
                             <tr>
-                              <td colSpan="10" style={{ padding: '32px', textAlign: 'center', color: '#64748b' }}>
-                                <AlertCircle size={24} color="#94a3b8" style={{ margin: '0 auto 6px' }} />
-                                <p style={{ fontWeight: '600', fontSize: '13px', margin: '0 0 4px', color: '#0f172a' }}>
-                                  No students match the selected filter or search
+                              <td colSpan="10" style={{ padding: '24px', textAlign: 'center', color: '#64748b' }}>
+                                <AlertCircle size={20} color="#94a3b8" style={{ margin: '0 auto 4px' }} />
+                                <p style={{ fontWeight: '600', fontSize: '12px', margin: '0 0 4px', color: '#0f172a' }}>
+                                  No students match the filter or search
                                 </p>
                                 <button
                                   type="button"
@@ -1512,15 +1666,14 @@ export default function NewStudentAdmission() {
                                     setFilterSearch('');
                                   }}
                                   style={{
-                                    padding: '5px 12px',
-                                    background: '#0f172a',
+                                    padding: '4px 10px',
+                                    background: '#2563eb',
                                     color: '#fff',
                                     border: 'none',
-                                    borderRadius: '6px',
-                                    fontSize: '11.5px',
+                                    borderRadius: '5px',
+                                    fontSize: '11px',
                                     fontWeight: '600',
-                                    cursor: 'pointer',
-                                    marginTop: '6px'
+                                    cursor: 'pointer'
                                   }}
                                 >
                                   Reset All Filters
@@ -1532,97 +1685,95 @@ export default function NewStudentAdmission() {
                               <tr
                                 key={i}
                                 style={{
-                                  borderBottom: '1px solid #cbd5e1',
+                                  borderBottom: '1px solid #e2e8f0',
                                   background: r.isDuplicate ? '#fffbeb' : '#ffffff'
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.background = '#f8fafc'}
-                                onMouseLeave={e => e.currentTarget.style.background = r.isDuplicate ? '#fffbeb' : '#ffffff'}
                               >
-                                <td style={{ padding: '9px 12px', color: '#64748b', fontSize: '12px', textAlign: 'center', borderRight: '1px solid #f1f5f9' }}>{i + 1}</td>
-                                <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', borderRight: '1px solid #f1f5f9' }}>
-                                  <span style={{ fontWeight: '700', color: '#0f172a', fontFamily: 'monospace', fontSize: '12px' }}>
+                                <td style={{ padding: '6px 8px', color: '#64748b', fontSize: '11px', textAlign: 'center', borderRight: '1px solid #f1f5f9' }}>{i + 1}</td>
+                                <td style={{ padding: '6px 8px', whiteSpace: 'nowrap', borderRight: '1px solid #f1f5f9' }}>
+                                  <span style={{ fontWeight: '700', color: '#0f172a', fontFamily: 'monospace', fontSize: '11.5px' }}>
                                     {r.regNo}
                                   </span>
                                   {r.isDuplicate && (
-                                    <span style={{ marginLeft: '6px', fontSize: '10px', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '1px 5px', borderRadius: '4px', fontWeight: '600' }}>
+                                    <span style={{ marginLeft: '4px', fontSize: '9.5px', background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', padding: '1px 4px', borderRadius: '3px', fontWeight: '600' }}>
                                       Duplicate
                                     </span>
                                   )}
                                 </td>
-                                <td style={{ padding: '9px 12px', color: '#0f172a', fontWeight: '600', whiteSpace: 'nowrap', borderRight: '1px solid #f1f5f9' }}>{r.name}</td>
-                                <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', borderRight: '1px solid #f1f5f9' }}>
-                                  <span style={{ fontWeight: '600', color: '#0f172a', background: '#f8fafc', border: '1.5px solid #cbd5e1', padding: '2px 7px', borderRadius: '4px', fontSize: '11px' }}>
+                                <td style={{ padding: '6px 8px', color: '#0f172a', fontWeight: '600', whiteSpace: 'nowrap', borderRight: '1px solid #f1f5f9', fontSize: '11.5px' }}>{r.name}</td>
+                                <td style={{ padding: '6px 8px', whiteSpace: 'nowrap', borderRight: '1px solid #f1f5f9' }}>
+                                  <span style={{ fontWeight: '600', color: '#0f172a', background: '#f8fafc', border: '1px solid #cbd5e1', padding: '1px 5px', borderRadius: '3px', fontSize: '10.5px' }}>
                                     {r.dept}
                                   </span>
                                 </td>
-                                <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', borderRight: '1px solid #f1f5f9' }}>
-                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
-                                    <span style={{ fontWeight: '600', color: '#0f172a', fontSize: '12px' }}>
+                                <td style={{ padding: '6px 8px', whiteSpace: 'nowrap', borderRight: '1px solid #f1f5f9' }}>
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                                    <span style={{ fontWeight: '600', color: '#0f172a', fontSize: '11.5px' }}>
                                       {r.year}
                                     </span>
-                                    <span style={{ background: '#f8fafc', color: '#334155', border: '1.5px solid #cbd5e1', padding: '1px 6px', borderRadius: '4px', fontSize: '10.5px', fontWeight: '600' }}>
+                                    <span style={{ background: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1', padding: '0 4px', borderRadius: '3px', fontSize: '10px', fontWeight: '600' }}>
                                       Sem {r.semester}
                                     </span>
                                   </div>
                                 </td>
-                                <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', borderRight: '1px solid #f1f5f9' }}>
+                                <td style={{ padding: '6px 8px', whiteSpace: 'nowrap', borderRight: '1px solid #f1f5f9' }}>
                                   <span style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    padding: '2px 8px',
-                                    borderRadius: '5px',
-                                    fontSize: '11px',
+                                    padding: '1px 6px',
+                                    borderRadius: '4px',
+                                    fontSize: '10.5px',
                                     fontWeight: '600',
                                     whiteSpace: 'nowrap',
                                     background: '#f8fafc',
                                     color: '#0f172a',
-                                    border: '1.5px solid #cbd5e1'
+                                    border: '1px solid #cbd5e1'
                                   }}>
-                                    {r.section ? 'Sec ' + r.section : 'Single Class'}
+                                    {r.section ? 'Sec ' + r.section : 'Single'}
                                   </span>
                                 </td>
-                                <td style={{ padding: '9px 12px', color: '#0f172a', fontSize: '12px', whiteSpace: 'nowrap', borderRight: '1px solid #f1f5f9' }}>
+                                <td style={{ padding: '6px 8px', color: '#0f172a', fontSize: '11.5px', whiteSpace: 'nowrap', borderRight: '1px solid #f1f5f9' }}>
                                   {r.personalEmail}
                                 </td>
-                                <td style={{ padding: '9px 12px', color: '#475569', fontSize: '12px', whiteSpace: 'nowrap', borderRight: '1px solid #f1f5f9' }}>
+                                <td style={{ padding: '6px 8px', color: '#475569', fontSize: '11px', whiteSpace: 'nowrap', borderRight: '1px solid #f1f5f9' }}>
                                   {r.mobile || '—'}
                                 </td>
-                                <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', borderRight: '1px solid #f1f5f9' }}>
+                                <td style={{ padding: '6px 8px', whiteSpace: 'nowrap', borderRight: '1px solid #f1f5f9' }}>
                                   <span style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    padding: '2px 7px',
-                                    borderRadius: '4px',
-                                    fontSize: '11px',
+                                    padding: '1px 5px',
+                                    borderRadius: '3px',
+                                    fontSize: '10.5px',
                                     fontWeight: '600',
                                     whiteSpace: 'nowrap',
                                     textTransform: 'capitalize',
                                     background: '#f8fafc',
                                     color: '#0f172a',
-                                    border: '1.5px solid #cbd5e1'
+                                    border: '1px solid #cbd5e1'
                                   }}>
                                     {r.studentType}
                                   </span>
                                 </td>
-                                <td style={{ padding: '9px 12px', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                                <td style={{ padding: '6px 8px', whiteSpace: 'nowrap', textAlign: 'center' }}>
                                   <button
                                     type="button"
                                     onClick={() => setViewingStudent(r)}
                                     style={{
-                                      padding: '3px 8px',
+                                      padding: '2px 6px',
                                       background: '#ffffff',
-                                      border: '1.5px solid #94a3b8',
-                                      borderRadius: '5px',
+                                      border: '1px solid #cbd5e1',
+                                      borderRadius: '4px',
                                       color: '#0f172a',
-                                      fontSize: '11px',
+                                      fontSize: '10.5px',
                                       fontWeight: '600',
                                       cursor: 'pointer',
                                       display: 'inline-flex',
                                       alignItems: 'center',
-                                      gap: '4px'
+                                      gap: '3px'
                                     }}
                                   >
-                                    <Eye size={12} /> View
+                                    <Eye size={11} /> View
                                   </button>
                                 </td>
                               </tr>
@@ -1630,14 +1781,14 @@ export default function NewStudentAdmission() {
                           )}
                           {displayLimit !== -1 && filteredStudents.length > displayLimit && (
                             <tr>
-                              <td colSpan="10" style={{ padding: '10px', textAlign: 'center', color: '#64748b', fontSize: '12px', background: '#f8fafc' }}>
+                              <td colSpan="10" style={{ padding: '8px', textAlign: 'center', color: '#64748b', fontSize: '11.5px', background: '#f8fafc' }}>
                                 Showing {displayLimit} of {filteredStudents.length} students.{' '}
                                 <button
                                   type="button"
                                   onClick={() => setDisplayLimit(-1)}
                                   style={{ color: '#0f172a', fontWeight: '700', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
                                 >
-                                  View all {filteredStudents.length} students
+                                  View all ({filteredStudents.length})
                                 </button>
                               </td>
                             </tr>
@@ -1646,81 +1797,75 @@ export default function NewStudentAdmission() {
                       </table>
                     </div>
 
-                    {/* Summary row */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', marginTop: '14px' }}>
-                      <div style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #94a3b8' }}>
-                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>Total in File</div>
-                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#0f172a' }}>{rawRows.length}</div>
+                    {/* Summary row - Single-Line Compact Horizontal Stats */}
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: duplicateStudents.length > 0 ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+                      gap: '6px',
+                      marginTop: '8px'
+                    }}>
+                      <div style={{ background: '#f8fafc', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>
+                        <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '600' }}>Total in File</div>
+                        <div style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a', lineHeight: 1.2 }}>{rawRows.length}</div>
                       </div>
-                      <div style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #94a3b8' }}>
-                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>Ready to Add</div>
-                        <div style={{ fontSize: '20px', fontWeight: '700', color: '#0f172a' }}>{newStudents.length}</div>
+                      <div style={{ background: '#f8fafc', padding: '6px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', textAlign: 'center' }}>
+                        <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '600' }}>Ready to Add</div>
+                        <div style={{ fontSize: '15px', fontWeight: '700', color: '#0f172a', lineHeight: 1.2 }}>{newStudents.length}</div>
                       </div>
                       {duplicateStudents.length > 0 && (
-                        <div style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #94a3b8' }}>
-                          <div style={{ fontSize: '11px', color: '#b45309', fontWeight: '600' }}>Duplicates (Skip)</div>
-                          <div style={{ fontSize: '20px', fontWeight: '700', color: '#b45309' }}>{duplicateStudents.length}</div>
-                        </div>
-                      )}
-                      {(filterYear !== 'ALL' || filterSection !== 'ALL' || filterDept !== 'ALL' || filterSearch) && (
-                        <div style={{ background: '#f8fafc', padding: '10px 14px', borderRadius: '8px', border: '1.5px solid #94a3b8' }}>
-                          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>Filtered In View</div>
-                          <div style={{ fontSize: '20px', fontWeight: '700', color: '#0f172a' }}>{filteredStudents.length}</div>
+                        <div style={{ background: '#fffbeb', padding: '6px 8px', borderRadius: '6px', border: '1px solid #fde68a', textAlign: 'center' }}>
+                          <div style={{ fontSize: '10px', color: '#b45309', fontWeight: '600' }}>Duplicates</div>
+                          <div style={{ fontSize: '15px', fontWeight: '700', color: '#b45309', lineHeight: 1.2 }}>{duplicateStudents.length}</div>
                         </div>
                       )}
                     </div>
 
-                    {/* Duplicate warning banner */}
+                    {/* Duplicate notice - Compact Slim Alert */}
                     {duplicateStudents.length > 0 && (
-                      <div style={{ marginTop: '12px', background: '#fafafa', border: '1.5px solid #cbd5e1', borderRadius: '8px', padding: '10px 14px' }}>
-                        <div style={{ color: '#0f172a', fontWeight: '600', fontSize: '12.5px', marginBottom: '2px' }}>
-                          Duplicate Notice: {duplicateStudents.length} student{duplicateStudents.length > 1 ? 's' : ''} already registered (will be skipped):
-                        </div>
-                        <div style={{ fontSize: '11.5px', color: '#64748b' }}>
-                          {duplicateStudents.slice(0, 3).map(s => `${s.regNo} (${s.name})`).join(', ')}
-                          {duplicateStudents.length > 3 ? ` ...and ${duplicateStudents.length - 3} more` : ''}
-                        </div>
+                      <div style={{ marginTop: '6px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', padding: '5px 8px', fontSize: '11px', color: '#92400e', lineHeight: 1.3 }}>
+                        <strong>Notice:</strong> {duplicateStudents.length} student{duplicateStudents.length > 1 ? 's' : ''} already in database (will be skipped).
                       </div>
                     )}
 
                     {/* Upload progress */}
                     {uploading && (
-                      <div style={{ marginTop: '14px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '14px' }}>
-                        <div style={{ fontWeight: '600', color: '#0f172a', marginBottom: '8px', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <RefreshCw size={14} color="#0f172a" style={{ animation: 'spin 1s linear infinite' }} />
+                      <div style={{ marginTop: '8px', background: '#f8fafc', borderRadius: '6px', border: '1px solid #e2e8f0', padding: '10px' }}>
+                        <div style={{ fontWeight: '600', color: '#1e293b', marginBottom: '6px', fontSize: '11.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <RefreshCw size={12} color="#2563eb" style={{ animation: 'spin 1s linear infinite' }} />
                           Adding students... {progress.current}/{progress.total}
                         </div>
-                        <div style={{ background: '#e2e8f0', borderRadius: '6px', height: '6px', overflow: 'hidden' }}>
+                        <div style={{ background: '#e2e8f0', borderRadius: '4px', height: '5px', overflow: 'hidden' }}>
                           <div style={{
                             height: '100%',
                             width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%`,
-                            background: '#0f172a',
-                            borderRadius: '6px', transition: 'width 0.3s ease'
+                            background: '#2563eb',
+                            borderRadius: '4px', transition: 'width 0.3s ease'
                           }} />
                         </div>
                         <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
                       </div>
                     )}
 
-                    {/* Direct Action Button */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #e2e8f0', flexWrap: 'wrap', gap: '10px' }}>
-                      <div style={{ fontSize: '12px', color: '#64748b' }}>
-                        Password auto-set to <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', color: '#0f172a', border: '1px solid #e2e8f0' }}>&lt;email_username&gt;@9525</code> • Login ID: <strong>Personal Email</strong>
+                    {/* Direct Action Button - Compact */}
+                    <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #e2e8f0' }}>
+                      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '6px', lineHeight: 1.3 }}>
+                        Password: <code style={{ background: '#f1f5f9', padding: '1px 4px', borderRadius: '3px', color: '#0f172a' }}>&lt;email_username&gt;@9525</code> • Login: <strong>Personal Email</strong>
                       </div>
                       <button
                         onClick={handleConfirmUpload}
                         disabled={uploading || newStudents.length === 0}
+                        className="nsa-confirm-btn"
                         style={{
-                          padding: '10px 22px',
-                          background: newStudents.length > 0 && !uploading ? '#0f172a' : '#cbd5e1',
-                          border: 'none', borderRadius: '8px',
+                          width: '100%',
+                          padding: '9px 16px',
+                          fontSize: '13px',
+                          background: newStudents.length > 0 && !uploading ? '#2563eb' : '#cbd5e1',
                           color: newStudents.length > 0 && !uploading ? '#ffffff' : '#94a3b8',
                           cursor: newStudents.length > 0 && !uploading ? 'pointer' : 'not-allowed',
-                          fontWeight: '600', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px',
-                          transition: 'all 0.15s ease'
+                          borderRadius: '8px'
                         }}
                       >
-                        <UserPlus size={16} />
+                        <UserPlus size={15} />
                         {uploading ? `Adding ${progress.current}/${progress.total}...` : `Confirm & Add ${newStudents.length} Students`}
                       </button>
                     </div>
@@ -1733,16 +1878,7 @@ export default function NewStudentAdmission() {
           {/* ===== STEP 2: Completed ===== */}
           {step === 2 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
-              <div style={{
-                background: '#ffffff',
-                borderRadius: '12px',
-                border: '1.5px solid #cbd5e1',
-                padding: '36px 32px',
-                maxWidth: '580px',
-                width: '100%',
-                textAlign: 'center',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.04)'
-              }}>
+              <div className="nsa-step2-card">
                 <div style={{
                   width: '52px',
                   height: '52px',
@@ -1765,15 +1901,15 @@ export default function NewStudentAdmission() {
                 </p>
 
                 {/* Result stats */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '22px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '22px' }}>
                   {[
                     { label: 'Admitted', val: results.success.length },
                     { label: 'Skipped', val: results.skipped.length },
                     { label: 'Failed', val: results.failed.length }
                   ].map(({ label, val }) => (
-                    <div key={label} style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px 14px' }}>
-                      <div style={{ fontSize: '20px', fontWeight: '700', color: '#0f172a' }}>{val}</div>
-                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '2px' }}>{label}</div>
+                    <div key={label} style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 8px' }}>
+                      <div style={{ fontSize: '18px', fontWeight: '700', color: '#0f172a' }}>{val}</div>
+                      <div style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '2px' }}>{label}</div>
                     </div>
                   ))}
                 </div>
@@ -1793,12 +1929,12 @@ export default function NewStudentAdmission() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <div className="nsa-step2-btn-group" style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
                   <button
                     onClick={handleDownloadPDF}
                     style={{
                       padding: '10px 18px',
-                      background: '#0f172a',
+                      background: '#2563eb',
                       border: 'none',
                       borderRadius: '8px',
                       color: '#ffffff',
@@ -1857,46 +1993,22 @@ export default function NewStudentAdmission() {
           )}
         {/* Modal: View Complete Student Details */}
         {viewingStudent && (
-          <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(5px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 9999, padding: '16px'
-          }}>
-            <div style={{
-              background: '#ffffff',
-              borderRadius: '16px',
-              width: '100%',
-              maxWidth: '780px',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
-              border: '1px solid #e2e8f0',
-              fontFamily: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
-            }}>
+          <div className="nsa-modal-overlay">
+            <div className="nsa-modal-card">
               {/* Modal Header */}
-              <div style={{
-                padding: '18px 24px',
-                borderBottom: '1px solid #e2e8f0',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                background: '#ffffff',
-                borderTopLeftRadius: '16px',
-                borderTopRightRadius: '16px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div className="nsa-modal-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
                   {/* Avatar */}
                   <div style={{
-                    width: '46px',
-                    height: '46px',
+                    width: '42px',
+                    height: '42px',
                     borderRadius: '12px',
-                    background: '#0f172a',
+                    background: '#2563eb',
                     color: '#ffffff',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '17px',
+                    fontSize: '16px',
                     fontWeight: '700',
                     letterSpacing: '0.02em',
                     flexShrink: 0
@@ -1904,8 +2016,8 @@ export default function NewStudentAdmission() {
                     {getInitials(viewingStudent.name)}
                   </div>
 
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#0f172a', lineHeight: 1.2 }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#0f172a', lineHeight: 1.2, wordBreak: 'break-word' }}>
                       {viewingStudent.name}
                     </h3>
                     {/* Badges row */}
@@ -1987,7 +2099,9 @@ export default function NewStudentAdmission() {
                     justifyContent: 'center',
                     cursor: 'pointer',
                     color: '#64748b',
-                    transition: 'all 0.15s ease'
+                    transition: 'all 0.15s ease',
+                    flexShrink: 0,
+                    marginLeft: '8px'
                   }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#0f172a'; }}
                   onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.color = '#64748b'; }}
@@ -1998,7 +2112,7 @@ export default function NewStudentAdmission() {
               </div>
 
               {/* Modal Body */}
-              <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="nsa-modal-body">
                 {/* Clean Credentials Banner */}
                 <div style={{
                   background: '#f8fafc',
@@ -2119,8 +2233,8 @@ export default function NewStudentAdmission() {
                           fontWeight: '600',
                           cursor: 'pointer',
                           transition: 'all 0.15s ease',
-                          border: isActive ? '1px solid #0f172a' : '1px solid #e2e8f0',
-                          background: isActive ? '#0f172a' : '#ffffff',
+                          border: isActive ? '1px solid #2563eb' : '1px solid #e2e8f0',
+                          background: isActive ? '#2563eb' : '#ffffff',
                           color: isActive ? '#ffffff' : '#475569'
                         }}
                       >
@@ -2131,7 +2245,7 @@ export default function NewStudentAdmission() {
                 </div>
 
                 {/* Profile Grid Cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '14px' }}>
+                <div className="nsa-modal-profile-grid">
                   {/* Card 1: Personal Profile */}
                   {(profileActiveTab === 'all' || profileActiveTab === 'personal') && (
                     <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px 16px' }}>
@@ -2367,7 +2481,7 @@ export default function NewStudentAdmission() {
                   onClick={() => setViewingStudent(null)}
                   style={{
                     padding: '8px 18px',
-                    background: '#0f172a',
+                    background: '#2563eb',
                     border: 'none',
                     borderRadius: '8px',
                     color: '#ffffff',
@@ -2376,8 +2490,8 @@ export default function NewStudentAdmission() {
                     fontSize: '13px',
                     transition: 'all 0.15s ease'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#334155'}
-                  onMouseLeave={e => e.currentTarget.style.background = '#0f172a'}
+                  onMouseEnter={e => e.currentTarget.style.background = '#1d4ed8'}
+                  onMouseLeave={e => e.currentTarget.style.background = '#2563eb'}
                 >
                   Close
                 </button>

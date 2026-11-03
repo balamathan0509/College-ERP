@@ -15,6 +15,7 @@ import {
 import toast, { Toaster } from 'react-hot-toast';
 import { 
   ArrowRight, 
+  ArrowDown,
   CheckSquare, 
   Square, 
   Users, 
@@ -469,10 +470,239 @@ export default function PromoteStudent() {
       <Toaster position="top-right" />
       <Sidebar />
       <main className="main-content">
-        <div className="page-container" style={{ padding: '24px', background: '#f8fafc', minHeight: '100vh', fontFamily: 'Plus Jakarta Sans, sans-serif' }}>
+        <style>{`
+          .ps-container {
+            padding: 24px;
+            background: #f8fafc;
+            min-height: 100vh;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            box-sizing: border-box;
+          }
+          .ps-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 15px;
+          }
+          .ps-card {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            padding: 24px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+            margin-bottom: 24px;
+            box-sizing: border-box;
+          }
+          .ps-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 24px;
+            align-items: center;
+          }
+          .ps-step-box {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            box-sizing: border-box;
+          }
+          .ps-target-box {
+            padding: 20px;
+            border-radius: 10px;
+            box-sizing: border-box;
+          }
+          .ps-arrow-desktop {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 0 10px;
+          }
+          .ps-arrow-mobile {
+            display: none;
+          }
+          .ps-fields-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+          }
+          .ps-banner {
+            margin-top: 18px;
+            padding: 12px 18px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+          }
+          .ps-table-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            flex-wrap: wrap;
+            gap: 15px;
+          }
+          .ps-search-box {
+            position: relative;
+          }
+          .ps-search-input {
+            padding: 8px 12px 8px 32px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            font-size: 13px;
+            width: 230px;
+            box-sizing: border-box;
+          }
+          .ps-promote-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 22px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            transition: all 0.2s;
+            box-sizing: border-box;
+          }
+          .ps-table-scroll {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
+            max-width: 100%;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+          }
+          .ps-table {
+            width: 100%;
+            min-width: 720px;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 13px;
+          }
+          .ps-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.65);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 20px;
+            box-sizing: border-box;
+          }
+          .ps-modal-card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 480px;
+            width: 100%;
+            box-sizing: border-box;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+          }
+
+          @media (max-width: 768px) {
+            .ps-container {
+              padding: 12px 8px !important;
+            }
+            .ps-header {
+              margin-bottom: 14px !important;
+              flex-direction: column !important;
+              align-items: flex-start !important;
+              gap: 10px !important;
+            }
+            .ps-header h2 {
+              font-size: 18px !important;
+            }
+            .ps-card {
+              padding: 14px 10px !important;
+              margin-bottom: 14px !important;
+              border-radius: 10px !important;
+            }
+            .ps-grid {
+              grid-template-columns: 1fr !important;
+              gap: 12px !important;
+            }
+            .ps-step-box {
+              padding: 12px !important;
+            }
+            .ps-target-box {
+              padding: 12px !important;
+            }
+            .ps-arrow-desktop {
+              display: none !important;
+            }
+            .ps-arrow-mobile {
+              display: flex !important;
+              align-items: center;
+              justify-content: center;
+              gap: 8px;
+              padding: 8px 12px;
+              background: #eff6ff;
+              border: 1px dashed #93c5fd;
+              border-radius: 8px;
+              color: #1e3a8a;
+              font-weight: 700;
+              font-size: 12px;
+              letter-spacing: 0.5px;
+            }
+            .ps-fields-2col {
+              grid-template-columns: 1fr !important;
+              gap: 10px !important;
+            }
+            .ps-fields-2col > div {
+              grid-column: span 1 !important;
+            }
+            .ps-banner {
+              flex-direction: column !important;
+              align-items: flex-start !important;
+              padding: 10px 12px !important;
+              gap: 8px !important;
+            }
+            .ps-table-controls {
+              flex-direction: column !important;
+              align-items: stretch !important;
+              gap: 10px !important;
+            }
+            .ps-table-controls > div {
+              width: 100% !important;
+              display: flex !important;
+              justify-content: space-between !important;
+              align-items: center !important;
+            }
+            .ps-search-box {
+              width: 100% !important;
+            }
+            .ps-search-input {
+              width: 100% !important;
+            }
+            .ps-promote-btn {
+              width: 100% !important;
+              justify-content: center !important;
+              padding: 11px 16px !important;
+              font-size: 13.5px !important;
+            }
+            .ps-modal-overlay {
+              padding: 12px !important;
+            }
+            .ps-modal-card {
+              padding: 16px 14px !important;
+              max-width: 100% !important;
+            }
+          }
+        `}</style>
+        <div className="page-container ps-container">
           
           {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '15px' }}>
+          <div className="ps-header">
             <div>
               <h2 style={{ fontSize: '22px', fontWeight: '700', color: '#0f172a', margin: 0 }}>
                 Promote Students
@@ -525,18 +755,11 @@ export default function PromoteStudent() {
           {activeTab === 'promote' && (
             <>
               {/* Configuration Box: From Class ➔ Target Class */}
-              <div style={{
-                background: '#ffffff',
-                borderRadius: '12px',
-                border: '1px solid #e2e8f0',
-                padding: '24px',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
-                marginBottom: '24px'
-              }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '24px', alignItems: 'center' }}>
+              <div className="ps-card">
+                <div className="ps-grid">
                   
                   {/* Left: FROM CLASS */}
-                  <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  <div className="ps-step-box">
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
                       <span style={{ background: '#dbeafe', color: '#1d4ed8', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase' }}>
                         Step 1
@@ -546,7 +769,7 @@ export default function PromoteStudent() {
                       </h4>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                    <div className="ps-fields-2col">
                       {/* Department */}
                       <div>
                         <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '5px' }}>
@@ -606,8 +829,8 @@ export default function PromoteStudent() {
                     </div>
                   </div>
 
-                  {/* Middle: PROMOTION DIRECTION ARROW */}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '0 10px' }}>
+                  {/* Middle: PROMOTION DIRECTION ARROW (Desktop + Mobile) */}
+                  <div className="ps-arrow-desktop">
                     <div style={{
                       width: '48px',
                       height: '48px',
@@ -625,12 +848,13 @@ export default function PromoteStudent() {
                       PROMOTE
                     </span>
                   </div>
+                  <div className="ps-arrow-mobile">
+                    <ArrowDown size={15} /> PROMOTE TO NEXT SESSION <ArrowDown size={15} />
+                  </div>
 
                   {/* Right: TARGET (AUTO-CALCULATED) */}
-                  <div style={{
+                  <div className="ps-target-box" style={{
                     background: isFinalYearGraduation ? '#fffbeb' : '#f0fdf4',
-                    padding: '20px',
-                    borderRadius: '10px',
                     border: `1px solid ${isFinalYearGraduation ? '#fde68a' : '#bbf7d0'}`
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
@@ -665,7 +889,7 @@ export default function PromoteStudent() {
                         </p>
                       </div>
                     ) : (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                      <div className="ps-fields-2col">
                         {/* Target Year */}
                         <div>
                           <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#166534', marginBottom: '5px' }}>
@@ -727,17 +951,7 @@ export default function PromoteStudent() {
                 </div>
 
                 {/* Banner summary bar */}
-                <div style={{
-                  marginTop: '18px',
-                  padding: '12px 18px',
-                  background: '#f1f5f9',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '12px'
-                }}>
+                <div className="ps-banner">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#334155' }}>
                     <Info size={16} color="#0284c7" />
                     <span>
@@ -757,15 +971,9 @@ export default function PromoteStudent() {
               </div>
 
               {/* Students Selection Table */}
-              <div style={{
-                background: '#ffffff',
-                borderRadius: '12px',
-                border: '1px solid #e2e8f0',
-                padding: '24px',
-                boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
-              }}>
+              <div className="ps-card">
                 {/* Table Header Controls */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '15px' }}>
+                <div className="ps-table-controls">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <button
                       onClick={toggleSelectAll}
@@ -801,20 +1009,14 @@ export default function PromoteStudent() {
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     {/* Search box */}
-                    <div style={{ position: 'relative' }}>
+                    <div className="ps-search-box">
                       <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '10px' }} />
                       <input
                         type="text"
                         placeholder="Search student or reg no..."
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
-                        style={{
-                          padding: '8px 12px 8px 32px',
-                          borderRadius: '6px',
-                          border: '1px solid #cbd5e1',
-                          fontSize: '13px',
-                          width: '230px'
-                        }}
+                        className="ps-search-input"
                       />
                     </div>
 
@@ -822,20 +1024,12 @@ export default function PromoteStudent() {
                     <button
                       onClick={() => setShowConfirmModal(true)}
                       disabled={selectedIds.size === 0 || isPromoting}
+                      className="ps-promote-btn"
                       style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '10px 22px',
                         background: selectedIds.size === 0 ? '#cbd5e1' : (isFinalYearGraduation ? '#d97706' : '#16a34a'),
                         color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '8px',
                         cursor: selectedIds.size === 0 ? 'not-allowed' : 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '700',
-                        boxShadow: selectedIds.size === 0 ? 'none' : '0 4px 12px rgba(22, 163, 74, 0.3)',
-                        transition: 'all 0.2s'
+                        boxShadow: selectedIds.size === 0 ? 'none' : '0 4px 12px rgba(22, 163, 74, 0.3)'
                       }}
                     >
                       {isFinalYearGraduation ? (
@@ -870,8 +1064,8 @@ export default function PromoteStudent() {
                     </p>
                   </div>
                 ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                  <div className="ps-table-scroll">
+                    <table className="ps-table">
                       <thead>
                         <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569' }}>
                           <th style={{ padding: '12px', width: '40px', textAlign: 'center' }}>
@@ -955,14 +1149,8 @@ export default function PromoteStudent() {
           )}
 
           {activeTab === 'history' && (
-            <div style={{
-              background: '#ffffff',
-              borderRadius: '12px',
-              border: '1px solid #e2e8f0',
-              padding: '24px',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.03)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div className="ps-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
                 <div>
                   <h3 style={{ margin: '0 0 4px 0', fontSize: '16px', color: '#0f172a' }}>Past Promotions Log</h3>
                   <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
@@ -995,8 +1183,8 @@ export default function PromoteStudent() {
                   No promotion history records found yet.
                 </div>
               ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+                <div className="ps-table-scroll">
+                  <table className="ps-table">
                     <thead>
                       <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', color: '#475569' }}>
                         <th style={{ padding: '12px' }}>Date & Time</th>
@@ -1077,27 +1265,8 @@ export default function PromoteStudent() {
 
           {/* Confirmation Modal */}
           {showConfirmModal && (
-            <div style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(15, 23, 42, 0.65)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 9999,
-              padding: '20px'
-            }}>
-              <div style={{
-                background: '#ffffff',
-                borderRadius: '12px',
-                padding: '24px',
-                maxWidth: '480px',
-                width: '100%',
-                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)'
-              }}>
+            <div className="ps-modal-overlay">
+              <div className="ps-modal-card">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                   <div style={{
                     width: '42px',

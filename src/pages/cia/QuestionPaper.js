@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from '../../components/Sidebar';
 import { db } from "../../supabase/supabaseAdapter";
 import { collection, query, getDocs, where, addDoc, serverTimestamp, doc, getDoc, updateDoc, orderBy } from "../../supabase/supabaseAdapter";
@@ -76,6 +76,18 @@ export default function QuestionPaper() {
   const [saving, setSaving] = useState(false);
   const [courses, setCourses] = useState([]);
   const [filterCourse, setFilterCourse] = useState('');
+  const [allCoursesList, setAllCoursesList] = useState([]);
+  const [availableDepartments, setAvailableDepartments] = useState(['ALL', 'CSE', 'ECE', 'EEE', 'MECH', 'IT', 'AIDS', 'CIVIL', 'CSBS']);
+  const [selectedDept, setSelectedDept] = useState('ALL');
+  const [selectedSemester, setSelectedSemester] = useState('ALL');
+
+  const filteredCourses = useMemo(() => {
+    return allCoursesList.filter(c => {
+      const matchDept = selectedDept === 'ALL' || !selectedDept || String(c.department || '').trim().toUpperCase() === String(selectedDept).trim().toUpperCase();
+      const matchSem = selectedSemester === 'ALL' || !selectedSemester || String(c.semester || '').trim() === String(selectedSemester).trim();
+      return matchDept && matchSem;
+    });
+  }, [allCoursesList, selectedDept, selectedSemester]);
   
   const [questionsPool, setQuestionsPool] = useState([]);
   const [poolLoaded, setPoolLoaded] = useState(false);
@@ -324,19 +336,181 @@ export default function QuestionPaper() {
   }
 
   async function fetchCourses() {
+    setLoading(true);
     try {
-      const qBank = query(collection(db, "cia_question_bank"));
-      const snapBank = await getDocs(qBank);
-      const uniqueCourses = new Set();
-      snapBank.docs.forEach(d => {
-        const c = d.data().courseCode;
-        if (c) uniqueCourses.add(c);
-      });
-      setCourses(prev => Array.from(new Set([...prev, ...Array.from(uniqueCourses)])));
+      const courseMap = new Map();
+      const deptsFound = new Set(['CSE', 'ECE', 'EEE', 'MECH', 'IT', 'AIDS', 'CIVIL', 'CSBS']);
+
+      // 1. Fetch from cia_question_bank to get all courses with questions entered by staff
+      try {
+        const qBankSnap = await getDocs(collection(db, "cia_question_bank"));
+        qBankSnap.docs.forEach(doc => {
+          const d = doc.data();
+          const code = (d.courseCode || '').trim().toUpperCase();
+          if (!code) return;
+          const dept = (d.department || '').trim().toUpperCase();
+          if (dept) deptsFound.add(dept);
+
+          if (!courseMap.has(code)) {
+            courseMap.set(code, {
+              courseCode: code,
+              courseName: (d.courseName || code).trim(),
+              department: dept || 'CSE',
+              semester: d.semester ? String(d.semester).trim() : '',
+              facultyName: d.createdByName || d.facultyName || '',
+              questionCount: 1
+            });
+          } else {
+            const existing = courseMap.get(code);
+            existing.questionCount = (existing.questionCount || 0) + 1;
+            if (!existing.department && dept) existing.department = dept;
+            if (!existing.semester && d.semester) existing.semester = String(d.semester).trim();
+            if ((!existing.courseName || existing.courseName === code) && d.courseName) existing.courseName = d.courseName;
+            if (!existing.facultyName && (d.createdByName || d.facultyName)) existing.facultyName = d.createdByName || d.facultyName;
+          }
+        });
+      } catch (err) {
+        console.warn("Error fetching cia_question_bank courses:", err);
+      }
+
+      // 2. Fetch from course_allocations
+      try {
+        const cAllocSnap = await getDocs(collection(db, "course_allocations"));
+        cAllocSnap.docs.forEach(doc => {
+          const d = doc.data();
+          const code = (d.courseCode || d.subjectCode || '').trim().toUpperCase();
+          if (!code) return;
+          const dept = (d.department || '').trim().toUpperCase();
+          if (dept) deptsFound.add(dept);
+
+          if (!courseMap.has(code)) {
+            courseMap.set(code, {
+              courseCode: code,
+              courseName: (d.courseName || d.subjectName || code).trim(),
+              department: dept || 'CSE',
+              semester: d.semester ? String(d.semester).trim() : '',
+              facultyName: d.facultyName || d.faculty || '',
+              questionCount: 0
+            });
+          } else {
+            const existing = courseMap.get(code);
+            if (!existing.department && dept) existing.department = dept;
+            if (!existing.semester && d.semester) existing.semester = String(d.semester).trim();
+            if ((!existing.courseName || existing.courseName === code) && (d.courseName || d.subjectName)) {
+              existing.courseName = (d.courseName || d.subjectName).trim();
+            }
+            if (!existing.facultyName && (d.facultyName || d.faculty)) existing.facultyName = d.facultyName || d.faculty;
+          }
+        });
+      } catch (err) {
+        console.warn("Error fetching course_allocations:", err);
+      }
+
+      // 3. Fetch from subject_allocations
+      try {
+        const sAllocSnap = await getDocs(collection(db, "subject_allocations"));
+        sAllocSnap.docs.forEach(doc => {
+          const d = doc.data();
+          const code = (d.courseCode || d.subjectCode || '').trim().toUpperCase();
+          if (!code) return;
+          const dept = (d.department || '').trim().toUpperCase();
+          if (dept) deptsFound.add(dept);
+
+          if (!courseMap.has(code)) {
+            courseMap.set(code, {
+              courseCode: code,
+              courseName: (d.courseName || d.subjectName || code).trim(),
+              department: dept || 'CSE',
+              semester: d.semester ? String(d.semester).trim() : '',
+              facultyName: d.facultyName || '',
+              questionCount: 0
+            });
+          } else {
+            const existing = courseMap.get(code);
+            if (!existing.department && dept) existing.department = dept;
+            if (!existing.semester && d.semester) existing.semester = String(d.semester).trim();
+            if ((!existing.courseName || existing.courseName === code) && (d.courseName || d.subjectName)) {
+              existing.courseName = (d.courseName || d.subjectName).trim();
+            }
+            if (!existing.facultyName && d.facultyName) existing.facultyName = d.facultyName;
+          }
+        });
+      } catch (err) {}
+
+      // 4. Fetch from courses collection if present
+      try {
+        const coursesSnap = await getDocs(collection(db, "courses"));
+        coursesSnap.docs.forEach(doc => {
+          const d = doc.data();
+          const code = (d.courseCode || d.code || '').trim().toUpperCase();
+          if (!code) return;
+          const dept = (d.department || '').trim().toUpperCase();
+          if (dept) deptsFound.add(dept);
+
+          if (!courseMap.has(code)) {
+            courseMap.set(code, {
+              courseCode: code,
+              courseName: (d.courseName || d.name || code).trim(),
+              department: dept || 'CSE',
+              semester: d.semester ? String(d.semester).trim() : '',
+              facultyName: '',
+              questionCount: 0
+            });
+          }
+        });
+      } catch (err) {}
+
+      const allList = Array.from(courseMap.values());
+      allList.sort((a, b) => a.courseCode.localeCompare(b.courseCode));
+      setAllCoursesList(allList);
+      setCourses(allList.map(c => c.courseCode));
+
+      const deptArr = ['ALL', ...Array.from(deptsFound).filter(Boolean).sort()];
+      setAvailableDepartments(deptArr);
     } catch (err) {
-      console.error(err);
+      console.error("fetchCourses error:", err);
+    } finally {
+      setLoading(false);
     }
   }
+
+  const handleSelectCourse = (code) => {
+    if (!code) {
+      setFilterCourse('');
+      setQuestionsPool([]);
+      setPoolLoaded(false);
+      return;
+    }
+    setFilterCourse(code);
+    const courseObj = allCoursesList.find(c => c.courseCode === code);
+    const dept = courseObj?.department || (selectedDept !== 'ALL' ? selectedDept : '');
+    const sem = courseObj?.semester || (selectedSemester !== 'ALL' ? selectedSemester : '');
+    const cName = courseObj?.courseName || code;
+    const instructor = courseObj?.facultyName || '';
+
+    const classSemRoman = toRomanSem(sem);
+
+    setHeaderConfig(prev => ({
+      ...prev,
+      courseCodeName: `${code} - ${cName}`.trim(),
+      classSemester: classSemRoman ? `${classSemRoman}${dept ? ` / ${dept}` : ''}` : (dept ? dept : prev.classSemester),
+      instructorName: instructor || prev.instructorName
+    }));
+
+    loadPoolByCourse(code, sem);
+
+    // Auto-match Exam Cell schedule for this course
+    if (schedulesList.length > 0 && examsList.length > 0) {
+      const matchedSchedule = schedulesList.find(s => 
+        String(s.courseCode || '').trim().toUpperCase() === String(code).trim().toUpperCase()
+      );
+      if (matchedSchedule) {
+        handleSelectExam(matchedSchedule.examId, matchedSchedule.id, courseObj);
+      } else if (examsList.length > 0 && !selectedExamId) {
+        handleSelectExam(examsList[0].id, null, courseObj);
+      }
+    }
+  };
 
   async function loadExistingPaper(id) {
     setLoading(true);
@@ -346,6 +520,8 @@ export default function QuestionPaper() {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setFilterCourse(data.courseCode);
+        if (data.department) setSelectedDept(data.department);
+        if (data.semester) setSelectedSemester(String(data.semester));
         setHeaderConfig(data.headerConfig || headerConfig);
         setCourseOutcomes(data.courseOutcomes || courseOutcomes);
         setCam(data.cam || cam);
@@ -362,7 +538,7 @@ export default function QuestionPaper() {
         setHodRemarks(data.hodRemarks || '');
         
         // Load the questions pool for this course
-        await loadPoolByCourse(data.courseCode);
+        await loadPoolByCourse(data.courseCode, data.semester);
       }
     } catch (err) {
       console.error(err);
@@ -371,7 +547,7 @@ export default function QuestionPaper() {
     setLoading(false);
   }
 
-async function loadPoolByCourse(course) {
+async function loadPoolByCourse(course, semester = null) {
     if (!course) return;
     try {
       let q = query(collection(db, "cia_question_bank"), where("courseCode", "==", course));
@@ -391,9 +567,14 @@ async function loadPoolByCourse(course) {
       let qList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       // Strict Semester Isolation
-      const alloc = allocations.find(a => a.id === selectedAllocation) || allocations.find(a => a.courseCode === course);
-      if (alloc && alloc.semester) {
-        qList = qList.filter(d => !d.semester || String(d.semester).trim() === String(alloc.semester).trim());
+      const targetSem = semester || (userProfile?.role === 'staff' 
+        ? (allocations.find(a => a.id === selectedAllocation)?.semester) 
+        : (selectedSemester !== 'ALL' ? selectedSemester : null));
+      if (targetSem && targetSem !== 'ALL') {
+        const filteredBySem = qList.filter(d => !d.semester || String(d.semester).trim() === String(targetSem).trim());
+        if (filteredBySem.length > 0) {
+          qList = filteredBySem;
+        }
       }
 
       setQuestionsPool(qList);
@@ -608,8 +789,13 @@ let allocData = {};
         }
       }
 
+      const courseObj = allCoursesList.find(c => c.courseCode === filterCourse);
+      const targetDept = courseObj?.department || (selectedDept !== 'ALL' ? selectedDept : '') || userProfile?.dept || 'CSE';
+      const targetSem = courseObj?.semester || (selectedSemester !== 'ALL' ? selectedSemester : '') || '';
+
       const payload = {
         courseCode: filterCourse,
+        courseName: courseObj?.courseName || headerConfig.courseCodeName || filterCourse,
         headerConfig,
         courseOutcomes,
         cam,
@@ -619,11 +805,13 @@ let allocData = {};
         partCQuestions,
         status: targetStatus,
         revisionNumber: (paperStatus === 'RETURNED_TO_STAFF' && targetStatus === 'SUBMITTED_TO_HOD') ? revisionNumber + 1 : revisionNumber,
+        department: targetDept,
+        semester: targetSem,
         ...allocData
       };
 
       if (!editId) {
-        payload.department = userProfile.dept || '';
+        payload.department = targetDept;
         payload.createdAt = serverTimestamp();
         payload.createdBy = userProfile.uid || 'unknown';
         payload.createdByName = userProfile.name || 'Unknown';
@@ -1087,7 +1275,7 @@ let allocData = {};
             <div className="card" style={{ marginBottom: 20, opacity: isReadOnly ? 0.7 : 1, pointerEvents: isReadOnly ? 'none' : 'auto' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, alignItems: 'flex-end' }}>
                 
-                {/* 1. Subject / Course Selector */}
+                {/* Multi-Department & Exam Cell Controls */}
                 {userProfile?.role === 'staff' && allocations.length > 0 ? (
                   <div>
                     <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
@@ -1106,29 +1294,68 @@ let allocData = {};
                     </select>
                   </div>
                 ) : (
-                  <div>
-                    <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                      Course Code *
-                    </label>
-                    <select 
-                      value={filterCourse} 
-                      onChange={(e) => {
-                        const code = e.target.value;
-                        setFilterCourse(code);
-                        loadPoolByCourse(code);
-                        setHeaderConfig(prev => ({ ...prev, courseCodeName: code }));
-                        const matched = schedulesList.find(s => String(s.courseCode || '').trim().toUpperCase() === code.trim().toUpperCase());
-                        if (matched) handleSelectExam(matched.examId, matched.id);
-                      }} 
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', fontSize: 13 }}
-                    >
-                      <option value="">Select Course</option>
-                      {courses.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
+                  <>
+                    {/* 1. Department Filter */}
+                    <div>
+                      <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                        Department *
+                      </label>
+                      <select 
+                        value={selectedDept} 
+                        onChange={(e) => {
+                          setSelectedDept(e.target.value);
+                          setFilterCourse('');
+                        }}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', fontSize: 13 }}
+                      >
+                        {availableDepartments.map(d => (
+                          <option key={d} value={d}>{d === 'ALL' ? 'All Departments' : d}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* 2. Semester Filter */}
+                    <div>
+                      <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                        Semester
+                      </label>
+                      <select 
+                        value={selectedSemester} 
+                        onChange={(e) => {
+                          setSelectedSemester(e.target.value);
+                          setFilterCourse('');
+                        }}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', fontSize: 13 }}
+                      >
+                        <option value="ALL">All Semesters</option>
+                        {['1','2','3','4','5','6','7','8'].map(s => (
+                          <option key={s} value={s}>Semester {s}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* 3. Filtered Subject / Course Code Dropdown */}
+                    <div>
+                      <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                        Subject / Course Code *
+                      </label>
+                      <select 
+                        value={filterCourse} 
+                        onChange={(e) => handleSelectCourse(e.target.value)} 
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border-color)', background: 'var(--bg-color)', color: 'var(--text)', fontSize: 13 }}
+                      >
+                        <option value="">Select Subject ({filteredCourses.length} available)</option>
+                        {filteredCourses.map(c => (
+                          <option key={c.courseCode} value={c.courseCode}>
+                            {c.courseCode} - {c.courseName} ({c.department || 'GEN'}{c.semester ? `, Sem: ${c.semester}` : ''}) [{c.questionCount || 0} Qs in Bank]
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
                 )}
 
-                {/* 2. Exam Selector */}
+                {/* 4. Examination Selector */}
                 <div>
                   <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
                     Examination *
@@ -1400,6 +1627,11 @@ let allocData = {};
                     <button onClick={() => savePaperData('SUBMITTED_TO_HOD')} className="btn-primary" disabled={saving} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Send size={16} /> Submit to HOD
                     </button>
+                    {(userProfile?.role === 'exam_cell' || userProfile?.role === 'admin' || userProfile?.role === 'principal') && (
+                      <button onClick={() => savePaperData('APPROVED')} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 8, border: 'none', background: '#10b981', color: '#fff', cursor: 'pointer', fontWeight: 600 }} disabled={saving}>
+                        <CheckCircle size={16} /> Approve & Finalize
+                      </button>
+                    )}
                   </>
                 )}
                 <button onClick={handleDownloadPdf} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 6, border: 'none', background: '#dc2626', color: '#fff', cursor: 'pointer', fontWeight: 500, fontSize: '13px' }} title="Download Question Paper as PDF">

@@ -263,7 +263,7 @@ export default function Profile() {
               ) : (
                 <div style={{
                   width: 72, height: 72, borderRadius: 12,
-                  background: "#0f172a", border: "2px solid #cbd5e1",
+                  background: "#2563eb", border: "2px solid #93c5fd",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 22, fontFamily: "Plus Jakarta Sans, sans-serif", fontWeight: 800, color: "#ffffff"
                 }}>

@@ -1,5 +1,5 @@
 // src/context/AuthContext.js
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { auth, db } from "../supabase/supabaseAdapter";
 import {
   createUserWithEmailAndPassword,
@@ -15,10 +15,49 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
+const SUPER_ADMIN_EMAIL = "balamathan0509@gmail.com";
+
 export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      return auth.currentUser || null;
+    } catch (_) {
+      return null;
+    }
+  });
+
+  const [userProfile, setUserProfile] = useState(() => {
+    try {
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const k = sessionStorage.key(i);
+        if (k && k.startsWith("erp_user_profile_")) {
+          const val = JSON.parse(sessionStorage.getItem(k));
+          if (val && val.role) return val;
+        }
+      }
+    } catch (_) {}
+    return null;
+  });
+
+  const [loading, setLoading] = useState(() => {
+    try {
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const k = sessionStorage.key(i);
+        if (k && k.startsWith("erp_user_profile_")) {
+          const val = JSON.parse(sessionStorage.getItem(k));
+          if (val && val.role) return false;
+        }
+      }
+    } catch (_) {}
+    return true;
+  });
+
+  // Ref to hold latest currentUser without causing fetchUserProfile to be recreated
+  const currentUserRef = useRef(null);
+
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
 
   async function signup(email, password, profileData) {
     const result = await createUserWithEmailAndPassword(auth, email, password);
@@ -37,15 +76,16 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
-    if (currentUser?.uid) {
-      sessionStorage.removeItem("erp_user_profile_" + currentUser.uid);
+    const uid = currentUserRef.current?.uid;
+    if (uid) {
+      sessionStorage.removeItem("erp_user_profile_" + uid);
     }
     setUserProfile(null);
     return signOut(auth);
   }
 
-  async function fetchUserProfile(uid) {
-    // Check local session cache first for instant reliable role persistence
+  // useCallback with empty deps — uses currentUserRef.current to avoid stale closure
+  const fetchUserProfile = useCallback(async (uid) => {
     const cacheKey = "erp_user_profile_" + uid;
     const cachedStr = sessionStorage.getItem(cacheKey);
     let cachedData = null;
@@ -54,6 +94,7 @@ export function AuthProvider({ children }) {
         cachedData = JSON.parse(cachedStr);
         if (cachedData && cachedData.role) {
           setUserProfile(cachedData);
+          setLoading(false);
         }
       } catch (_) {}
     }
@@ -66,8 +107,7 @@ export function AuthProvider({ children }) {
       if (docSnap.exists()) {
         data = docSnap.data();
       } else {
-        // Fallback: If profile isn't found by UID, search by user's email
-        const user = currentUser || auth.currentUser;
+        const user = currentUserRef.current || auth.currentUser;
         const email = (user?.email || "").trim().toLowerCase();
         if (email) {
           try {
@@ -76,7 +116,6 @@ export function AuthProvider({ children }) {
             if (!snap.empty) {
               const existingDoc = snap.docs[0];
               data = { ...existingDoc.data(), uid: uid, id: uid };
-              // Link this profile to the current Auth UID in Supabase table
               await setDoc(docRef, data);
             }
           } catch (emailLookupErr) {
@@ -86,11 +125,9 @@ export function AuthProvider({ children }) {
       }
 
       if (data) {
-        // HOD Role Normalization: 
-        // If designation is HOD or the role itself ends with HOD (e.g. CSEHOD), normalize role to "hod"
         const isHodDesignation = data.designation && data.designation.toLowerCase().includes("hod");
         const isHodRoleVariant = data.role && data.role.toLowerCase().endsWith("hod");
-        
+
         if (data.role !== "hod" && (isHodDesignation || isHodRoleVariant)) {
           data.role = "hod";
           try {
@@ -100,8 +137,7 @@ export function AuthProvider({ children }) {
           }
         }
 
-        // Ensure super admin flag is preserved
-        const user = currentUser || auth.currentUser;
+        const user = currentUserRef.current || auth.currentUser;
         if (user?.email === SUPER_ADMIN_EMAIL) {
           data.isSuperAdmin = true;
           data.role = "admin";
@@ -110,15 +146,12 @@ export function AuthProvider({ children }) {
         sessionStorage.setItem(cacheKey, JSON.stringify(data));
         setUserProfile(data);
       } else if (cachedData && cachedData.role) {
-        // Retain cached role if fetch didn't return doc
         setUserProfile(cachedData);
       } else {
-        // Doc doesn't exist in users table at all — do not silently overwrite as student
-        const user = currentUser || auth.currentUser;
+        const user = currentUserRef.current || auth.currentUser;
         const email = (user?.email || "").trim().toLowerCase();
         const isSuper = email === SUPER_ADMIN_EMAIL;
 
-        // Try to infer role if email contains hints
         let inferredRole = isSuper ? "admin" : (user?.user_metadata?.role || "student");
         if (!isSuper && email) {
           if (email.includes("hod")) inferredRole = "hod";
@@ -146,7 +179,7 @@ export function AuthProvider({ children }) {
       if (cachedData && cachedData.role) {
         setUserProfile(cachedData);
       } else {
-        const user = currentUser || auth.currentUser;
+        const user = currentUserRef.current || auth.currentUser;
         if (user) {
           const fallbackRole = user.email === SUPER_ADMIN_EMAIL ? "admin" : (user.user_metadata?.role || "staff");
           setUserProfile({
@@ -159,17 +192,17 @@ export function AuthProvider({ children }) {
         }
       }
     }
-  }
+  }, []); // empty deps — safe because we use currentUserRef.current
 
   useEffect(() => {
-    // Hard timeout fallback: force loading=false after 1.5s if auth never fires
     const timeout = setTimeout(() => {
       setLoading(false);
-    }, 1500);
+    }, 600);
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       clearTimeout(timeout);
       setCurrentUser(user);
+      currentUserRef.current = user;
       if (user) {
         try {
           await fetchUserProfile(user.uid);
@@ -193,21 +226,30 @@ export function AuthProvider({ children }) {
       }
       setLoading(false);
     });
+
     return () => {
       clearTimeout(timeout);
       unsubscribe();
     };
-  }, []);
+  }, [fetchUserProfile]);
 
-  async function refreshProfile() {
-    if (!currentUser) return;
-    await fetchUserProfile(currentUser.uid);
-  }
+  const refreshProfile = useCallback(async () => {
+    const user = currentUserRef.current;
+    if (!user) return;
+    await fetchUserProfile(user.uid);
+  }, [fetchUserProfile]);
 
-  const SUPER_ADMIN_EMAIL = "balamathan0509@gmail.com";
-  const isSuperAdmin = userProfile?.isSuperAdmin === true || currentUser?.email === SUPER_ADMIN_EMAIL;
+  const isSuperAdmin = useMemo(
+    () => userProfile?.isSuperAdmin === true || currentUser?.email === SUPER_ADMIN_EMAIL,
+    [userProfile, currentUser]
+  );
 
-  const value = { currentUser, userProfile, loading, signup, login, logout, refreshProfile, isSuperAdmin };
+  // useMemo: value object only recreates when actual data changes — prevents unnecessary re-renders
+  const value = useMemo(
+    () => ({ currentUser, userProfile, loading, signup, login, logout, refreshProfile, isSuperAdmin }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentUser, userProfile, loading, isSuperAdmin, refreshProfile]
+  );
 
   return (
     <AuthContext.Provider value={value}>

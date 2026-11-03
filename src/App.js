@@ -1,133 +1,134 @@
 // src/App.js
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Auth from "./pages/Auth";
-import StudentDashboard from "./pages/student/StudentDashboard";
-import StaffDashboard from "./pages/staff/StaffDashboard";
-import HodDashboard from "./pages/hod/HodDashboard";
-import StudentGatePass from "./pages/student/GatePass";
-import StaffGatePass from "./pages/staff/GatePass";
-import HodGatePass from "./pages/hod/GatePass";
-import StudentLeave from "./pages/student/Leave";
-import StaffLeave from "./pages/staff/Leave";
-import HodLeave from "./pages/hod/Leave";
-import HodResults from "./pages/hod/Results";
-import StaffResults from "./pages/staff/Results";
 import "./styles/global.css";
-import StudentFees from "./pages/student/Fees";
-import HodFees from "./pages/hod/Fees";
-import AlertsPage from "./pages/alerts/AlertsPage";
-import ComplaintsPage from "./pages/complaints/ComplaintsPage";
-import PlacementsPage from "./pages/placements/PlacementsPage";
-import VerifyGatePass from "./pages/security/VerifyGatePass";
-import MessPage from "./pages/mess/MessPage";
-import HostelPage from "./pages/hostel/HostelPage";
-import Profile from "./pages/Profile";
-import ExamCellDashboard from "./pages/exam_cell/ExamCellDashboard";
-import HelpCenter from "./pages/shared/HelpCenter";
-import StaffAttendance from "./pages/staff/Attendance";
-import StudentAttendance from "./pages/student/Attendance";
-import HodAttendance from "./pages/hod/Attendance";
-import ClassIncharge from "./pages/hod/ClassIncharge";
-import AttendanceOverview from "./pages/hod/AttendanceOverview";
-import DailyAttendanceReport from "./pages/shared/DailyAttendanceReport";
 
-import WardenDashboard from "./pages/warden/WardenDashboard";
-import ManagementDashboard from "./pages/management/Dashboard";
-import WardenGatePass from "./pages/warden/GatePass";
-import WardenStudents from "./pages/warden/Students";
-import WardenAttendance from "./pages/warden/Attendance";
-import WardenAlerts from "./pages/warden/Alerts";
-import RoomAllocation from "./pages/warden/RoomAllocation";
-import OfficeStaffDashboard from "./pages/officestaff/Dashboard";
-import FeesCollection from "./pages/officestaff/FeesCollection";
-import FeesOverview from "./pages/officestaff/FeesOverview";
-import FeesAlerts from "./pages/officestaff/FeesAlerts";
-import CampusMap from "./pages/shared/CampusMap";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import PrincipalDashboard from "./pages/principal/Dashboard";
-import PrincipalLeave from "./pages/principal/Leave";
-import PrincipalGatePass from "./pages/principal/GatePass";
-import VerifyFees from "./pages/officestaff/VerifyFees";
-import StudentFines from "./pages/student/Fines";
-import StaffFines from "./pages/staff/Fines";
-import OfficeStaffFines from "./pages/officestaff/Fines";
-import StaffStudentDetails from "./pages/staff/StudentDetails";
+const StudentDashboard = lazy(() => import("./pages/student/StudentDashboard"));
+const StaffDashboard = lazy(() => import("./pages/staff/StaffDashboard"));
+const HodDashboard = lazy(() => import("./pages/hod/HodDashboard"));
+const StudentGatePass = lazy(() => import("./pages/student/GatePass"));
+const StaffGatePass = lazy(() => import("./pages/staff/GatePass"));
+const HodGatePass = lazy(() => import("./pages/hod/GatePass"));
+const StudentLeave = lazy(() => import("./pages/student/Leave"));
+const StaffLeave = lazy(() => import("./pages/staff/Leave"));
+const HodLeave = lazy(() => import("./pages/hod/Leave"));
+const HodResults = lazy(() => import("./pages/hod/Results"));
+const StaffResults = lazy(() => import("./pages/staff/Results"));
+const StudentFees = lazy(() => import("./pages/student/Fees"));
+const HodFees = lazy(() => import("./pages/hod/Fees"));
+const AlertsPage = lazy(() => import("./pages/alerts/AlertsPage"));
+const ComplaintsPage = lazy(() => import("./pages/complaints/ComplaintsPage"));
+const PlacementsPage = lazy(() => import("./pages/placements/PlacementsPage"));
+const VerifyGatePass = lazy(() => import("./pages/security/VerifyGatePass"));
+const MessPage = lazy(() => import("./pages/mess/MessPage"));
+const HostelPage = lazy(() => import("./pages/hostel/HostelPage"));
+const Profile = lazy(() => import("./pages/Profile"));
+const ExamCellDashboard = lazy(() => import("./pages/exam_cell/ExamCellDashboard"));
+const HelpCenter = lazy(() => import("./pages/shared/HelpCenter"));
+const StaffAttendance = lazy(() => import("./pages/staff/Attendance"));
+const StudentAttendance = lazy(() => import("./pages/student/Attendance"));
+const HodAttendance = lazy(() => import("./pages/hod/Attendance"));
+const ClassIncharge = lazy(() => import("./pages/hod/ClassIncharge"));
+const AttendanceOverview = lazy(() => import("./pages/hod/AttendanceOverview"));
+const DailyAttendanceReport = lazy(() => import("./pages/shared/DailyAttendanceReport"));
+
+const WardenDashboard = lazy(() => import("./pages/warden/WardenDashboard"));
+const ManagementDashboard = lazy(() => import("./pages/management/Dashboard"));
+const WardenGatePass = lazy(() => import("./pages/warden/GatePass"));
+const WardenStudents = lazy(() => import("./pages/warden/Students"));
+const WardenAttendance = lazy(() => import("./pages/warden/Attendance"));
+const WardenAlerts = lazy(() => import("./pages/warden/Alerts"));
+const RoomAllocation = lazy(() => import("./pages/warden/RoomAllocation"));
+const OfficeStaffDashboard = lazy(() => import("./pages/officestaff/Dashboard"));
+const FeesCollection = lazy(() => import("./pages/officestaff/FeesCollection"));
+const FeesOverview = lazy(() => import("./pages/officestaff/FeesOverview"));
+const FeesAlerts = lazy(() => import("./pages/officestaff/FeesAlerts"));
+const CampusMap = lazy(() => import("./pages/shared/CampusMap"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const PrincipalDashboard = lazy(() => import("./pages/principal/Dashboard"));
+const PrincipalLeave = lazy(() => import("./pages/principal/Leave"));
+const PrincipalGatePass = lazy(() => import("./pages/principal/GatePass"));
+const VerifyFees = lazy(() => import("./pages/officestaff/VerifyFees"));
+const StudentFines = lazy(() => import("./pages/student/Fines"));
+const StaffFines = lazy(() => import("./pages/staff/Fines"));
+const OfficeStaffFines = lazy(() => import("./pages/officestaff/Fines"));
+const StaffStudentDetails = lazy(() => import("./pages/staff/StudentDetails"));
 
 // CIA Pages
-import ExamCreation from "./pages/cia/ExamCreation";
-import ScheduleExamination from "./pages/cia/ScheduleExamination";
-import ExamSeatingArrangement from "./pages/cia/ExamSeatingArrangement";
-import QuestionBank from "./pages/cia/QuestionBank";
-import QuestionPaper from "./pages/cia/QuestionPaper";
-import MarkAttendance from "./pages/cia/MarkAttendance";
-import MarkEntryCIA from "./pages/cia/MarkEntryCIA";
-import MarkEntryOther from "./pages/cia/MarkEntryOther";
-import MarkEntryESE from "./pages/cia/MarkEntryESE";
-import ResultAnalysis from "./pages/cia/ResultAnalysis";
-import AttendanceReport from "./pages/cia/AttendanceReport";
-import Reports from "./pages/cia/Reports";
-import MyQuestionPapers from "./pages/cia/MyQuestionPapers";
-import HodQuestionPaperReview from "./pages/cia/HodQuestionPaperReview";
-import PrincipalQuestionPaperReview from "./pages/cia/PrincipalQuestionPaperReview";
-import StudentQuestionPapers from "./pages/student/StudentQuestionPapers";
-import StudentQuestionBank from "./pages/student/StudentQuestionBank";
-import ClassQuestionBanks from "./pages/cia/ClassQuestionBanks";
+const ExamCreation = lazy(() => import("./pages/cia/ExamCreation"));
+const ScheduleExamination = lazy(() => import("./pages/cia/ScheduleExamination"));
+const ExamSeatingArrangement = lazy(() => import("./pages/cia/ExamSeatingArrangement"));
+const QuestionBank = lazy(() => import("./pages/cia/QuestionBank"));
+const QuestionPaper = lazy(() => import("./pages/cia/QuestionPaper"));
+const MarkAttendance = lazy(() => import("./pages/cia/MarkAttendance"));
+const MarkEntryCIA = lazy(() => import("./pages/cia/MarkEntryCIA"));
+const MarkEntryOther = lazy(() => import("./pages/cia/MarkEntryOther"));
+const MarkEntryESE = lazy(() => import("./pages/cia/MarkEntryESE"));
+const ResultAnalysis = lazy(() => import("./pages/cia/ResultAnalysis"));
+const AttendanceReport = lazy(() => import("./pages/cia/AttendanceReport"));
+const Reports = lazy(() => import("./pages/cia/Reports"));
+const MyQuestionPapers = lazy(() => import("./pages/cia/MyQuestionPapers"));
+const HodQuestionPaperReview = lazy(() => import("./pages/cia/HodQuestionPaperReview"));
+const PrincipalQuestionPaperReview = lazy(() => import("./pages/cia/PrincipalQuestionPaperReview"));
+const StudentQuestionPapers = lazy(() => import("./pages/student/StudentQuestionPapers"));
+const StudentQuestionBank = lazy(() => import("./pages/student/StudentQuestionBank"));
+const ClassQuestionBanks = lazy(() => import("./pages/cia/ClassQuestionBanks"));
 
 // Academics Pages
-import AcademicCalendar from "./pages/academics/AcademicCalendar";
-import CourseAllocation from "./pages/academics/CourseAllocation";
-import CourseEnrollment from "./pages/academics/CourseEnrollment";
+const AcademicCalendar = lazy(() => import("./pages/academics/AcademicCalendar"));
+const CourseAllocation = lazy(() => import("./pages/academics/CourseAllocation"));
+const CourseEnrollment = lazy(() => import("./pages/academics/CourseEnrollment"));
 
-import FacultyProfile from "./pages/academics/FacultyProfile";
-import AcademicReports from "./pages/academics/AcademicReports";
+const FacultyProfile = lazy(() => import("./pages/academics/FacultyProfile"));
+const AcademicReports = lazy(() => import("./pages/academics/AcademicReports"));
 
 // LMS Pages
-import CourseContents from "./pages/academics/lms/CourseContents";
+const CourseContents = lazy(() => import("./pages/academics/lms/CourseContents"));
 
-import CoursePlanCompletion from "./pages/academics/lms/CoursePlanCompletion";
-import CoursePlanFeedback from "./pages/academics/lms/CoursePlanFeedback";
-import Assignments from "./pages/academics/lms/Assignments";
-import LmsMarkAttendance from "./pages/academics/lms/MarkAttendance";
-import AcademicActivities from "./pages/academics/lms/AcademicActivities";
-import ResearchRepository from "./pages/academics/lms/ResearchRepository";
-import SelfAppraisal from "./pages/academics/lms/SelfAppraisal";
-import FacultyParticipation from "./pages/academics/lms/FacultyParticipation";
+const CoursePlanCompletion = lazy(() => import("./pages/academics/lms/CoursePlanCompletion"));
+const CoursePlanFeedback = lazy(() => import("./pages/academics/lms/CoursePlanFeedback"));
+const Assignments = lazy(() => import("./pages/academics/lms/Assignments"));
+const LmsMarkAttendance = lazy(() => import("./pages/academics/lms/MarkAttendance"));
+const AcademicActivities = lazy(() => import("./pages/academics/lms/AcademicActivities"));
+const ResearchRepository = lazy(() => import("./pages/academics/lms/ResearchRepository"));
+const SelfAppraisal = lazy(() => import("./pages/academics/lms/SelfAppraisal"));
+const FacultyParticipation = lazy(() => import("./pages/academics/lms/FacultyParticipation"));
 
 // Configuration Pages - General
-import Programme from "./pages/configuration/general/Programme";
-import UploadCourses from "./pages/configuration/general/UploadCourses";
-import RegulationMapping from "./pages/configuration/general/RegulationMapping";
-import StudentDetails from "./pages/configuration/general/StudentDetails";
-import FacultyDetails from "./pages/configuration/general/FacultyDetails";
-import PromoteStudent from "./pages/configuration/general/PromoteStudent";
-import PassOutStudents from "./pages/configuration/general/PassOutStudents";
+const Programme = lazy(() => import("./pages/configuration/general/Programme"));
+const UploadCourses = lazy(() => import("./pages/configuration/general/UploadCourses"));
+const RegulationMapping = lazy(() => import("./pages/configuration/general/RegulationMapping"));
+const StudentDetails = lazy(() => import("./pages/configuration/general/StudentDetails"));
+const FacultyDetails = lazy(() => import("./pages/configuration/general/FacultyDetails"));
+const PromoteStudent = lazy(() => import("./pages/configuration/general/PromoteStudent"));
+const PassOutStudents = lazy(() => import("./pages/configuration/general/PassOutStudents"));
 
 // Configuration Pages - CIA
-import QuestionFormat from "./pages/configuration/cia/QuestionFormat";
-import TypesAndEvaluation from "./pages/configuration/cia/TypesAndEvaluation";
-import EvaluationPattern from "./pages/configuration/cia/EvaluationPattern";
-import ShowEvaluationPattern from "./pages/configuration/cia/ShowEvaluationPattern";
-import PatternMapping from "./pages/configuration/cia/PatternMapping";
+const QuestionFormat = lazy(() => import("./pages/configuration/cia/QuestionFormat"));
+const TypesAndEvaluation = lazy(() => import("./pages/configuration/cia/TypesAndEvaluation"));
+const EvaluationPattern = lazy(() => import("./pages/configuration/cia/EvaluationPattern"));
+const ShowEvaluationPattern = lazy(() => import("./pages/configuration/cia/ShowEvaluationPattern"));
+const PatternMapping = lazy(() => import("./pages/configuration/cia/PatternMapping"));
 
-import SubjectAllocation from "./pages/hod/SubjectAllocation";
-import MySubjects from "./pages/staff/MySubjects";
+const SubjectAllocation = lazy(() => import("./pages/hod/SubjectAllocation"));
+const MySubjects = lazy(() => import("./pages/staff/MySubjects"));
 
 // Timetable
-import TimetableEditor from "./pages/dept_admin/TimetableEditor";
-import StudentTimetable from "./pages/student/Timetable";
-import StaffTimetable from "./pages/staff/Timetable";
+const TimetableEditor = lazy(() => import("./pages/dept_admin/TimetableEditor"));
+const StudentTimetable = lazy(() => import("./pages/student/Timetable"));
+const StaffTimetable = lazy(() => import("./pages/staff/Timetable"));
 
 // Hour Alteration, Period Attendance & Record of Classwork (Logbook)
-import HourAlteration from "./pages/staff/HourAlteration";
-import PeriodAttendance from "./pages/staff/PeriodAttendance";
-import RecordOfClasswork from "./pages/staff/RecordOfClasswork";
+const HourAlteration = lazy(() => import("./pages/staff/HourAlteration"));
+const PeriodAttendance = lazy(() => import("./pages/staff/PeriodAttendance"));
+const RecordOfClasswork = lazy(() => import("./pages/staff/RecordOfClasswork"));
 
 // New Student Admission & Coordinator Management
-import NewStudentAdmission from "./pages/dept_admin/NewStudentAdmission";
-import CoordinatorManagement from "./pages/hod/CoordinatorManagement";
+const NewStudentAdmission = lazy(() => import("./pages/dept_admin/NewStudentAdmission"));
+const CoordinatorManagement = lazy(() => import("./pages/hod/CoordinatorManagement"));
 
 const ComingSoon = ({ title }) => (
   <div style={{
@@ -149,6 +150,12 @@ export default function App() {
   return (
     <AuthProvider>
       <Router>
+        <Suspense fallback={
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh", width: "100%", background: "#f8fafc" }}>
+            <div style={{ width: 36, height: 36, border: "3px solid #e2e8f0", borderTop: "3px solid #2563eb", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
+            <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+          </div>
+        }>
           <Routes>
           {/* Auth */}
           <Route path="/" element={<Auth />} />
@@ -207,8 +214,8 @@ export default function App() {
           <Route path="/cia/question-bank" element={<ProtectedRoute allowedRole={["staff", "dept_admin", "hod", "admin"]}><QuestionBank /></ProtectedRoute>} />
           <Route path="/cia/class-question-banks" element={<ProtectedRoute allowedRole={["staff", "dept_admin", "hod", "admin"]}><ClassQuestionBanks /></ProtectedRoute>} />
           <Route path="/staff/class-question-bank" element={<ProtectedRoute allowedRole={["staff", "dept_admin", "hod", "admin"]}><ClassQuestionBanks /></ProtectedRoute>} />
-          <Route path="/cia/my-papers" element={<ProtectedRoute allowedRole={["staff", "hod"]}><MyQuestionPapers /></ProtectedRoute>} />
-          <Route path="/cia/question-paper" element={<ProtectedRoute allowedRole={["staff", "hod"]}><QuestionPaper /></ProtectedRoute>} />
+          <Route path="/cia/my-papers" element={<ProtectedRoute allowedRole={["exam_cell", "admin", "principal", "hod", "staff"]}><MyQuestionPapers /></ProtectedRoute>} />
+          <Route path="/cia/question-paper" element={<ProtectedRoute allowedRole={["exam_cell", "admin", "principal", "hod", "staff"]}><QuestionPaper /></ProtectedRoute>} />
           <Route path="/cia/mark-entry" element={<ProtectedRoute allowedRole={["staff", "hod"]}><MarkEntryCIA /></ProtectedRoute>} />
           <Route path="/cia/other-mark-entry" element={<ProtectedRoute allowedRole={["staff", "hod"]}><MarkEntryOther /></ProtectedRoute>} />
           <Route path="/cia/ese-mark-entry" element={<ProtectedRoute allowedRole={["staff", "hod"]}><MarkEntryESE /></ProtectedRoute>} />
@@ -344,6 +351,7 @@ export default function App() {
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
+        </Suspense>
       </Router>
     </AuthProvider>
   );
